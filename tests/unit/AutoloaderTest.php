@@ -15,15 +15,6 @@ use PHPUnit\Framework\TestCase;
  */
 class AutoloaderTest extends TestCase {
 
-	public static function setUpBeforeClass(): void {
-		if ( ! defined( 'MVOC_STREETO_DIR' ) ) {
-			define( 'MVOC_STREETO_DIR', dirname( __DIR__, 2 ) . '/mvoc-streeto-results/' );
-		}
-
-		require_once MVOC_STREETO_DIR . 'includes/class-autoloader.php';
-		\MVOC\StreetO\Autoloader::register();
-	}
-
 	/**
 	 * @dataProvider class_provider
 	 */
@@ -41,6 +32,9 @@ class AutoloaderTest extends TestCase {
 			array( \MVOC\StreetO\Schema::class ),
 			array( \MVOC\StreetO\MapRun\Client::class ),
 			array( \MVOC\StreetO\MapRun\Parser::class ),
+			array( \MVOC\StreetO\Domain\Scoring_Config::class ),
+			array( \MVOC\StreetO\Domain\Scoring_Engine::class ),
+			array( \MVOC\StreetO\Domain\League_Builder::class ),
 			array( \MVOC\StreetO\Admin\Admin_Menu::class ),
 			array( \MVOC\StreetO\Admin\MapRun_Explorer_Screen::class ),
 		);

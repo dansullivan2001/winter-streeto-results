@@ -26,8 +26,11 @@ class Schema {
 
 	/**
 	 * Bumped whenever a table definition changes.
+	 *
+	 * 2: penalty columns on results, organiser on events, result_competitors
+	 *    join table — all needed once the scoring rules were pinned down.
 	 */
-	public const DB_VERSION = 1;
+	public const DB_VERSION = 2;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -42,6 +45,7 @@ class Schema {
 		'competitors',
 		'aliases',
 		'results',
+		'result_competitors',
 		'overrides',
 	);
 
@@ -117,6 +121,8 @@ class Schema {
 			event_number smallint(5) unsigned NOT NULL,
 			title varchar(255) NOT NULL,
 			event_date date NULL,
+			venue varchar(255) NOT NULL DEFAULT '',
+			organiser_competitor_id bigint(20) unsigned NULL,
 			status varchar(20) NOT NULL DEFAULT 'draft',
 			last_fetched_at datetime NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -197,8 +203,10 @@ class Schema {
 			classifier varchar(20) NOT NULL DEFAULT '',
 			course_label varchar(20) NOT NULL DEFAULT '',
 			raw_score int(11) NULL,
+			raw_penalty int(11) NOT NULL DEFAULT 0,
 			raw_time_secs int(10) unsigned NULL,
 			resolved_score int(11) NULL,
+			resolved_penalty int(11) NOT NULL DEFAULT 0,
 			resolved_time_secs int(10) unsigned NULL,
 			resolved_course_label varchar(20) NOT NULL DEFAULT '',
 			is_excluded tinyint(1) NOT NULL DEFAULT 0,
@@ -207,6 +215,23 @@ class Schema {
 			KEY event_id (event_id),
 			KEY competitor_id (competitor_id),
 			KEY maprun_id (maprun_id)
+		) {$charset};";
+
+		// A result normally belongs to one competitor, recorded on results.
+		// competitor_id. This table covers the rare shared-map case, where two
+		// people run one map and both take the row's league points. Modelling
+		// it as a relationship keeps the scoring engine from special-casing
+		// pairs, and the co-ordinator establishes the link explicitly rather
+		// than it being guessed from an "&" in the name.
+		$table = self::table( 'result_competitors' );
+		$sql[] = "CREATE TABLE {$table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			result_id bigint(20) unsigned NOT NULL,
+			competitor_id bigint(20) unsigned NOT NULL,
+			PRIMARY KEY  (id),
+			KEY result_id (result_id),
+			KEY competitor_id (competitor_id),
+			UNIQUE KEY result_competitor (result_id,competitor_id)
 		) {$charset};";
 
 		// An audit trail of corrections. Kept separate from `results` so that a

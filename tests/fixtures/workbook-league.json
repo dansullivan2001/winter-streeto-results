@@ -1,0 +1,2236 @@
+{
+  "_comment": "Golden data from MVOC's 2019/20 workbook, with names and venues replaced by invented ones. event_points are the league points already awarded; expected_* are the workbook's own computed answers, untouched. Two events were cancelled that season, so only six columns carry values.",
+  "events": [
+    "Event 1",
+    "Event 2",
+    "Event 3",
+    "Event 4",
+    "Event 5",
+    "Event 6",
+    "Event 7",
+    "Event 8"
+  ],
+  "counting_events": 5,
+  "competitors": [
+    {
+      "name": "Kenneth Ravenscroft",
+      "is_female": false,
+      "event_points": [
+        44,
+        50,
+        45,
+        47,
+        49,
+        48,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 6,
+      "expected_total": 239,
+      "expected_position": 1,
+      "expected_women_position": null
+    },
+    {
+      "name": "Cedric Nuttall",
+      "is_female": false,
+      "event_points": [
+        null,
+        48,
+        43,
+        44,
+        47,
+        47,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 5,
+      "expected_total": 229,
+      "expected_position": 2,
+      "expected_women_position": null
+    },
+    {
+      "name": "Jerome Standish",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        49,
+        50,
+        null,
+        50,
+        null,
+        null
+      ],
+      "organised": "Event 3",
+      "expected_organiser_points": 50,
+      "expected_events_entered": 3,
+      "expected_total": 199,
+      "expected_position": 3,
+      "expected_women_position": null
+    },
+    {
+      "name": "Vincent Alderton",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        36,
+        37,
+        41,
+        42,
+        null,
+        null
+      ],
+      "organised": "Event 3",
+      "expected_organiser_points": 42,
+      "expected_events_entered": 4,
+      "expected_total": 198,
+      "expected_position": 4,
+      "expected_women_position": null
+    },
+    {
+      "name": "Desmond Uffington",
+      "is_female": false,
+      "event_points": [
+        42,
+        35,
+        33,
+        30,
+        42,
+        41,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 6,
+      "expected_total": 193,
+      "expected_position": 5,
+      "expected_women_position": null
+    },
+    {
+      "name": "Callum Pargeter",
+      "is_female": true,
+      "event_points": [
+        38,
+        39,
+        27,
+        43,
+        28,
+        44,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 6,
+      "expected_total": 192,
+      "expected_position": 6,
+      "expected_women_position": 1
+    },
+    {
+      "name": "Harvey Winterbourne",
+      "is_female": false,
+      "event_points": [
+        null,
+        49,
+        null,
+        48,
+        46,
+        49,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 192,
+      "expected_position": 6,
+      "expected_women_position": null
+    },
+    {
+      "name": "Agnes Vaisey",
+      "is_female": false,
+      "event_points": [
+        26,
+        45,
+        28,
+        40,
+        10,
+        45,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 6,
+      "expected_total": 184,
+      "expected_position": 8,
+      "expected_women_position": null
+    },
+    {
+      "name": "Kirsten Yardley",
+      "is_female": false,
+      "event_points": [
+        47,
+        47,
+        39,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": "Event 6",
+      "expected_organiser_points": 47,
+      "expected_events_entered": 3,
+      "expected_total": 180,
+      "expected_position": 9,
+      "expected_women_position": null
+    },
+    {
+      "name": "Alfred Dewhurst",
+      "is_female": false,
+      "event_points": [
+        null,
+        44,
+        44,
+        47,
+        null,
+        44,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 179,
+      "expected_position": 10,
+      "expected_women_position": null
+    },
+    {
+      "name": "Basil Norrington",
+      "is_female": false,
+      "event_points": [
+        null,
+        40,
+        46,
+        null,
+        45,
+        null,
+        null,
+        null
+      ],
+      "organised": "Event 5",
+      "expected_organiser_points": 46,
+      "expected_events_entered": 3,
+      "expected_total": 177,
+      "expected_position": 11,
+      "expected_women_position": null
+    },
+    {
+      "name": "Greta Yalding",
+      "is_female": false,
+      "event_points": [
+        null,
+        42,
+        42,
+        41,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": "Event 8",
+      "expected_organiser_points": 42,
+      "expected_events_entered": 3,
+      "expected_total": 167,
+      "expected_position": 12,
+      "expected_women_position": null
+    },
+    {
+      "name": "Zara Rossiter",
+      "is_female": false,
+      "event_points": [
+        32,
+        33,
+        25,
+        31,
+        25,
+        33,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 6,
+      "expected_total": 154,
+      "expected_position": 13,
+      "expected_women_position": null
+    },
+    {
+      "name": "Hugh Quennell",
+      "is_female": false,
+      "event_points": [
+        33,
+        42,
+        null,
+        null,
+        37,
+        39,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 151,
+      "expected_position": 14,
+      "expected_women_position": null
+    },
+    {
+      "name": "Clifford Fairbrother",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        48,
+        45,
+        48,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 141,
+      "expected_position": 15,
+      "expected_women_position": null
+    },
+    {
+      "name": "Keith Lyttelton",
+      "is_female": true,
+      "event_points": [
+        40,
+        null,
+        31,
+        36,
+        30,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 137,
+      "expected_position": 16,
+      "expected_women_position": 2
+    },
+    {
+      "name": "Ursula Jephcott",
+      "is_female": true,
+      "event_points": [
+        null,
+        37,
+        29,
+        null,
+        31,
+        40,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 137,
+      "expected_position": 16,
+      "expected_women_position": 2
+    },
+    {
+      "name": "Martin Ashby",
+      "is_female": true,
+      "event_points": [
+        30,
+        30,
+        26,
+        null,
+        19,
+        25,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 5,
+      "expected_total": 130,
+      "expected_position": 18,
+      "expected_women_position": 4
+    },
+    {
+      "name": "Ivan Inchbald",
+      "is_female": false,
+      "event_points": [
+        46,
+        null,
+        null,
+        null,
+        44,
+        38,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 128,
+      "expected_position": 19,
+      "expected_women_position": null
+    },
+    {
+      "name": "Warren Wolstenholme",
+      "is_female": false,
+      "event_points": [
+        36,
+        null,
+        30,
+        null,
+        23,
+        34,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 123,
+      "expected_position": 20,
+      "expected_women_position": null
+    },
+    {
+      "name": "Osborne Bickerstaff",
+      "is_female": false,
+      "event_points": [
+        27,
+        26,
+        22,
+        null,
+        16,
+        27,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 5,
+      "expected_total": 118,
+      "expected_position": 21,
+      "expected_women_position": null
+    },
+    {
+      "name": "Juliet Harborne",
+      "is_female": false,
+      "event_points": [
+        40,
+        null,
+        12,
+        null,
+        25,
+        35,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 112,
+      "expected_position": 22,
+      "expected_women_position": null
+    },
+    {
+      "name": "Frances Ellerby",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        34,
+        null,
+        32,
+        46,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 112,
+      "expected_position": 22,
+      "expected_women_position": 5
+    },
+    {
+      "name": "Gerald Pemberton",
+      "is_female": false,
+      "event_points": [
+        21,
+        32,
+        21,
+        27,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 101,
+      "expected_position": 24,
+      "expected_women_position": null
+    },
+    {
+      "name": "Vaughan Eastwood",
+      "is_female": true,
+      "event_points": [
+        25,
+        31,
+        null,
+        null,
+        17,
+        28,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 101,
+      "expected_position": 24,
+      "expected_women_position": 6
+    },
+    {
+      "name": "Rowan Orpington",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        49,
+        50,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 99,
+      "expected_position": 26,
+      "expected_women_position": null
+    },
+    {
+      "name": "Olive Mowbray",
+      "is_female": false,
+      "event_points": [
+        37,
+        null,
+        17,
+        null,
+        22,
+        23,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 99,
+      "expected_position": 26,
+      "expected_women_position": null
+    },
+    {
+      "name": "Stuart Jocelyn",
+      "is_female": false,
+      "event_points": [
+        48,
+        43,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 91,
+      "expected_position": 28,
+      "expected_women_position": null
+    },
+    {
+      "name": "Adam Rowntree",
+      "is_female": false,
+      "event_points": [
+        23,
+        null,
+        19,
+        28,
+        19,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 89,
+      "expected_position": 29,
+      "expected_women_position": null
+    },
+    {
+      "name": "Norman Halliwell",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        23,
+        null,
+        35,
+        30,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 88,
+      "expected_position": 30,
+      "expected_women_position": null
+    },
+    {
+      "name": "Edwin Crowhurst",
+      "is_female": false,
+      "event_points": [
+        null,
+        46,
+        40,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 86,
+      "expected_position": 31,
+      "expected_women_position": null
+    },
+    {
+      "name": "Alistair Gainsborough",
+      "is_female": false,
+      "event_points": [
+        50,
+        35,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 85,
+      "expected_position": 32,
+      "expected_women_position": null
+    },
+    {
+      "name": "Yannick Ainsworth",
+      "is_female": true,
+      "event_points": [
+        20,
+        null,
+        17,
+        null,
+        22,
+        23,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 82,
+      "expected_position": 33,
+      "expected_women_position": 7
+    },
+    {
+      "name": "Sidney Popplewell",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        41,
+        39,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 80,
+      "expected_position": 34,
+      "expected_women_position": null
+    },
+    {
+      "name": "Trevor Kenworthy",
+      "is_female": false,
+      "event_points": [
+        null,
+        27,
+        null,
+        null,
+        20,
+        33,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 80,
+      "expected_position": 34,
+      "expected_women_position": null
+    },
+    {
+      "name": "Iris Merriweather",
+      "is_female": true,
+      "event_points": [
+        43,
+        null,
+        null,
+        null,
+        null,
+        36,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 79,
+      "expected_position": 36,
+      "expected_women_position": 8
+    },
+    {
+      "name": "Fergus Barnard",
+      "is_female": true,
+      "event_points": [
+        20,
+        null,
+        15,
+        29,
+        14,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 4,
+      "expected_total": 78,
+      "expected_position": 37,
+      "expected_women_position": 9
+    },
+    {
+      "name": "Isaac Uppingham",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        38,
+        null,
+        null,
+        null
+      ],
+      "organised": "Event 5",
+      "expected_organiser_points": 38,
+      "expected_events_entered": 1,
+      "expected_total": 76,
+      "expected_position": 38,
+      "expected_women_position": null
+    },
+    {
+      "name": "Marguerite Oglethorpe",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        38,
+        33,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 71,
+      "expected_position": 39,
+      "expected_women_position": 10
+    },
+    {
+      "name": "Zach Colquhoun-Marsh",
+      "is_female": false,
+      "event_points": [
+        null,
+        38,
+        null,
+        32,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 70,
+      "expected_position": 40,
+      "expected_women_position": null
+    },
+    {
+      "name": "Lionel Redmayne",
+      "is_female": false,
+      "event_points": [
+        null,
+        36,
+        null,
+        34,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 70,
+      "expected_position": 40,
+      "expected_women_position": null
+    },
+    {
+      "name": "Percy Templeton",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        32,
+        null,
+        12,
+        19,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 63,
+      "expected_position": 42,
+      "expected_women_position": null
+    },
+    {
+      "name": "Joel Garsington",
+      "is_female": true,
+      "event_points": [
+        31,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": "Event 3",
+      "expected_organiser_points": 31,
+      "expected_events_entered": 1,
+      "expected_total": 62,
+      "expected_position": 43,
+      "expected_women_position": 11
+    },
+    {
+      "name": "Godfrey Hetherington",
+      "is_female": false,
+      "event_points": [
+        null,
+        18,
+        null,
+        26,
+        null,
+        17,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 61,
+      "expected_position": 44,
+      "expected_women_position": null
+    },
+    {
+      "name": "Lorna Applewhite",
+      "is_female": false,
+      "event_points": [
+        36,
+        null,
+        null,
+        null,
+        null,
+        23,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 59,
+      "expected_position": 45,
+      "expected_women_position": null
+    },
+    {
+      "name": "Malcolm Yeardley",
+      "is_female": false,
+      "event_points": [
+        null,
+        16,
+        38,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 54,
+      "expected_position": 46,
+      "expected_women_position": null
+    },
+    {
+      "name": "Georgina Ilsley",
+      "is_female": false,
+      "event_points": [
+        23,
+        30,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 53,
+      "expected_position": 47,
+      "expected_women_position": null
+    },
+    {
+      "name": "Quentin Pinkerton",
+      "is_female": false,
+      "event_points": [
+        null,
+        24,
+        18,
+        null,
+        11,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 53,
+      "expected_position": 47,
+      "expected_women_position": null
+    },
+    {
+      "name": "Imogen Oakley",
+      "is_female": true,
+      "event_points": [
+        28,
+        23,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 51,
+      "expected_position": 49,
+      "expected_women_position": 12
+    },
+    {
+      "name": "Xavier Kerrigan",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        50,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 50,
+      "expected_position": 50,
+      "expected_women_position": null
+    },
+    {
+      "name": "Petra Galbraith",
+      "is_female": false,
+      "event_points": [
+        49,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 49,
+      "expected_position": 51,
+      "expected_women_position": null
+    },
+    {
+      "name": "Bertram Somerville",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        47,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 47,
+      "expected_position": 52,
+      "expected_women_position": null
+    },
+    {
+      "name": "Ralph Abbotsbury",
+      "is_female": false,
+      "event_points": [
+        null,
+        25,
+        21,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 46,
+      "expected_position": 53,
+      "expected_women_position": null
+    },
+    {
+      "name": "Josephine Loveridge",
+      "is_female": false,
+      "event_points": [
+        45,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 45,
+      "expected_position": 54,
+      "expected_women_position": null
+    },
+    {
+      "name": "Winifred Netherwood",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        null,
+        43,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 43,
+      "expected_position": 55,
+      "expected_women_position": 13
+    },
+    {
+      "name": "Fiona Ingoldsby",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        43,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 43,
+      "expected_position": 55,
+      "expected_women_position": 13
+    },
+    {
+      "name": "Annabel Abernethy",
+      "is_female": true,
+      "event_points": [
+        12,
+        30,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 42,
+      "expected_position": 57,
+      "expected_women_position": 15
+    },
+    {
+      "name": "Elliot Rutherford",
+      "is_female": false,
+      "event_points": [
+        13,
+        null,
+        null,
+        null,
+        29,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 42,
+      "expected_position": 57,
+      "expected_women_position": null
+    },
+    {
+      "name": "Maeve Fenwick",
+      "is_female": false,
+      "event_points": [
+        41,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 41,
+      "expected_position": 59,
+      "expected_women_position": null
+    },
+    {
+      "name": "Terence Thorneycroft",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        40,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 40,
+      "expected_position": 60,
+      "expected_women_position": null
+    },
+    {
+      "name": "Delphine Jerningham",
+      "is_female": true,
+      "event_points": [
+        24,
+        15,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 39,
+      "expected_position": 61,
+      "expected_women_position": 16
+    },
+    {
+      "name": "Pat Braithwaite",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        39,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 39,
+      "expected_position": 61,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Blackwood",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        39,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 39,
+      "expected_position": 61,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Elphinstone",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        38,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 38,
+      "expected_position": 64,
+      "expected_women_position": null
+    },
+    {
+      "name": "Tabitha Dunwoody",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        14,
+        null,
+        7,
+        16,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 37,
+      "expected_position": 65,
+      "expected_women_position": 17
+    },
+    {
+      "name": "Pat Drummond",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        37,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 37,
+      "expected_position": 65,
+      "expected_women_position": null
+    },
+    {
+      "name": "Duncan Trelawney",
+      "is_female": true,
+      "event_points": [
+        36,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 36,
+      "expected_position": 67,
+      "expected_women_position": 18
+    },
+    {
+      "name": "Clara Wadsworth",
+      "is_female": true,
+      "event_points": [
+        null,
+        23,
+        13,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 2,
+      "expected_total": 36,
+      "expected_position": 67,
+      "expected_women_position": 18
+    },
+    {
+      "name": "Pat Dunmore-Ellis",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        36,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 36,
+      "expected_position": 67,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Sandiford",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        36,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 36,
+      "expected_position": 67,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Hollingsworth",
+      "is_female": false,
+      "event_points": [
+        null,
+        35,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 35,
+      "expected_position": 71,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Inglis",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        35,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 35,
+      "expected_position": 71,
+      "expected_women_position": null
+    },
+    {
+      "name": "Norman Halliwell",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        35,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 35,
+      "expected_position": 71,
+      "expected_women_position": null
+    },
+    {
+      "name": "Oscar Dunmore",
+      "is_female": true,
+      "event_points": [
+        15,
+        null,
+        11,
+        null,
+        8,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 3,
+      "expected_total": 34,
+      "expected_position": 74,
+      "expected_women_position": 20
+    },
+    {
+      "name": "Pat Cavendish",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        34,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 34,
+      "expected_position": 74,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Langford",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        34,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 34,
+      "expected_position": 74,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Shackleton",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        34,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 34,
+      "expected_position": 74,
+      "expected_women_position": null
+    },
+    {
+      "name": "Harriet Jellicoe",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        33,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 33,
+      "expected_position": 78,
+      "expected_women_position": 21
+    },
+    {
+      "name": "Ophelia Lindisfarne",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        33,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 33,
+      "expected_position": 78,
+      "expected_women_position": 21
+    },
+    {
+      "name": "Prudence Ottershaw",
+      "is_female": false,
+      "event_points": [
+        30,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 30,
+      "expected_position": 80,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Vanbrugh",
+      "is_female": false,
+      "event_points": [
+        null,
+        30,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 30,
+      "expected_position": 80,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Fairweather",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        30,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 30,
+      "expected_position": 80,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Chalmers",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        29,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 29,
+      "expected_position": 83,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Mainwaring",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        27,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 27,
+      "expected_position": 84,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Ickworth",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        26,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 26,
+      "expected_position": 85,
+      "expected_women_position": null
+    },
+    {
+      "name": "Eleanor Ellingham",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        26,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 26,
+      "expected_position": 85,
+      "expected_women_position": 23
+    },
+    {
+      "name": "Nola Grimshaw",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        25,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 25,
+      "expected_position": 87,
+      "expected_women_position": 24
+    },
+    {
+      "name": "Zara Rossiter",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        25,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 25,
+      "expected_position": 87,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Kingsley",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        24,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 24,
+      "expected_position": 89,
+      "expected_women_position": null
+    },
+    {
+      "name": "Rosalind Cholmondeley",
+      "is_female": true,
+      "event_points": [
+        null,
+        21,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 21,
+      "expected_position": 90,
+      "expected_women_position": 25
+    },
+    {
+      "name": "Hazel Yoxall",
+      "is_female": false,
+      "event_points": [
+        20,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 20,
+      "expected_position": 91,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Northcote",
+      "is_female": false,
+      "event_points": [
+        null,
+        20,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 20,
+      "expected_position": 91,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Ulyatt",
+      "is_female": false,
+      "event_points": [
+        null,
+        20,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 20,
+      "expected_position": 91,
+      "expected_women_position": null
+    },
+    {
+      "name": "Yvonne Vickery",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        20,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 20,
+      "expected_position": 91,
+      "expected_women_position": 26
+    },
+    {
+      "name": "Pat Vallance",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        19,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 19,
+      "expected_position": 95,
+      "expected_women_position": null
+    },
+    {
+      "name": "Bridget Lockhart",
+      "is_female": true,
+      "event_points": [
+        18,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 18,
+      "expected_position": 96,
+      "expected_women_position": 27
+    },
+    {
+      "name": "Beatrix van der Meer",
+      "is_female": true,
+      "event_points": [
+        null,
+        18,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 18,
+      "expected_position": 96,
+      "expected_women_position": 27
+    },
+    {
+      "name": "Piers Middlemiss",
+      "is_female": false,
+      "event_points": [
+        17,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 17,
+      "expected_position": 98,
+      "expected_women_position": null
+    },
+    {
+      "name": "Daphne Bexley",
+      "is_female": false,
+      "event_points": [
+        16,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 16,
+      "expected_position": 99,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Verinder",
+      "is_female": false,
+      "event_points": [
+        null,
+        16,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 16,
+      "expected_position": 99,
+      "expected_women_position": null
+    },
+    {
+      "name": "Sybil O'Halloran",
+      "is_female": true,
+      "event_points": [
+        15,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 15,
+      "expected_position": 101,
+      "expected_women_position": 29
+    },
+    {
+      "name": "Pat Colquhoun",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        15,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 15,
+      "expected_position": 101,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Hawksworth",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        15,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 15,
+      "expected_position": 101,
+      "expected_women_position": null
+    },
+    {
+      "name": "Verity Tewkesbury",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        14,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 14,
+      "expected_position": 104,
+      "expected_women_position": 30
+    },
+    {
+      "name": "Pat Wrenshall",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        14,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 14,
+      "expected_position": 104,
+      "expected_women_position": null
+    },
+    {
+      "name": "Cordelia Wetherby",
+      "is_female": true,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        13,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 13,
+      "expected_position": 106,
+      "expected_women_position": 31
+    },
+    {
+      "name": "Frank Yelverton",
+      "is_female": true,
+      "event_points": [
+        12,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 12,
+      "expected_position": 107,
+      "expected_women_position": 32
+    },
+    {
+      "name": "Quentin Pinkerton",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        11,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 11,
+      "expected_position": 108,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Ulverston",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        9,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 9,
+      "expected_position": 109,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Snellgrove",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        9,
+        null,
+        null,
+        null
+      ],
+      "organised": null,
+      "expected_organiser_points": null,
+      "expected_events_entered": 1,
+      "expected_total": 9,
+      "expected_position": 109,
+      "expected_women_position": null
+    },
+    {
+      "name": "Pat Naismith",
+      "is_female": false,
+      "event_points": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "organised": "Event 3",
+      "expected_organiser_points": 0,
+      "expected_events_entered": 0,
+      "expected_total": 0,
+      "expected_position": 111,
+      "expected_women_position": null
+    }
+  ]
+}

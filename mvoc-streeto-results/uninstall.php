@@ -20,6 +20,7 @@ global $wpdb;
 
 $mvoc_streeto_tables = array(
 	'overrides',
+	'result_competitors',
 	'results',
 	'aliases',
 	'competitors',
