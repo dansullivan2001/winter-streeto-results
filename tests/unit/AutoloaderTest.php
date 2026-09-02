@@ -1,0 +1,54 @@
+<?php
+/**
+ * Tests that every plugin class resolves to a real file.
+ *
+ * A mismatch between a class name and its filename is invisible until
+ * WordPress fatals on the live site, so it is worth catching here.
+ *
+ * @package MVOC_StreetO
+ */
+
+use PHPUnit\Framework\TestCase;
+
+/**
+ * @covers \MVOC\StreetO\Autoloader
+ */
+class AutoloaderTest extends TestCase {
+
+	public static function setUpBeforeClass(): void {
+		if ( ! defined( 'MVOC_STREETO_DIR' ) ) {
+			define( 'MVOC_STREETO_DIR', dirname( __DIR__, 2 ) . '/mvoc-streeto-results/' );
+		}
+
+		require_once MVOC_STREETO_DIR . 'includes/class-autoloader.php';
+		\MVOC\StreetO\Autoloader::register();
+	}
+
+	/**
+	 * @dataProvider class_provider
+	 */
+	public function test_class_resolves_to_a_file( string $class_name ): void {
+		$this->assertTrue(
+			class_exists( $class_name ),
+			$class_name . ' did not resolve — check the file name matches the class name.'
+		);
+	}
+
+	public function class_provider(): array {
+		return array(
+			array( \MVOC\StreetO\Plugin::class ),
+			array( \MVOC\StreetO\Activator::class ),
+			array( \MVOC\StreetO\Schema::class ),
+			array( \MVOC\StreetO\MapRun\Client::class ),
+			array( \MVOC\StreetO\MapRun\Parser::class ),
+			array( \MVOC\StreetO\Admin\Admin_Menu::class ),
+			array( \MVOC\StreetO\Admin\MapRun_Explorer_Screen::class ),
+		);
+	}
+
+	public function test_unrelated_namespaces_are_ignored(): void {
+		// The autoloader must not claim classes it does not own, or it will
+		// interfere with other plugins on the site.
+		$this->assertFalse( class_exists( 'Some\\Other\\Plugin\\Thing' ) );
+	}
+}
