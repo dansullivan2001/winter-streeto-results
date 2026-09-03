@@ -1,0 +1,6 @@
+{
+  "_comment": "Error envelope shape, as checked by the summer script: errorFlag truthy with a statusMessage explaining why.",
+  "errorFlag": true,
+  "statusMessage": "Event not found",
+  "results": []
+}

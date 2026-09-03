@@ -1,0 +1,324 @@
+{
+  "_comment": "Golden data from MVOC's 2019/20 workbook, with names replaced by invented ones. Inputs are score and penalty; the expected_* values are the workbook's own computed answers, untouched. Includes four distinct tie shapes and a shared-map team row.",
+  "event": "Workbook event",
+  "course_label": "60",
+  "rows": [
+    {
+      "name": "Alistair Gainsborough",
+      "score": 870,
+      "penalty": 0,
+      "expected_total": 870,
+      "expected_position": 1,
+      "expected_league_points": 50
+    },
+    {
+      "name": "Petra Galbraith",
+      "score": 860,
+      "penalty": 0,
+      "expected_total": 860,
+      "expected_position": 2,
+      "expected_league_points": 49
+    },
+    {
+      "name": "Stuart Jocelyn",
+      "score": 840,
+      "penalty": 0,
+      "expected_total": 840,
+      "expected_position": 3,
+      "expected_league_points": 48
+    },
+    {
+      "name": "Kirsten Yardley",
+      "score": 820,
+      "penalty": 0,
+      "expected_total": 820,
+      "expected_position": 4,
+      "expected_league_points": 47
+    },
+    {
+      "name": "Ivan Inchbald",
+      "score": 810,
+      "penalty": 10,
+      "expected_total": 800,
+      "expected_position": 5,
+      "expected_league_points": 46
+    },
+    {
+      "name": "Josephine Loveridge",
+      "score": 790,
+      "penalty": 0,
+      "expected_total": 790,
+      "expected_position": 6,
+      "expected_league_points": 45
+    },
+    {
+      "name": "Kenneth Ravenscroft",
+      "score": 750,
+      "penalty": 0,
+      "expected_total": 750,
+      "expected_position": 7,
+      "expected_league_points": 44
+    },
+    {
+      "name": "Iris Merriweather",
+      "score": 770,
+      "penalty": 70,
+      "expected_total": 700,
+      "expected_position": 8,
+      "expected_league_points": 43
+    },
+    {
+      "name": "Desmond Uffington",
+      "score": 690,
+      "penalty": 0,
+      "expected_total": 690,
+      "expected_position": 9,
+      "expected_league_points": 42
+    },
+    {
+      "name": "Maeve Fenwick",
+      "score": 710,
+      "penalty": 30,
+      "expected_total": 680,
+      "expected_position": 10,
+      "expected_league_points": 41
+    },
+    {
+      "name": "Keith Lyttelton",
+      "score": 590,
+      "penalty": 0,
+      "expected_total": 590,
+      "expected_position": 11,
+      "expected_league_points": 40
+    },
+    {
+      "name": "Juliet Harborne",
+      "score": 590,
+      "penalty": 0,
+      "expected_total": 590,
+      "expected_position": 11,
+      "expected_league_points": 40
+    },
+    {
+      "name": "Callum Pargeter",
+      "score": 580,
+      "penalty": 0,
+      "expected_total": 580,
+      "expected_position": 13,
+      "expected_league_points": 38
+    },
+    {
+      "name": "Olive Mowbray",
+      "score": 570,
+      "penalty": 0,
+      "expected_total": 570,
+      "expected_position": 14,
+      "expected_league_points": 37
+    },
+    {
+      "name": "Warren Wolstenholme",
+      "score": 560,
+      "penalty": 0,
+      "expected_total": 560,
+      "expected_position": 15,
+      "expected_league_points": 36
+    },
+    {
+      "name": "Duncan Trelawney",
+      "score": 560,
+      "penalty": 0,
+      "expected_total": 560,
+      "expected_position": 15,
+      "expected_league_points": 36
+    },
+    {
+      "name": "Lorna Applewhite",
+      "score": 560,
+      "penalty": 0,
+      "expected_total": 560,
+      "expected_position": 15,
+      "expected_league_points": 36
+    },
+    {
+      "name": "Hugh Quennell",
+      "score": 530,
+      "penalty": 0,
+      "expected_total": 530,
+      "expected_position": 18,
+      "expected_league_points": 33
+    },
+    {
+      "name": "Zara Rossiter",
+      "score": 540,
+      "penalty": 10,
+      "expected_total": 530,
+      "expected_position": 19,
+      "expected_league_points": 32
+    },
+    {
+      "name": "Joel Garsington",
+      "score": 520,
+      "penalty": 0,
+      "expected_total": 520,
+      "expected_position": 20,
+      "expected_league_points": 31
+    },
+    {
+      "name": "Prudence Ottershaw",
+      "score": 510,
+      "penalty": 0,
+      "expected_total": 510,
+      "expected_position": 21,
+      "expected_league_points": 30
+    },
+    {
+      "name": "Martin Ashby",
+      "score": 510,
+      "penalty": 0,
+      "expected_total": 510,
+      "expected_position": 21,
+      "expected_league_points": 30
+    },
+    {
+      "name": "Imogen Oakley",
+      "score": 500,
+      "penalty": 0,
+      "expected_total": 500,
+      "expected_position": 23,
+      "expected_league_points": 28
+    },
+    {
+      "name": "Osborne Bickerstaff",
+      "score": 530,
+      "penalty": 30,
+      "expected_total": 500,
+      "expected_position": 24,
+      "expected_league_points": 27
+    },
+    {
+      "name": "Agnes Vaisey",
+      "score": 570,
+      "penalty": 70,
+      "expected_total": 500,
+      "expected_position": 25,
+      "expected_league_points": 26
+    },
+    {
+      "name": "Vaughan Eastwood",
+      "score": 480,
+      "penalty": 0,
+      "expected_total": 480,
+      "expected_position": 26,
+      "expected_league_points": 25
+    },
+    {
+      "name": "Delphine Jerningham",
+      "score": 450,
+      "penalty": 0,
+      "expected_total": 450,
+      "expected_position": 27,
+      "expected_league_points": 24
+    },
+    {
+      "name": "Adam Rowntree",
+      "score": 430,
+      "penalty": 0,
+      "expected_total": 430,
+      "expected_position": 28,
+      "expected_league_points": 23
+    },
+    {
+      "name": "Georgina Ilsley",
+      "score": 430,
+      "penalty": 0,
+      "expected_total": 430,
+      "expected_position": 28,
+      "expected_league_points": 23
+    },
+    {
+      "name": "Gerald Pemberton",
+      "score": 460,
+      "penalty": 30,
+      "expected_total": 430,
+      "expected_position": 30,
+      "expected_league_points": 21
+    },
+    {
+      "name": "Fergus Barnard & Hazel Yoxall",
+      "score": 410,
+      "penalty": 0,
+      "expected_total": 410,
+      "expected_position": 31,
+      "expected_league_points": 20
+    },
+    {
+      "name": "Yannick Ainsworth",
+      "score": 410,
+      "penalty": 0,
+      "expected_total": 410,
+      "expected_position": 31,
+      "expected_league_points": 20
+    },
+    {
+      "name": "Bridget Lockhart",
+      "score": 390,
+      "penalty": 0,
+      "expected_total": 390,
+      "expected_position": 33,
+      "expected_league_points": 18
+    },
+    {
+      "name": "Piers Middlemiss",
+      "score": 380,
+      "penalty": 0,
+      "expected_total": 380,
+      "expected_position": 34,
+      "expected_league_points": 17
+    },
+    {
+      "name": "Daphne Bexley",
+      "score": 360,
+      "penalty": 20,
+      "expected_total": 340,
+      "expected_position": 35,
+      "expected_league_points": 16
+    },
+    {
+      "name": "Oscar Dunmore",
+      "score": 310,
+      "penalty": 0,
+      "expected_total": 310,
+      "expected_position": 36,
+      "expected_league_points": 15
+    },
+    {
+      "name": "Sybil O'Halloran",
+      "score": 310,
+      "penalty": 0,
+      "expected_total": 310,
+      "expected_position": 36,
+      "expected_league_points": 15
+    },
+    {
+      "name": "Elliot Rutherford",
+      "score": 300,
+      "penalty": 0,
+      "expected_total": 300,
+      "expected_position": 38,
+      "expected_league_points": 13
+    },
+    {
+      "name": "Annabel Abernethy & Frank Yelverton",
+      "score": 260,
+      "penalty": 0,
+      "expected_total": 260,
+      "expected_position": 39,
+      "expected_league_points": 12
+    },
+    {
+      "name": "Greta Yalding",
+      "organiser": true,
+      "expected_league_points": null
+    }
+  ]
+}

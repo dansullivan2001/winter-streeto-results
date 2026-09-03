@@ -1,0 +1,49 @@
+{
+  "_comment": "Field shape confirmed from the club's working summer script (nower-world-cup-2026/files/worldcup_results.py). No score field is present here: that event scored from punch data, so the script never read one. A real Winter StreetO response is still needed to pin the score field name.",
+  "errorFlag": false,
+  "statusMessage": "OK",
+  "results": [
+    {
+      "Id": 1,
+      "Firstname": "Alice",
+      "Surname": "Runner",
+      "Gender": "F",
+      "ClubName": "MVOC",
+      "Classifier": "OK",
+      "StartPunchTimeLocal": "18:30:00",
+      "FinishPunchTimeLocal": "19:27:45",
+      "TotalTimehhmmss": "0:57:45",
+      "TotalTimeSecs": 3465,
+      "punchControlIds": ["11", "12", "13"],
+      "punchTimeAfterStartSecs": [100, 200, 300]
+    },
+    {
+      "Id": 2,
+      "Firstname": "Bob",
+      "Surname": "Smith",
+      "Gender": "M",
+      "ClubName": "MVOC",
+      "Classifier": "OK",
+      "StartPunchTimeLocal": "18:35:00",
+      "FinishPunchTimeLocal": "19:33:10",
+      "TotalTimehhmmss": "0:58:10",
+      "TotalTimeSecs": 3490,
+      "punchControlIds": ["21", "22", "21"],
+      "punchTimeAfterStartSecs": [90, 400, 250]
+    },
+    {
+      "Id": 3,
+      "Firstname": "Charlie",
+      "Surname": "Nofinish",
+      "Gender": "M",
+      "ClubName": "",
+      "Classifier": "DNF",
+      "StartPunchTimeLocal": "18:40:00",
+      "FinishPunchTimeLocal": "",
+      "TotalTimehhmmss": "1:05:00",
+      "TotalTimeSecs": 3900,
+      "punchControlIds": ["31"],
+      "punchTimeAfterStartSecs": [120]
+    }
+  ]
+}

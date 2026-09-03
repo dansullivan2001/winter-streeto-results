@@ -1,0 +1,447 @@
+{
+  "_comment": "Selected rows from a real MapRun response for MVOC's Winter StreetO, with names replaced by invented ones. Every number, duplicate relationship and structural quirk is exactly as MapRun returned it: GrossScore/NetScore penalties, YearOfBirth, (Extra) punches appended out of time order, (RevNN) surnames both paired and unpaired, '--' failed uploads, and the duplicate pair scored 760 and 730. The names carry no assertions, so pseudonymising costs the fixture nothing and keeps real competitors' details out of the repository.",
+  "errorFlag": false,
+  "statusMessage": "",
+  "warningFlag": true,
+  "warningMessage": "Multiple events found ... There should be only one.",
+  "results": [
+    {
+      "Id": 591179,
+      "Surname": "Orpington",
+      "Firstname": "Rowan",
+      "Gender": "M",
+      "YearOfBirth": 1984,
+      "StartPunchTimeLocal": "18:53:36",
+      "FinishPunchTimeLocal": "19:53:30",
+      "TotalTimehhmmss": "59:53",
+      "TotalTimeSecs": 3593,
+      "Classifier": "OK",
+      "ClubName": "MV",
+      "GrossScore": 1180,
+      "NetScore": 1180,
+      "Distance": 15.83,
+      "punchControlIds": [
+        "41",
+        "47",
+        "50",
+        "43"
+      ],
+      "punchTimeAfterStartSecs": [
+        62,
+        140,
+        225,
+        336
+      ]
+    },
+    {
+      "Id": 591188,
+      "Surname": "Dalrymple",
+      "Firstname": "Nadia",
+      "Gender": "F",
+      "YearOfBirth": 1981,
+      "StartPunchTimeLocal": "18:56:15",
+      "FinishPunchTimeLocal": "19:55:50",
+      "TotalTimehhmmss": "59:34",
+      "TotalTimeSecs": 3574,
+      "Classifier": "OK",
+      "ClubName": "",
+      "GrossScore": 960,
+      "NetScore": 960,
+      "Distance": 12.03,
+      "punchControlIds": [
+        "39",
+        "16",
+        "53"
+      ],
+      "punchTimeAfterStartSecs": [
+        134,
+        274,
+        385
+      ]
+    },
+    {
+      "Id": 591556,
+      "Surname": "Quilter",
+      "Firstname": "Leonard",
+      "Gender": "M",
+      "YearOfBirth": 1971,
+      "StartPunchTimeLocal": "18:49:23",
+      "FinishPunchTimeLocal": "19:50:10",
+      "TotalTimehhmmss": "1:00:47",
+      "TotalTimeSecs": 3647,
+      "Classifier": "OK",
+      "ClubName": "MVOC",
+      "GrossScore": 780,
+      "NetScore": 750,
+      "Distance": 9.01,
+      "punchControlIds": [
+        "41",
+        "47",
+        "50"
+      ],
+      "punchTimeAfterStartSecs": [
+        118,
+        226,
+        337
+      ]
+    },
+    {
+      "Id": 591199,
+      "Surname": "Faircloth",
+      "Firstname": "Ulric",
+      "Gender": "M",
+      "YearOfBirth": 1989,
+      "StartPunchTimeLocal": "18:57:01",
+      "FinishPunchTimeLocal": "19:59:03",
+      "TotalTimehhmmss": "1:02:01",
+      "TotalTimeSecs": 3721,
+      "Classifier": "OK",
+      "ClubName": "",
+      "GrossScore": 960,
+      "NetScore": 870,
+      "Distance": 12.52,
+      "punchControlIds": [
+        "41",
+        "47",
+        "43",
+        "46 (Extra)"
+      ],
+      "punchTimeAfterStartSecs": [
+        82,
+        185,
+        371,
+        3574
+      ]
+    },
+    {
+      "Id": 591118,
+      "Surname": "Underwood",
+      "Firstname": "Lydia",
+      "Gender": "F",
+      "YearOfBirth": 1970,
+      "StartPunchTimeLocal": "18:28:32",
+      "FinishPunchTimeLocal": "19:32:08",
+      "TotalTimehhmmss": "1:03:36",
+      "TotalTimeSecs": 3816,
+      "Classifier": "OK",
+      "ClubName": "SLOW",
+      "GrossScore": 600,
+      "NetScore": 480,
+      "Distance": 8.22,
+      "punchControlIds": [
+        "41",
+        "47",
+        "10",
+        "36 (Extra)",
+        "10 (Extra)"
+      ],
+      "punchTimeAfterStartSecs": [
+        154,
+        316,
+        440,
+        2420,
+        3708
+      ]
+    },
+    {
+      "Id": 591559,
+      "Surname": "Prendergast",
+      "Firstname": "Elspeth",
+      "Gender": "F",
+      "YearOfBirth": 1953,
+      "StartPunchTimeLocal": "18:24:10",
+      "FinishPunchTimeLocal": "19:20:56",
+      "TotalTimehhmmss": "56:46",
+      "TotalTimeSecs": 3406,
+      "Classifier": "OK",
+      "ClubName": "SLOW",
+      "GrossScore": 550,
+      "NetScore": 550,
+      "Distance": 6.5,
+      "punchControlIds": [
+        "39",
+        "54",
+        "33",
+        "25",
+        "24",
+        "27",
+        "35 (Extra)",
+        "26"
+      ],
+      "punchTimeAfterStartSecs": [
+        233,
+        612,
+        830,
+        958,
+        1043,
+        1183,
+        1231,
+        1343
+      ]
+    },
+    {
+      "Id": 591162,
+      "Surname": "Pemberton",
+      "Firstname": "Gerald",
+      "Gender": "M",
+      "YearOfBirth": 1951,
+      "StartPunchTimeLocal": "18:43:38",
+      "FinishPunchTimeLocal": "19:45:47",
+      "TotalTimehhmmss": "1:02:09",
+      "TotalTimeSecs": 3729,
+      "Classifier": "OK",
+      "ClubName": "",
+      "GrossScore": 330,
+      "NetScore": 240,
+      "Distance": 4.51,
+      "punchControlIds": [
+        "39",
+        "26",
+        "23"
+      ],
+      "punchTimeAfterStartSecs": [
+        359,
+        962,
+        1118
+      ]
+    },
+    {
+      "Id": 591276,
+      "Surname": "Gladwell (Rev30)",
+      "Firstname": "Nigel",
+      "Gender": "M",
+      "YearOfBirth": 1956,
+      "StartPunchTimeLocal": "18:27:33",
+      "FinishPunchTimeLocal": "19:24:03",
+      "TotalTimehhmmss": "56:30",
+      "TotalTimeSecs": 3390,
+      "Classifier": "OK",
+      "ClubName": "MV",
+      "GrossScore": 810,
+      "NetScore": 810,
+      "Distance": 8.76,
+      "punchControlIds": [
+        "39",
+        "53",
+        "35",
+        "27",
+        "46",
+        "40",
+        "35 (Extra)",
+        "32 (Extra)"
+      ],
+      "punchTimeAfterStartSecs": [
+        244,
+        483,
+        665,
+        697,
+        3085,
+        3291,
+        725,
+        1162
+      ]
+    },
+    {
+      "Id": 591110,
+      "Surname": "Gladwell",
+      "Firstname": "Nigel",
+      "Gender": "M",
+      "YearOfBirth": 1956,
+      "StartPunchTimeLocal": "00:00:00",
+      "FinishPunchTimeLocal": "00:00:00",
+      "TotalTimehhmmss": "00:00",
+      "TotalTimeSecs": 0,
+      "Classifier": "--",
+      "ClubName": "MV",
+      "GrossScore": 0,
+      "NetScore": 0,
+      "Distance": 8.77,
+      "punchControlIds": [],
+      "punchTimeAfterStartSecs": []
+    },
+    {
+      "Id": 591278,
+      "Surname": "Wolstenholme (Rev30)",
+      "Firstname": "Warren",
+      "Gender": "M",
+      "YearOfBirth": 1969,
+      "StartPunchTimeLocal": "18:35:41",
+      "FinishPunchTimeLocal": "19:29:04",
+      "TotalTimehhmmss": "53:23",
+      "TotalTimeSecs": 3203,
+      "Classifier": "OK",
+      "ClubName": "HAVOC",
+      "GrossScore": 760,
+      "NetScore": 760,
+      "Distance": 7.73,
+      "punchControlIds": [
+        "41",
+        "47",
+        "50",
+        "54",
+        "18",
+        "28",
+        "38"
+      ],
+      "punchTimeAfterStartSecs": [
+        85,
+        211,
+        345,
+        620,
+        749,
+        906,
+        994
+      ]
+    },
+    {
+      "Id": 591275,
+      "Surname": "Wolstenholme",
+      "Firstname": "Warren",
+      "Gender": "M",
+      "YearOfBirth": 1969,
+      "StartPunchTimeLocal": "18:35:41",
+      "FinishPunchTimeLocal": "19:29:04",
+      "TotalTimehhmmss": "53:23",
+      "TotalTimeSecs": 3203,
+      "Classifier": "OK",
+      "ClubName": "HAVOC",
+      "GrossScore": 730,
+      "NetScore": 730,
+      "Distance": 7.73,
+      "punchControlIds": [
+        "41",
+        "47",
+        "50",
+        "54",
+        "18",
+        "28",
+        "38"
+      ],
+      "punchTimeAfterStartSecs": [
+        85,
+        211,
+        345,
+        620,
+        749,
+        906,
+        994
+      ]
+    },
+    {
+      "Id": 591145,
+      "Surname": "Ormerod (Rev30)",
+      "Firstname": "Katrina",
+      "Gender": "F",
+      "YearOfBirth": 1967,
+      "StartPunchTimeLocal": "18:41:12",
+      "FinishPunchTimeLocal": "19:37:29",
+      "TotalTimehhmmss": "56:17",
+      "TotalTimeSecs": 3377,
+      "Classifier": "OK",
+      "ClubName": "Mole Valley Orienteering Club",
+      "GrossScore": 530,
+      "NetScore": 530,
+      "Distance": 8.02,
+      "punchControlIds": [
+        "40",
+        "14",
+        "44",
+        "11 (Extra)"
+      ],
+      "punchTimeAfterStartSecs": [
+        196,
+        400,
+        599,
+        2105
+      ]
+    },
+    {
+      "Id": 591161,
+      "Surname": "Marchmont (Rev20)",
+      "Firstname": "Wesley",
+      "Gender": "M",
+      "YearOfBirth": 1971,
+      "StartPunchTimeLocal": "18:43:26",
+      "FinishPunchTimeLocal": "19:41:11",
+      "TotalTimehhmmss": "57:45",
+      "TotalTimeSecs": 3465,
+      "Classifier": "OK",
+      "ClubName": "Mole Valley",
+      "GrossScore": 850,
+      "NetScore": 850,
+      "Distance": 9.95,
+      "punchControlIds": [
+        "41",
+        "47",
+        "50"
+      ],
+      "punchTimeAfterStartSecs": [
+        78,
+        191,
+        322
+      ]
+    },
+    {
+      "Id": 591224,
+      "Surname": "Ashby-Prentice",
+      "Firstname": "Brian",
+      "Gender": "M",
+      "YearOfBirth": 1959,
+      "StartPunchTimeLocal": "18:22:06",
+      "FinishPunchTimeLocal": "19:17:57",
+      "TotalTimehhmmss": "55:51",
+      "TotalTimeSecs": 3351,
+      "Classifier": "OK",
+      "ClubName": "",
+      "GrossScore": 500,
+      "NetScore": 500,
+      "Distance": 5.83,
+      "punchControlIds": [
+        "41",
+        "47",
+        "50"
+      ],
+      "punchTimeAfterStartSecs": [
+        110,
+        300,
+        497
+      ]
+    },
+    {
+      "Id": 591384,
+      "Surname": "Ashby-Prentice",
+      "Firstname": "Brian",
+      "Gender": "M",
+      "YearOfBirth": 1959,
+      "StartPunchTimeLocal": "00:00:00",
+      "FinishPunchTimeLocal": "00:00:00",
+      "TotalTimehhmmss": "00:00",
+      "TotalTimeSecs": 0,
+      "Classifier": "--",
+      "ClubName": "",
+      "GrossScore": 0,
+      "NetScore": 0,
+      "Distance": 26.6,
+      "punchControlIds": [],
+      "punchTimeAfterStartSecs": []
+    },
+    {
+      "Id": 591222,
+      "Surname": "Ashby-Prentice",
+      "Firstname": "Brian",
+      "Gender": "M",
+      "YearOfBirth": 1959,
+      "StartPunchTimeLocal": "18:31:53",
+      "FinishPunchTimeLocal": "19:31:24",
+      "TotalTimehhmmss": "00:00",
+      "TotalTimeSecs": 0,
+      "Classifier": "--",
+      "ClubName": "",
+      "GrossScore": 0,
+      "NetScore": 0,
+      "Distance": 5.84,
+      "punchControlIds": [],
+      "punchTimeAfterStartSecs": []
+    }
+  ]
+}

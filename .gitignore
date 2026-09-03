@@ -1,0 +1,6 @@
+/vendor/
+/build/
+*.zip
+.phpunit.result.cache
+.DS_Store
+build/

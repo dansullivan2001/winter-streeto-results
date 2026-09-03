@@ -1,0 +1,7 @@
+{
+    "name": "mvoc/streeto-results",
+    "type": "project",
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    }
+}
