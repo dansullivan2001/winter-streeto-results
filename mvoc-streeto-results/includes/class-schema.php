@@ -29,8 +29,12 @@ class Schema {
 	 *
 	 * 2: penalty columns on results, organiser on events, result_competitors
 	 *    join table — all needed once the scoring rules were pinned down.
+	 * 3: competitors.year_of_birth (written by the repo since M3 but never
+	 *    added here), plus results.is_withdrawn and events.published_at.
+	 *    resolved_penalty becomes nullable so that a penalty corrected *to*
+	 *    zero is distinguishable from no correction at all.
 	 */
-	public const DB_VERSION = 2;
+	public const DB_VERSION = 3;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -125,6 +129,7 @@ class Schema {
 			organiser_competitor_id bigint(20) unsigned NULL,
 			status varchar(20) NOT NULL DEFAULT 'draft',
 			last_fetched_at datetime NULL,
+			published_at datetime NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			KEY series_id (series_id),
@@ -165,6 +170,7 @@ class Schema {
 			surname varchar(100) NOT NULL DEFAULT '',
 			display_name varchar(255) NOT NULL,
 			club varchar(100) NOT NULL DEFAULT '',
+			year_of_birth smallint(5) unsigned NULL,
 			is_female tinyint(1) NOT NULL DEFAULT 0,
 			is_over55 tinyint(1) NOT NULL DEFAULT 0,
 			notes text NULL,
@@ -206,11 +212,12 @@ class Schema {
 			raw_penalty int(11) NOT NULL DEFAULT 0,
 			raw_time_secs int(10) unsigned NULL,
 			resolved_score int(11) NULL,
-			resolved_penalty int(11) NOT NULL DEFAULT 0,
+			resolved_penalty int(11) NULL,
 			resolved_time_secs int(10) unsigned NULL,
 			resolved_course_label varchar(20) NOT NULL DEFAULT '',
 			is_excluded tinyint(1) NOT NULL DEFAULT 0,
 			is_manual tinyint(1) NOT NULL DEFAULT 0,
+			is_withdrawn tinyint(1) NOT NULL DEFAULT 0,
 			PRIMARY KEY  (id),
 			KEY event_id (event_id),
 			KEY competitor_id (competitor_id),

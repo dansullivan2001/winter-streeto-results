@@ -47,6 +47,8 @@ class Plugin {
 	private function boot(): void {
 		Schema::maybe_upgrade();
 
+		( new Front\Shortcodes() )->register();
+
 		if ( is_admin() ) {
 			( new Admin\Admin_Menu() )->register();
 		}

@@ -1,0 +1,156 @@
+/**
+ * Results and league tables.
+ *
+ * Deliberately unopinionated about colour and typography: the club theme
+ * supplies those, and a plugin that imposes its own palette looks bolted on.
+ * What this does own is the layout, and above all the small-screen behaviour —
+ * StreetO results get read on a phone in a car park.
+ */
+
+.mvoc-streeto-table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 0 0 0.5em;
+}
+
+.mvoc-streeto-table th,
+.mvoc-streeto-table td {
+	padding: 0.4em 0.6em;
+	text-align: left;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+	vertical-align: top;
+}
+
+.mvoc-streeto-table thead th {
+	font-weight: 600;
+	white-space: nowrap;
+	border-bottom-width: 2px;
+}
+
+/* Numeric columns read better right-aligned and hard to confuse when they
+   line up: everything except position and name. */
+.mvoc-streeto-table td:nth-child(n + 5),
+.mvoc-streeto-table thead th:nth-child(n + 5) {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.mvoc-streeto-organiser {
+	font-style: italic;
+	opacity: 0.85;
+}
+
+.mvoc-streeto-tag {
+	font-size: 0.8em;
+	font-style: normal;
+	opacity: 0.7;
+	margin-left: 0.4em;
+}
+
+.mvoc-streeto-scaled {
+	text-decoration: none;
+	cursor: help;
+}
+
+.mvoc-streeto-footnote {
+	font-size: 0.85em;
+	opacity: 0.75;
+	margin: 0.25em 0;
+}
+
+.mvoc-streeto-draft {
+	padding: 0.5em 0.75em;
+	border-left: 4px solid currentColor;
+	opacity: 0.8;
+	font-size: 0.9em;
+}
+
+/* Wide content scrolls inside its own container rather than making the whole
+   page scroll sideways. */
+.mvoc-streeto-scroll {
+	overflow-x: auto;
+}
+
+.mvoc-streeto-detail summary {
+	cursor: pointer;
+	font-weight: inherit;
+}
+
+.mvoc-streeto-events {
+	list-style: none;
+	margin: 0.4em 0 0.6em;
+	padding: 0;
+	font-size: 0.9em;
+	font-weight: normal;
+}
+
+.mvoc-streeto-events li {
+	display: flex;
+	justify-content: space-between;
+	gap: 1em;
+	max-width: 22em;
+	padding: 0.15em 0;
+}
+
+.mvoc-streeto-event-points {
+	font-variant-numeric: tabular-nums;
+}
+
+.mvoc-streeto-organiser-bonus {
+	font-style: italic;
+	border-top: 1px solid rgba(0, 0, 0, 0.1);
+	margin-top: 0.2em;
+	padding-top: 0.3em;
+}
+
+/*
+ * On a narrow screen the event table stops being a grid and becomes a stack of
+ * labelled rows. Every cell carries its own heading via data-label, so a runner
+ * scrolling on a phone can still tell a score from a penalty.
+ */
+@media (max-width: 640px) {
+	.mvoc-streeto-event .mvoc-streeto-table thead {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+
+	.mvoc-streeto-event .mvoc-streeto-table,
+	.mvoc-streeto-event .mvoc-streeto-table tbody,
+	.mvoc-streeto-event .mvoc-streeto-table tr,
+	.mvoc-streeto-event .mvoc-streeto-table th,
+	.mvoc-streeto-event .mvoc-streeto-table td {
+		display: block;
+		width: auto;
+	}
+
+	.mvoc-streeto-event .mvoc-streeto-table tr {
+		padding: 0.5em 0;
+		border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+	}
+
+	.mvoc-streeto-event .mvoc-streeto-table td,
+	.mvoc-streeto-event .mvoc-streeto-table tbody th {
+		border: 0;
+		padding: 0.1em 0;
+		text-align: left !important;
+	}
+
+	.mvoc-streeto-event .mvoc-streeto-table td::before {
+		content: attr(data-label) ": ";
+		font-weight: 600;
+		opacity: 0.7;
+	}
+
+	.mvoc-streeto-event .mvoc-streeto-table tbody th {
+		font-size: 1.05em;
+	}
+
+	/* An empty cell adds nothing but a stray label on a stacked layout. */
+	.mvoc-streeto-event .mvoc-streeto-table td:empty {
+		display: none;
+	}
+}

@@ -18,6 +18,32 @@ defined( 'ABSPATH' ) || exit;
 class Competitors_Repo {
 
 	/**
+	 * The columns this repo writes, in the order the format specifiers expect.
+	 *
+	 * Declared rather than inlined so SchemaConsistencyTest can check every one
+	 * of them exists in the table. That test was added after this repo spent a
+	 * milestone writing a `year_of_birth` column the schema did not have.
+	 *
+	 * @var string[]
+	 */
+	public const COLUMNS = array(
+		'first_name',
+		'surname',
+		'display_name',
+		'club',
+		'year_of_birth',
+		'is_female',
+		'is_over55',
+	);
+
+	/**
+	 * Format specifiers matching COLUMNS, for $wpdb.
+	 *
+	 * @var string[]
+	 */
+	private const FORMATS = array( '%s', '%s', '%s', '%s', '%d', '%d', '%d' );
+
+	/**
 	 * Every competitor, as plain arrays for the domain classes.
 	 *
 	 * @return array<int,array<string,mixed>>
@@ -80,7 +106,7 @@ class Competitors_Repo {
 		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			Schema::table( 'competitors' ),
 			$this->to_columns( $competitor ),
-			array( '%s', '%s', '%s', '%s', '%d', '%d', '%d' )
+			self::FORMATS
 		);
 
 		return (int) $wpdb->insert_id;
@@ -99,7 +125,7 @@ class Competitors_Repo {
 			Schema::table( 'competitors' ),
 			$this->to_columns( $competitor ),
 			array( 'id' => $id ),
-			array( '%s', '%s', '%s', '%s', '%d', '%d', '%d' ),
+			self::FORMATS,
 			array( '%d' )
 		);
 	}
@@ -114,7 +140,7 @@ class Competitors_Repo {
 		$first   = (string) ( $competitor['first_name'] ?? '' );
 		$surname = (string) ( $competitor['surname'] ?? '' );
 
-		return array(
+		$values = array(
 			'first_name'    => $first,
 			'surname'       => $surname,
 			'display_name'  => (string) ( $competitor['display_name'] ?? trim( $first . ' ' . $surname ) ),
@@ -123,6 +149,10 @@ class Competitors_Repo {
 			'is_female'     => ! empty( $competitor['is_female'] ) ? 1 : 0,
 			'is_over55'     => ! empty( $competitor['is_over55'] ) ? 1 : 0,
 		);
+
+		// Keyed by COLUMNS so the declared contract and what is actually
+		// written cannot drift apart.
+		return array_replace( array_fill_keys( self::COLUMNS, null ), $values );
 	}
 
 	/**

@@ -41,6 +41,13 @@ class AutoloaderTest extends TestCase {
 			array( \MVOC\StreetO\Repo\Competitors_Repo::class ),
 			array( \MVOC\StreetO\Admin\Competitors_Screen::class ),
 			array( \MVOC\StreetO\Admin\Unmatched_Screen::class ),
+			array( \MVOC\StreetO\Domain\Import_Reconciler::class ),
+			array( \MVOC\StreetO\Domain\Event_Presenter::class ),
+			array( \MVOC\StreetO\Domain\League_Presenter::class ),
+			array( \MVOC\StreetO\Repo\Events_Repo::class ),
+			array( \MVOC\StreetO\Repo\Results_Repo::class ),
+			array( \MVOC\StreetO\Importer::class ),
+			array( \MVOC\StreetO\Front\Shortcodes::class ),
 			array( \MVOC\StreetO\Admin\Admin_Menu::class ),
 			array( \MVOC\StreetO\Admin\MapRun_Explorer_Screen::class ),
 		);
