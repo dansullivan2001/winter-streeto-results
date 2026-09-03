@@ -37,7 +37,7 @@ class Client {
 	 * Fetch results for a MapRun event over HTTP.
 	 *
 	 * @param string $event_name Full MapRun event name, as published.
-	 * @return array{payload:string,rows:array<int,array<string,mixed>>}
+	 * @return array{payload:string,rows:array<int,array<string,mixed>>,warning:string|null}
 	 * @throws \RuntimeException On transport failure, HTTP error or bad payload.
 	 */
 	public function fetch( string $event_name ): array {
@@ -89,7 +89,7 @@ class Client {
 	 * Validate and parse a raw JSON payload, however it was obtained.
 	 *
 	 * @param string $payload Raw JSON text.
-	 * @return array{payload:string,rows:array<int,array<string,mixed>>}
+	 * @return array{payload:string,rows:array<int,array<string,mixed>>,warning:string|null}
 	 * @throws \RuntimeException If the payload is not usable.
 	 */
 	public function ingest( string $payload ): array {
@@ -109,9 +109,14 @@ class Client {
 			);
 		}
 
+		// A warning is not an error and must not stop the import — but it is
+		// how MapRun reports things like an event name matching more than one
+		// event, which is exactly what produces duplicate rows. It travels with
+		// the result so the review screen can show it.
 		return array(
 			'payload' => $payload,
 			'rows'    => Parser::unwrap( $decoded ),
+			'warning' => Parser::warning( $decoded ),
 		);
 	}
 

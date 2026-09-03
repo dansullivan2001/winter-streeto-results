@@ -56,12 +56,31 @@ class Scoring_Config {
 	/**
 	 * Course label => multiplier applied to bring scores onto a common scale.
 	 *
-	 * The 45-minute course is scaled by 60/45 so both courses can be ranked in
-	 * one combined table.
+	 * The club's event information states the rule directly: "a 40 minute score
+	 * (same controls) where the net score is multiplied by 150% for inclusion in
+	 * the results". 150% is exactly 60/40, so this is a straight pro-rata onto
+	 * the 60-minute scale.
 	 *
 	 * @var array<string,float>
 	 */
 	public array $course_factors;
+
+	/**
+	 * Calendar year used to decide age categories.
+	 *
+	 * British Orienteering sets age class by the age reached on 31 December of
+	 * the competition year, which is why MapRun supplies a year of birth and
+	 * nothing more precise. A winter league straddles two calendar years, so
+	 * the club's rule is to use the year the league starts — fixing each
+	 * runner's category for the whole series rather than letting it change
+	 * mid-league.
+	 */
+	public int $category_year = 2026;
+
+	/**
+	 * Minimum age for the Over-55 categories.
+	 */
+	public int $over55_age = 55;
 
 	/**
 	 * One of the ROUND_* constants.
@@ -98,7 +117,7 @@ class Scoring_Config {
 		$this->points_ladder  = self::default_ladder();
 		$this->course_factors = array(
 			'60' => 1.0,
-			'45' => 60 / 45,
+			'40' => 1.5,
 		);
 
 		foreach ( $overrides as $key => $value ) {
@@ -164,6 +183,22 @@ class Scoring_Config {
 			default:
 				return (int) round( $value );
 		}
+	}
+
+	/**
+	 * Whether a year of birth qualifies for the Over-55 categories.
+	 *
+	 * Year-based, per British Orienteering: someone turning 55 at any point in
+	 * the qualifying year is Over-55 for the whole of it.
+	 *
+	 * @param int|null $year_of_birth Year of birth, or null if unknown.
+	 */
+	public function is_over55( ?int $year_of_birth ): bool {
+		if ( null === $year_of_birth || $year_of_birth <= 0 ) {
+			return false;
+		}
+
+		return ( $this->category_year - $year_of_birth ) >= $this->over55_age;
 	}
 
 	/**

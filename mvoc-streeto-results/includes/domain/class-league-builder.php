@@ -23,16 +23,22 @@ class League_Builder {
 	/**
 	 * The categories the league is ranked in.
 	 *
-	 * Each is the same ranking over a different subset, which is why they are
-	 * declared as predicates rather than written out three times.
+	 * Every one is the same competition ranking over a different subset, so
+	 * they are declared as predicates and the ranking is written once. The
+	 * Over-55 titles are awarded separately to a man and a woman, which is why
+	 * the filter has to be a predicate rather than a single flag name — and
+	 * why adding a fifth category later costs one line.
 	 *
-	 * key => [ output field, competitor flag or null for everyone ]
+	 * @return array<string,callable(array<string,mixed>):bool>
 	 */
-	private const CATEGORIES = array(
-		'overall' => array( 'position', null ),
-		'ladies'  => array( 'ladies_position', 'is_female' ),
-		'over55'  => array( 'over55_position', 'is_over55' ),
-	);
+	private static function categories(): array {
+		return array(
+			'position'            => static fn( array $c ): bool => true,
+			'ladies_position'     => static fn( array $c ): bool => ! empty( $c['is_female'] ),
+			'o55_men_position'    => static fn( array $c ): bool => ! empty( $c['is_over55'] ) && empty( $c['is_female'] ),
+			'o55_women_position'  => static fn( array $c ): bool => ! empty( $c['is_over55'] ) && ! empty( $c['is_female'] ),
+		);
+	}
 
 	private Scoring_Config $config;
 
@@ -54,9 +60,9 @@ class League_Builder {
 	 *   organised     mixed  truthy if they organised an event this series
 	 *
 	 * Returned rows keep every input key and gain `organiser_points`,
-	 * `events_entered`, `total`, `position`, `ladies_position` and
-	 * `over55_position`. Category positions are null for competitors outside
-	 * that category.
+	 * `events_entered`, `total`, `position`, `ladies_position`,
+	 * `o55_men_position` and `o55_women_position`. Category positions are null
+	 * for competitors outside that category.
 	 *
 	 * @param array<int,array<string,mixed>> $competitors League entrants.
 	 * @return array<int,array<string,mixed>> Standings, best first.
@@ -150,18 +156,16 @@ class League_Builder {
 	 * @param array<int,array<string,mixed>> $rows Standings, modified in place.
 	 */
 	private function assign_positions( array &$rows ): void {
-		foreach ( self::CATEGORIES as $category ) {
-			list( $field, $flag ) = $category;
-
+		foreach ( self::categories() as $field => $qualifies ) {
 			$totals = array();
 			foreach ( $rows as $row ) {
-				if ( null === $flag || ! empty( $row[ $flag ] ) ) {
+				if ( $qualifies( $row ) ) {
 					$totals[] = $row['total'];
 				}
 			}
 
 			foreach ( $rows as $index => $row ) {
-				if ( null !== $flag && empty( $row[ $flag ] ) ) {
+				if ( ! $qualifies( $row ) ) {
 					$rows[ $index ][ $field ] = null;
 					continue;
 				}

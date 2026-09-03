@@ -109,29 +109,38 @@ class ParserTest extends TestCase {
 		$this->assertSame( array( '5', '6', '7' ), array_column( $parsed['punches'], 'control' ) );
 	}
 
-	public function test_score_is_read_from_a_candidate_field(): void {
-		// The score field name on a StreetO event is not yet confirmed, so the
-		// parser tries known candidates and reports which one matched.
-		$parsed = ( new Parser() )->parse_row( array( 'Firstname' => 'Dee', 'Score' => '42' ) );
+	public function test_score_and_penalty_come_from_gross_and_net(): void {
+		// MapRun's GrossScore/NetScore map onto the workbook's Score and Total,
+		// with the penalty as the difference between them.
+		$parsed = ( new Parser() )->parse_row(
+			array( 'GrossScore' => 780, 'NetScore' => 750 )
+		);
 
-		$this->assertSame( 42, $parsed['score'] );
-		$this->assertSame( 'Score', $parsed['score_field'] );
+		$this->assertSame( 780, $parsed['score'] );
+		$this->assertSame( 750, $parsed['net_score'] );
+		$this->assertSame( 30, $parsed['penalty'] );
 	}
 
-	public function test_score_is_null_when_no_candidate_field_is_present(): void {
-		$rows   = Parser::unwrap( $this->fixture( 'maprun-confirmed-shape' ) );
-		$parsed = ( new Parser() )->parse( $rows );
+	public function test_no_penalty_when_gross_equals_net(): void {
+		$parsed = ( new Parser() )->parse_row( array( 'GrossScore' => 550, 'NetScore' => 550 ) );
 
-		$this->assertNull( $parsed[0]['score'] );
-		$this->assertNull( $parsed[0]['score_field'] );
+		$this->assertSame( 0, $parsed['penalty'] );
 	}
 
-	public function test_an_explicit_score_key_overrides_the_candidates(): void {
-		$parser = new Parser( 'MyPoints' );
-		$parsed = $parser->parse_row( array( 'Score' => 10, 'MyPoints' => 99 ) );
+	public function test_a_lone_score_field_implies_no_penalty(): void {
+		// A missing counterpart means no penalty information, and must not be
+		// read as a penalty of the entire score.
+		$parsed = ( new Parser() )->parse_row( array( 'NetScore' => 400 ) );
 
-		$this->assertSame( 99, $parsed['score'] );
-		$this->assertSame( 'MyPoints', $parsed['score_field'] );
+		$this->assertSame( 400, $parsed['score'] );
+		$this->assertSame( 0, $parsed['penalty'] );
+	}
+
+	public function test_score_is_null_when_neither_field_is_present(): void {
+		$parsed = ( new Parser() )->parse_row( array( 'Firstname' => 'Nobody' ) );
+
+		$this->assertNull( $parsed['score'] );
+		$this->assertSame( 0, $parsed['penalty'] );
 	}
 
 	public function test_missing_fields_do_not_fatal(): void {

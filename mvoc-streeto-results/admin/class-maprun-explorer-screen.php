@@ -37,12 +37,13 @@ class MapRun_Explorer_Screen {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'mvoc-streeto' ) );
 		}
 
-		$event_name  = '';
-		$pasted      = '';
-		$error       = '';
-		$rows        = array();
-		$inventory   = array();
-		$parsed      = array();
+		$event_name   = '';
+		$pasted       = '';
+		$error        = '';
+		$warning      = '';
+		$rows         = array();
+		$inventory    = array();
+		$parsed       = array();
 		$connectivity = null;
 
 		if ( isset( $_POST['mvoc_streeto_action'] ) ) {
@@ -58,12 +59,19 @@ class MapRun_Explorer_Screen {
 			$client = new Client();
 
 			try {
+				$result = null;
+
 				if ( 'check' === $action ) {
 					$connectivity = $client->check_connectivity();
 				} elseif ( 'fetch' === $action ) {
-					$rows = $client->fetch( $event_name )['rows'];
+					$result = $client->fetch( $event_name );
 				} elseif ( 'paste' === $action ) {
-					$rows = $client->ingest( $pasted )['rows'];
+					$result = $client->ingest( $pasted );
+				}
+
+				if ( $result ) {
+					$rows    = $result['rows'];
+					$warning = (string) ( $result['warning'] ?? '' );
 				}
 			} catch ( \RuntimeException $e ) {
 				$error = $e->getMessage();
@@ -84,6 +92,18 @@ class MapRun_Explorer_Screen {
 
 			<?php if ( $error ) : ?>
 				<div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div>
+			<?php endif; ?>
+
+			<?php if ( $warning ) : ?>
+				<div class="notice notice-warning">
+					<p>
+						<strong><?php esc_html_e( 'MapRun warning:', 'mvoc-streeto' ); ?></strong>
+						<?php echo esc_html( $warning ); ?>
+					</p>
+					<p class="description">
+						<?php esc_html_e( 'The results are still usable, but a warning often explains duplicate rows — "multiple events found" means the event name matched more than one MapRun event.', 'mvoc-streeto' ); ?>
+					</p>
+				</div>
 			<?php endif; ?>
 
 			<?php if ( is_array( $connectivity ) ) : ?>
