@@ -109,6 +109,14 @@ class Schema {
 			$table = self::table( $table_name );
 
 			foreach ( $columns as $column ) {
+				// A column name cannot be bound as a parameter, so it is checked
+				// against a strict pattern first. The list above is hard-coded,
+				// but an identifier being concatenated into DDL should never
+				// depend on that staying true.
+				if ( ! preg_match( '/^[a-z_][a-z0-9_]*$/', $column ) ) {
+					continue;
+				}
+
 				$exists = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 					$wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", $column ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				);
