@@ -197,8 +197,8 @@ class Events_Screen {
 									<?php if ( 0 === $count ) : ?>
 										<br />
 										<button type="submit" class="button-link delete"
-											name="mvoc_streeto_action"
-											value="delete:<?php echo esc_attr( (string) $event['id'] ); ?>"
+											name="delete_event"
+											value="<?php echo esc_attr( (string) $event['id'] ); ?>"
 											onclick="return confirm('<?php echo esc_js( __( 'Delete this event? Nothing has been imported for it.', 'mvoc-streeto' ) ); ?>');">
 											<?php esc_html_e( 'Delete', 'mvoc-streeto' ); ?>
 										</button>
@@ -393,20 +393,25 @@ class Events_Screen {
 	 * Handle a submission, returning a notice.
 	 */
 	private function handle_post(): string {
-		if ( ! isset( $_POST['mvoc_streeto_action'] ) ) {
+		if ( ! isset( $_POST['mvoc_streeto_action'] ) && ! isset( $_POST['delete_event'] ) ) {
 			return '';
 		}
 
 		check_admin_referer( self::NONCE );
 
-		$action = sanitize_key( wp_unslash( $_POST['mvoc_streeto_action'] ) );
+		$action = isset( $_POST['mvoc_streeto_action'] )
+			? sanitize_key( wp_unslash( $_POST['mvoc_streeto_action'] ) )
+			: '';
 
 		if ( 'add_series' === $action || 'seed' === $action ) {
 			return $this->create_season();
 		}
 
-		if ( 0 === strpos( $action, 'delete:' ) ) {
-			return $this->delete_event( (int) substr( $action, strlen( 'delete:' ) ) );
+		// Its own field rather than an id encoded into the action: sanitize_key
+		// strips the separator, so "delete:12" silently arrived as "delete12"
+		// and the delete never fired.
+		if ( isset( $_POST['delete_event'] ) ) {
+			return $this->delete_event( (int) $_POST['delete_event'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
 		$series = $this->current_series( $this->repo->all_series() );
