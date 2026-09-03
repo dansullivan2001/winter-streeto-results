@@ -10,6 +10,7 @@
 
 namespace MVOC\StreetO\Admin;
 
+use MVOC\StreetO\Domain\Season;
 use MVOC\StreetO\Plugin;
 use MVOC\StreetO\Repo\Competitors_Repo;
 use MVOC\StreetO\Repo\Events_Repo;
@@ -26,6 +27,11 @@ class Events_Screen {
 	public const DEFAULT_SLUG = '2026-27';
 
 	/**
+	 * The season the club is currently running.
+	 */
+	private const CURRENT_SEASON = 2026;
+
+	/**
 	 * Statuses an event can be put into from this screen.
 	 *
 	 * @var array<string,string>
@@ -33,22 +39,6 @@ class Events_Screen {
 	private const STATUS_ACTIONS = array(
 		Events_Repo::STATUS_DRAFT     => 'Draft',
 		Events_Repo::STATUS_CANCELLED => 'Cancelled',
-	);
-
-	/**
-	 * The club's published fixture list for 2026/27, used only to seed.
-	 *
-	 * @var array<int,array{0:string,1:string}>
-	 */
-	private const FIXTURES = array(
-		array( '2026-09-15', 'Burpham & Merrow' ),
-		array( '2026-10-20', 'Tattenham Corner' ),
-		array( '2026-11-17', 'Cheam' ),
-		array( '2026-12-15', 'Ashtead' ),
-		array( '2027-01-19', 'Chessington' ),
-		array( '2027-02-16', 'Ewell' ),
-		array( '2027-03-16', 'Epsom' ),
-		array( '2027-04-20', 'Fetcham' ),
 	);
 
 	private Events_Repo $repo;
@@ -298,11 +288,12 @@ class Events_Screen {
 	 * @param array<string,mixed>|null       $current    The one being edited.
 	 */
 	private function render_series_bar( array $all_series, ?array $current ): void {
+		$existing = array_column( $all_series, 'slug' );
 		?>
-		<?php if ( count( $all_series ) > 1 ) : ?>
+		<?php if ( $all_series ) : ?>
 			<form method="get" style="margin:1em 0;">
 				<input type="hidden" name="page" value="<?php echo esc_attr( Admin_Menu::SLUG ); ?>" />
-				<label for="mvoc-series"><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></label>
+				<label for="mvoc-series"><strong><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></strong></label>
 				<select id="mvoc-series" name="series" onchange="this.form.submit()">
 					<?php foreach ( $all_series as $series ) : ?>
 						<option value="<?php echo esc_attr( $series['slug'] ); ?>"
@@ -311,40 +302,76 @@ class Events_Screen {
 						</option>
 					<?php endforeach; ?>
 				</select>
-				<noscript><button type="submit" class="button"><?php esc_html_e( 'Go', 'mvoc-streeto' ); ?></button></noscript>
+				<button type="submit" class="button"><?php esc_html_e( 'Switch', 'mvoc-streeto' ); ?></button>
 			</form>
-		<?php endif; ?>
-
-		<?php if ( ! $current ) : ?>
-			<p><?php esc_html_e( 'No series yet. Create the 2026/27 season with its eight published fixtures, or start an empty one — every name, date and venue stays editable either way.', 'mvoc-streeto' ); ?></p>
+		<?php else : ?>
+			<p><?php esc_html_e( 'No series yet. Pick the year a season starts in and everything else follows from it.', 'mvoc-streeto' ); ?></p>
 		<?php endif; ?>
 
 		<details <?php echo $current ? '' : 'open'; ?> style="margin-bottom:1.5em;">
-			<summary><?php esc_html_e( 'New series', 'mvoc-streeto' ); ?></summary>
+			<summary><?php esc_html_e( 'Start a new season', 'mvoc-streeto' ); ?></summary>
 			<form method="post" style="margin-top:0.75em;">
 				<?php wp_nonce_field( self::NONCE ); ?>
 				<p>
-					<button type="submit" name="mvoc_streeto_action" value="seed" class="button">
-						<?php esc_html_e( 'Create 2026/27 with its eight fixtures', 'mvoc-streeto' ); ?>
-					</button>
-				</p>
-				<p>
-					<input type="text" name="new_series[name]" class="regular-text"
-						placeholder="<?php esc_attr_e( 'e.g. Winter StreetO 2027/28', 'mvoc-streeto' ); ?>" />
-					<input type="text" name="new_series[slug]" class="regular-text"
-						placeholder="<?php esc_attr_e( 'e.g. 2027-28', 'mvoc-streeto' ); ?>" />
-					<input type="number" name="new_series[category_year]" style="width:7em"
-						placeholder="<?php esc_attr_e( 'Age year', 'mvoc-streeto' ); ?>" />
-					<button type="submit" name="mvoc_streeto_action" value="add_series" class="button">
-						<?php esc_html_e( 'Create empty series', 'mvoc-streeto' ); ?>
+					<label for="mvoc-start-year"><?php esc_html_e( 'Season starting', 'mvoc-streeto' ); ?></label>
+					<select id="mvoc-start-year" name="start_year">
+						<?php foreach ( Season::selectable_years() as $year ) : ?>
+							<?php $taken = in_array( Season::slug( $year ), $existing, true ); ?>
+							<option value="<?php echo esc_attr( (string) $year ); ?>"
+								<?php disabled( $taken ); ?>
+								<?php selected( $year, $this->default_start_year( $existing ) ); ?>>
+								<?php
+								echo esc_html(
+									$taken
+										? sprintf(
+											/* translators: %s: season label such as 2026/27. */
+											__( '%s — already created', 'mvoc-streeto' ),
+											Season::label( $year )
+										)
+										: Season::label( $year )
+								);
+								?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<button type="submit" name="mvoc_streeto_action" value="add_series" class="button button-primary">
+						<?php esc_html_e( 'Create season', 'mvoc-streeto' ); ?>
 					</button>
 				</p>
 				<p class="description">
-					<?php esc_html_e( 'The slug is what shortcodes refer to, so keep it short and stable. The age year decides the Over-55 categories — British Orienteering uses the age reached during the year, and a winter league takes the year it starts, so 2027/28 uses 2027.', 'mvoc-streeto' ); ?>
+					<?php
+					printf(
+						/* translators: 1: example series name, 2: example slug, 3: example shortcode. */
+						esc_html__( 'Everything is derived from that year. %1$s becomes the name, %2$s the shortcode slug, and the eight fixtures are dated to the third Tuesday of each month from September to April — which is where all eight of this season\'s published dates fall. Names, dates and venues all stay editable, so move anything that clashes.', 'mvoc-streeto' ),
+						'<strong>' . esc_html( Season::name( self::CURRENT_SEASON + 1 ) ) . '</strong>',
+						'<code>' . esc_html( Season::slug( self::CURRENT_SEASON + 1 ) ) . '</code>',
+						''
+					);
+					?>
 				</p>
 			</form>
 		</details>
 		<?php
+	}
+
+	/**
+	 * The year to preselect: the first season not yet created.
+	 *
+	 * @param string[] $existing Slugs already in use.
+	 */
+	private function default_start_year( array $existing ): int {
+		$now     = Season::season_for( (int) gmdate( 'Y' ), (int) gmdate( 'n' ) );
+		$options = Season::selectable_years();
+
+		// Prefer the current season if it is missing, then the next one along,
+		// so the button does the obvious thing without a choice being made.
+		foreach ( array_merge( array( $now, $now + 1 ), $options ) as $year ) {
+			if ( ! in_array( Season::slug( $year ), $existing, true ) && in_array( $year, $options, true ) ) {
+				return $year;
+			}
+		}
+
+		return $now;
 	}
 
 	/**
@@ -374,12 +401,8 @@ class Events_Screen {
 
 		$action = sanitize_key( wp_unslash( $_POST['mvoc_streeto_action'] ) );
 
-		if ( 'seed' === $action ) {
-			return $this->seed_series();
-		}
-
-		if ( 'add_series' === $action ) {
-			return $this->add_series();
+		if ( 'add_series' === $action || 'seed' === $action ) {
+			return $this->create_season();
 		}
 
 		if ( 0 === strpos( $action, 'delete:' ) ) {
@@ -399,65 +422,45 @@ class Events_Screen {
 	}
 
 	/**
-	 * Create the series and its eight fixtures.
+	 * Create a season and its eight fixtures from a starting year.
+	 *
+	 * One path rather than two. There was no useful difference between "the
+	 * 2026/27 season" and "an empty series with a name and slug I type", so the
+	 * year picker replaces both - and unlike free text it cannot produce a name
+	 * or slug that disagrees with the other seasons.
 	 */
-	private function seed_series(): string {
-		$series_id = $this->repo->ensure_series(
-			self::DEFAULT_SLUG,
-			__( 'Winter StreetO 2026/27', 'mvoc-streeto' )
-		);
+	private function create_season(): string {
+		$year = isset( $_POST['start_year'] ) ? (int) $_POST['start_year'] : 0; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
-		foreach ( self::FIXTURES as $index => $fixture ) {
-			list( $date, $venue ) = $fixture;
-
-			$this->repo->save_event(
-				$series_id,
-				array(
-					'event_number' => $index + 1,
-					'title'        => $venue,
-					'event_date'   => $date,
-					'venue'        => $venue,
-				)
-			);
+		if ( ! in_array( $year, Season::selectable_years(), true ) ) {
+			return __( 'That is not a season the plugin offers.', 'mvoc-streeto' );
 		}
 
-		return __( 'Series created with eight events.', 'mvoc-streeto' );
-	}
-
-	/**
-	 * Create an empty series.
-	 */
-	private function add_series(): string {
-		$fields = isset( $_POST['new_series'] ) && is_array( $_POST['new_series'] )
-			? wp_unslash( $_POST['new_series'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-			: array();
-
-		$name = sanitize_text_field( (string) ( $fields['name'] ?? '' ) );
-		$slug = sanitize_title( (string) ( $fields['slug'] ?? '' ) );
-
-		if ( '' === $name || '' === $slug ) {
-			return '';
-		}
+		$slug = Season::slug( $year );
 
 		if ( $this->repo->find_series( $slug ) ) {
 			return sprintf(
-				/* translators: %s: series slug. */
-				__( 'A series with the slug "%s" already exists.', 'mvoc-streeto' ),
-				$slug
+				/* translators: %s: season label such as 2026/27. */
+				__( 'The %s season already exists.', 'mvoc-streeto' ),
+				Season::label( $year )
 			);
 		}
 
-		$year   = (int) ( $fields['category_year'] ?? 0 );
-		$config = new \MVOC\StreetO\Domain\Scoring_Config(
-			$year > 0 ? array( 'category_year' => $year ) : array()
+		$series_id = $this->repo->ensure_series(
+			$slug,
+			Season::name( $year ),
+			new \MVOC\StreetO\Domain\Scoring_Config( array( 'category_year' => $year ) )
 		);
 
-		$this->repo->ensure_series( $slug, $name, $config );
+		foreach ( Season::fixtures( $year ) as $fixture ) {
+			$this->repo->save_event( $series_id, $fixture );
+		}
 
 		return sprintf(
-			/* translators: %s: series name. */
-			__( 'Created "%s".', 'mvoc-streeto' ),
-			$name
+			/* translators: 1: season label, 2: shortcode slug. */
+			__( 'Created %1$s with eight fixtures. Shortcodes refer to it as %2$s.', 'mvoc-streeto' ),
+			Season::label( $year ),
+			$slug
 		);
 	}
 
