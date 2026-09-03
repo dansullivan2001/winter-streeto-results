@@ -104,6 +104,17 @@
 }
 
 /*
+ * The league's category columns are the first thing to drop on a small screen:
+ * they are the least-read part of the table, and the same rankings are
+ * available in full through the per-category shortcodes.
+ */
+@media (max-width: 560px) {
+	.mvoc-streeto-league .mvoc-streeto-category-col {
+		display: none;
+	}
+}
+
+/*
  * On a narrow screen the event table stops being a grid and becomes a stack of
  * labelled rows. Every cell carries its own heading via data-label, so a runner
  * scrolling on a phone can still tell a score from a penalty.

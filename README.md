@@ -47,7 +47,8 @@ See [docs/deploying.md](docs/deploying.md) for where to test and what to check f
 2. Enter each event's MapRun event name against its course.
 3. **Results** on an event → **Fetch from MapRun**, or paste the response.
 4. **Confirm names** for anyone new. Ladies and Over-55 are pre-filled from MapRun's own
-   data, so this is confirming rather than classifying.
+   data, so this is confirming rather than classifying. Both are correctable afterwards on
+   the **Competitors** screen — Ladies against the person, Over-55 against the season.
 5. Resolve any duplicates, correct rows, add anyone by hand, name the organiser.
 6. **Save and publish.** Nothing is public until then.
 
@@ -59,9 +60,14 @@ Then put the shortcodes on the event page:
 [mvoc_streeto_league series="2026-27" category="ladies"]
 ```
 
-Categories are `overall`, `ladies`, `o55_men` and `o55_women`. Leaving the series out shows
-whichever season is marked current, so a standing league page never needs editing when the
-season rolls over.
+The league table shows every ranking side by side — Pos, Ladies, M55 and W55 — the way the
+club's spreadsheet did, with a cell left blank where someone is not in that category. The
+`category` attribute filters which *rows* appear rather than which columns, so a ladies table
+still shows where each of them sits overall. Categories are `overall`, `ladies`, `o55_men`
+and `o55_women`.
+
+Leaving the series out shows whichever season is marked current, so a standing league page
+never needs editing when the season rolls over.
 
 ## Scoring
 

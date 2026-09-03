@@ -102,6 +102,9 @@ class League_Presenter {
 				'organiser_points' => $row['organiser_points'] ?? null,
 				'organised'        => $row['organised'] ?? null,
 				'event_points'     => self::event_detail( $row, $events ),
+				// Every ranking on every row, so one table can show them all
+				// side by side the way the club's spreadsheet did.
+				'positions'        => self::all_positions( $row ),
 				'overall_position' => $row['position'] ?? null,
 			);
 		}
@@ -113,6 +116,40 @@ class League_Presenter {
 			'label'    => self::CATEGORY_LABELS[ $category ],
 			'events'   => $events,
 			'rows'     => $rows,
+		);
+	}
+
+	/**
+	 * Every category ranking for one competitor, keyed by category.
+	 *
+	 * Null where they are not in that category, which is what lets the table
+	 * leave a cell blank rather than implying a position they do not hold.
+	 *
+	 * @param array<string,mixed> $row Standings row.
+	 * @return array<string,int|null>
+	 */
+	private static function all_positions( array $row ): array {
+		$positions = array();
+
+		foreach ( self::CATEGORY_FIELDS as $category => $field ) {
+			$value = $row[ $field ] ?? null;
+
+			$positions[ $category ] = null === $value ? null : (int) $value;
+		}
+
+		return $positions;
+	}
+
+	/**
+	 * Column headings for the category rankings, in display order.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function category_columns(): array {
+		return array(
+			'ladies'    => 'Ladies',
+			'o55_men'   => 'M55',
+			'o55_women' => 'W55',
 		);
 	}
 

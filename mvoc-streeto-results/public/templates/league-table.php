@@ -25,10 +25,14 @@ defined( 'ABSPATH' ) || exit;
 		</p>
 	<?php endif; ?>
 
+	<div class="mvoc-streeto-scroll">
 	<table class="mvoc-streeto-table mvoc-streeto-league-table">
 		<thead>
 			<tr>
 				<th scope="col"><?php esc_html_e( 'Pos', 'mvoc-streeto' ); ?></th>
+				<?php foreach ( \MVOC\StreetO\Domain\League_Presenter::category_columns() as $key => $label ) : ?>
+					<th scope="col" class="mvoc-streeto-category-col"><?php echo esc_html( $label ); ?></th>
+				<?php endforeach; ?>
 				<th scope="col"><?php esc_html_e( 'Name', 'mvoc-streeto' ); ?></th>
 				<th scope="col"><?php esc_html_e( 'Events', 'mvoc-streeto' ); ?></th>
 				<th scope="col"><?php esc_html_e( 'Total', 'mvoc-streeto' ); ?></th>
@@ -38,6 +42,17 @@ defined( 'ABSPATH' ) || exit;
 			<?php foreach ( $model['rows'] as $row ) : ?>
 				<tr>
 					<td data-label="<?php esc_attr_e( 'Pos', 'mvoc-streeto' ); ?>"><?php echo esc_html( (string) $row['position'] ); ?></td>
+					<?php foreach ( \MVOC\StreetO\Domain\League_Presenter::category_columns() as $key => $label ) : ?>
+						<td class="mvoc-streeto-category-col" data-label="<?php echo esc_attr( $label ); ?>">
+							<?php
+							// Blank rather than a dash where they are not in the
+							// category: a dash reads as "no position yet".
+							echo isset( $row['positions'][ $key ] ) && null !== $row['positions'][ $key ]
+								? esc_html( (string) $row['positions'][ $key ] )
+								: '';
+							?>
+						</td>
+					<?php endforeach; ?>
 					<th scope="row" data-label="<?php esc_attr_e( 'Name', 'mvoc-streeto' ); ?>">
 						<details class="mvoc-streeto-detail">
 							<summary><?php echo esc_html( $row['name'] ); ?></summary>
@@ -73,6 +88,7 @@ defined( 'ABSPATH' ) || exit;
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="mvoc-streeto-footnote">
 		<?php esc_html_e( 'The best 5 results count. Event organisers score their best result again in place of the event they ran.', 'mvoc-streeto' ); ?>

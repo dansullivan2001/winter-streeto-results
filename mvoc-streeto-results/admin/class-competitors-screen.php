@@ -7,9 +7,9 @@
 
 namespace MVOC\StreetO\Admin;
 
-use MVOC\StreetO\Domain\Scoring_Config;
 use MVOC\StreetO\Plugin;
 use MVOC\StreetO\Repo\Competitors_Repo;
+use MVOC\StreetO\Repo\Events_Repo;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,11 +22,15 @@ class Competitors_Screen {
 
 	private Competitors_Repo $repo;
 
+	private Events_Repo $events;
+
 	/**
-	 * @param Competitors_Repo|null $repo Competitor persistence.
+	 * @param Competitors_Repo|null $repo   Competitor persistence.
+	 * @param Events_Repo|null      $events Series and events persistence.
 	 */
-	public function __construct( ?Competitors_Repo $repo = null ) {
-		$this->repo = $repo ?? new Competitors_Repo();
+	public function __construct( ?Competitors_Repo $repo = null, ?Events_Repo $events = null ) {
+		$this->repo   = $repo ?? new Competitors_Repo();
+		$this->events = $events ?? new Events_Repo();
 	}
 
 	/**
@@ -37,19 +41,41 @@ class Competitors_Screen {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'mvoc-streeto' ) );
 		}
 
-		$notice = $this->handle_post();
+		$all_series = $this->events->all_series();
+		$series     = $this->current_series( $all_series );
+		$notice     = $this->handle_post( $series );
 
-		$competitors = $this->repo->all();
-		$config      = new Scoring_Config();
+		// Over-55 belongs to a season, so the list is always shown in the
+		// context of one. Without that the checkbox would have no meaning.
+		$competitors = $series
+			? $this->repo->all_for_series( (int) $series['id'] )
+			: $this->repo->all();
 
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Competitors', 'mvoc-streeto' ); ?></h1>
 			<p class="description">
-				<?php
-				esc_html_e( 'Ladies is taken from MapRun. Correct anything it has wrong — an edit here sticks and is never overwritten by a later import. Over-55 belongs to a season rather than to a person, so it is set per series on the event screens.', 'mvoc-streeto' );
-				?>
+				<?php esc_html_e( 'Both categories come from MapRun, which is self-declared and sometimes wrong or missing. Correct anything here — an edit sticks and is never overwritten by a later import.', 'mvoc-streeto' ); ?>
 			</p>
+			<p class="description">
+				<?php esc_html_e( 'Ladies belongs to the person. Over-55 belongs to the season, because everybody\'s age changes every year — so it is shown and edited for one season at a time, and correcting it never disturbs a season already published.', 'mvoc-streeto' ); ?>
+			</p>
+
+			<?php if ( $all_series ) : ?>
+				<form method="get" style="margin:1em 0;">
+					<input type="hidden" name="page" value="<?php echo esc_attr( Admin_Menu::SLUG . '-competitors' ); ?>" />
+					<label for="mvoc-comp-series"><strong><?php esc_html_e( 'Season', 'mvoc-streeto' ); ?></strong></label>
+					<select id="mvoc-comp-series" name="series" onchange="this.form.submit()">
+						<?php foreach ( $all_series as $option ) : ?>
+							<option value="<?php echo esc_attr( $option['slug'] ); ?>"
+								<?php selected( $series['slug'] ?? '', $option['slug'] ); ?>>
+								<?php echo esc_html( $option['name'] ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<button type="submit" class="button"><?php esc_html_e( 'Switch', 'mvoc-streeto' ); ?></button>
+				</form>
+			<?php endif; ?>
 
 			<?php if ( $notice ) : ?>
 				<div class="notice notice-success"><p><?php echo esc_html( $notice ); ?></p></div>
@@ -65,12 +91,26 @@ class Competitors_Screen {
 
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE ); ?>
+				<input type="hidden" name="series_slug" value="<?php echo esc_attr( $series['slug'] ?? '' ); ?>" />
 				<table class="widefat striped">
 					<thead>
 						<tr>
 							<th><?php esc_html_e( 'Name', 'mvoc-streeto' ); ?></th>
 							<th><?php esc_html_e( 'Club', 'mvoc-streeto' ); ?></th>
 							<th><?php esc_html_e( 'Ladies', 'mvoc-streeto' ); ?></th>
+							<th>
+								<?php
+								echo $series
+									? esc_html(
+										sprintf(
+											/* translators: %s: series name. */
+											__( 'Over 55 — %s', 'mvoc-streeto' ),
+											$series['name']
+										)
+									)
+									: esc_html__( 'Over 55', 'mvoc-streeto' );
+								?>
+							</th>
 							<th><?php esc_html_e( 'Merge into', 'mvoc-streeto' ); ?></th>
 						</tr>
 					</thead>
@@ -85,6 +125,11 @@ class Competitors_Screen {
 								<td>
 									<input type="checkbox" name="is_female[<?php echo esc_attr( (string) $id ); ?>]"
 										value="1" <?php checked( $competitor['is_female'] ); ?> />
+								</td>
+								<td>
+									<input type="checkbox" name="is_over55[<?php echo esc_attr( (string) $id ); ?>]"
+										value="1" <?php checked( ! empty( $competitor['is_over55'] ) ); ?>
+										<?php disabled( ! $series ); ?> />
 								</td>
 								<td>
 									<select name="merge_into[<?php echo esc_attr( (string) $id ); ?>]">
@@ -121,7 +166,7 @@ class Competitors_Screen {
 	/**
 	 * Apply a submitted change, returning a notice to show.
 	 */
-	private function handle_post(): string {
+	private function handle_post( ?array $series ): string {
 		if ( ! isset( $_POST['mvoc_streeto_action'] ) ) {
 			return '';
 		}
@@ -129,6 +174,7 @@ class Competitors_Screen {
 		check_admin_referer( self::NONCE );
 
 		$female = $this->checkbox_ids( 'is_female' );
+		$over55 = $this->checkbox_ids( 'is_over55' );
 		$merges = $this->merge_map();
 
 		// Merges run first: flags submitted for a competitor about to be
@@ -143,13 +189,17 @@ class Competitors_Screen {
 			$this->repo->update(
 				$id,
 				array(
-					'first_name'    => $competitor['first_name'],
-					'surname'       => $competitor['surname'],
-					'display_name'  => $competitor['display_name'],
-					'club'          => $competitor['club'],
-					'is_female'     => in_array( $id, $female, true ),
+					'first_name'   => $competitor['first_name'],
+					'surname'      => $competitor['surname'],
+					'display_name' => $competitor['display_name'],
+					'club'         => $competitor['club'],
+					'is_female'    => in_array( $id, $female, true ),
 				)
 			);
+
+			if ( $series ) {
+				$this->repo->set_over55( (int) $series['id'], $id, in_array( $id, $over55, true ) );
+			}
 		}
 
 		if ( $merges ) {
@@ -161,6 +211,48 @@ class Competitors_Screen {
 		}
 
 		return __( 'Saved.', 'mvoc-streeto' );
+	}
+
+	/**
+	 * The season being edited: the one asked for, else the one remembered.
+	 *
+	 * Shares its memory with the series screen, so switching season in one
+	 * place does not leave the other looking at a different year.
+	 *
+	 * @param array<int,array<string,mixed>> $all_series Every series.
+	 * @return array<string,mixed>|null
+	 */
+	private function current_series( array $all_series ): ?array {
+		$slug = isset( $_GET['series'] ) ? sanitize_title( wp_unslash( $_GET['series'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( ! $slug && isset( $_POST['series_slug'] ) ) {
+			$slug = sanitize_title( wp_unslash( $_POST['series_slug'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
+		if ( $slug ) {
+			foreach ( $all_series as $series ) {
+				if ( $series['slug'] === $slug ) {
+					update_user_meta( get_current_user_id(), 'mvoc_streeto_last_series', $slug );
+
+					return $series;
+				}
+			}
+		}
+
+		$remembered = (string) get_user_meta( get_current_user_id(), 'mvoc_streeto_last_series', true );
+		foreach ( $all_series as $series ) {
+			if ( $series['slug'] === $remembered ) {
+				return $series;
+			}
+		}
+
+		foreach ( $all_series as $series ) {
+			if ( ! empty( $series['is_active'] ) ) {
+				return $series;
+			}
+		}
+
+		return $all_series[0] ?? null;
 	}
 
 	/**
