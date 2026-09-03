@@ -174,6 +174,28 @@ class Importer {
 	}
 
 	/**
+	 * Link confirmed names across every event in every series.
+	 *
+	 * Called after the co-ordinator confirms names, so that rows already
+	 * imported pick up their competitor straight away. Without it a name
+	 * confirmed after an import would not attach until the next one, which is
+	 * a re-fetch the co-ordinator has no other reason to run.
+	 *
+	 * @return int Rows newly linked.
+	 */
+	public function link_all_events(): int {
+		$linked = 0;
+
+		foreach ( $this->events->all_series() as $series ) {
+			foreach ( $this->events->events( (int) $series['id'] ) as $event ) {
+				$linked += $this->link_competitors( (int) $event['id'] );
+			}
+		}
+
+		return $linked;
+	}
+
+	/**
 	 * Add two action summaries together.
 	 *
 	 * @param array<string,int> $running Accumulated totals.

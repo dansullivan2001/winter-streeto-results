@@ -18,6 +18,7 @@ namespace MVOC\StreetO\Admin;
 
 use MVOC\StreetO\Domain\Competitor_Registry;
 use MVOC\StreetO\Domain\Name_Matcher;
+use MVOC\StreetO\Importer;
 use MVOC\StreetO\MapRun\Client;
 use MVOC\StreetO\MapRun\Parser;
 use MVOC\StreetO\Plugin;
@@ -343,11 +344,17 @@ class Unmatched_Screen {
 			return '';
 		}
 
+		// Attach the newly confirmed names to results already imported, so the
+		// co-ordinator does not have to re-fetch an event just to make a name
+		// they have just confirmed take effect.
+		$attached = ( new Importer() )->link_all_events();
+
 		return sprintf(
-			/* translators: 1: competitors created, 2: names linked to existing competitors. */
-			__( 'Created %1$d competitor(s) and linked %2$d name(s).', 'mvoc-streeto' ),
+			/* translators: 1: competitors created, 2: names linked, 3: existing result rows updated. */
+			__( 'Created %1$d competitor(s), linked %2$d name(s), and attached %3$d existing result row(s).', 'mvoc-streeto' ),
 			$created,
-			$linked
+			$linked,
+			$attached
 		);
 	}
 
