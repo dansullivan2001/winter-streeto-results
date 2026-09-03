@@ -88,7 +88,12 @@ rather than being added on top.
 
 Over-55 follows British Orienteering's convention — the age reached on 31 December of the
 competition year, which is why a year of birth is enough. A winter league straddles two
-years, so the season's starting year decides, fixing each runner's category for the season.
+years, so the season's starting year decides.
+
+The flag is held **per season**, not per person. Competitors are deliberately global, so a
+name confirmed one year still resolves the next — but age is not: everybody's changes every
+year. A single flag would move a runner into the Over-55 table of every season already
+published the moment they turned 55.
 
 All of it lives in `Scoring_Config`, stored per series, so a rule change is a settings edit.
 
@@ -129,10 +134,10 @@ club four different ways, and may be recorded with or without a hyphen. Matching
 order of decreasing certainty: a confirmed alias resolves silently, and anything else gets
 ranked suggestions scored on surname, first name, year of birth and club.
 
-Year of birth is the decisive signal, and a *mismatch* is penalised harder than a match is
-rewarded — two people sharing a name rarely share a birth year, so a differing year is the
-strongest evidence available that they are different people. Club is the opposite: a mild
-confirmation, never a refutation, because runners change clubs and often leave it blank.
+Club is a mild confirmation, never a refutation, because runners change clubs and often
+leave the field blank. Year of birth was once the decisive signal here, but it is no longer
+stored, so genuine namesakes now both surface as candidates and the co-ordinator picks —
+acceptable precisely because nothing is ever merged automatically.
 
 Diminutives are handled, but only where the short form is unambiguous. "Sam" is deliberately
 absent, because it maps to both Samuel and Samantha, and guessing across genders is exactly
@@ -153,6 +158,11 @@ Unauthenticated. The envelope is
 `GrossScore` is the points collected and `NetScore` the figure after the time penalty, so
 the penalty is their difference. `Gender` and `YearOfBirth` are both supplied, which is why
 neither category needs classifying by hand.
+
+The year of birth is used to derive the Over-55 flag at import and then discarded — **no
+date of birth is stored anywhere**, and a test asserts no table ever grows a column that
+looks like one. Holding every member's date of birth to work out one boolean was not a fair
+trade.
 
 Things real responses contain that a hand-written test fixture would not:
 

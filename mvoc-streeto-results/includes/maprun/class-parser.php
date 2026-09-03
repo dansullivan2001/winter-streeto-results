@@ -231,7 +231,11 @@ class Parser {
 	}
 
 	/**
-	 * Year of birth, used to derive the Over-55 category.
+	 * Year of birth, used to derive the Over-55 category and then discarded.
+	 *
+	 * It is deliberately never persisted: the flag it produces is all the
+	 * league needs, and holding every member's date of birth to work out one
+	 * boolean is not a fair trade.
 	 *
 	 * @param array<string,mixed> $row Raw MapRun row.
 	 */

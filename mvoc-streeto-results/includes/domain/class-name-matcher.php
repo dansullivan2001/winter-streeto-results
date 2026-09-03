@@ -218,11 +218,15 @@ class Name_Matcher {
 	/**
 	 * Score one competitor against one row.
 	 *
-	 * Weighted so that the surname dominates, the first name confirms, and year
-	 * of birth acts as the decisive tie-breaker — MapRun supplies it, and two
-	 * people sharing a name rarely share a birth year. A *mismatched* year is
-	 * penalised heavily rather than merely not rewarded: it is the strongest
-	 * evidence available that two similar names are different people.
+	 * Weighted so that the surname dominates and the first name confirms, with
+	 * the club as a mild corroborator.
+	 *
+	 * Year of birth used to be the decisive signal here — two people sharing a
+	 * name rarely share one — but it is no longer stored, because holding every
+	 * member's date of birth to occasionally separate a pair of namesakes was
+	 * not a fair trade. Matching is a little weaker for genuine namesakes as a
+	 * result, which is tolerable precisely because nothing is ever merged
+	 * automatically: a suggestion always waits for a human.
 	 *
 	 * @param array<string,mixed> $row        Parsed MapRun row.
 	 * @param array<string,mixed> $competitor Known competitor.
@@ -258,7 +262,6 @@ class Name_Matcher {
 			$score += (int) round( self::similarity( $row_first, $competitor_first ) * 0.20 );
 		}
 
-		$score += $this->score_year_of_birth( $row, $competitor, $reasons );
 		$score += $this->score_club( $row, $competitor, $reasons );
 
 		return array(
@@ -268,36 +271,11 @@ class Name_Matcher {
 	}
 
 	/**
-	 * Year-of-birth contribution: a strong confirmation, a stronger refutation.
-	 *
-	 * @param array<string,mixed> $row        Parsed row.
-	 * @param array<string,mixed> $competitor Known competitor.
-	 * @param string[]            $reasons    Accumulated explanation, by reference.
-	 */
-	private function score_year_of_birth( array $row, array $competitor, array &$reasons ): int {
-		$row_year        = $row['year_of_birth'] ?? null;
-		$competitor_year = $competitor['year_of_birth'] ?? null;
-
-		if ( ! $row_year || ! $competitor_year ) {
-			return 0;
-		}
-
-		if ( (int) $row_year === (int) $competitor_year ) {
-			$reasons[] = 'year of birth matches';
-
-			return 15;
-		}
-
-		$reasons[] = 'year of birth differs';
-
-		return -35;
-	}
-
-	/**
 	 * Club contribution: a mild confirmation only.
 	 *
-	 * Runners change clubs and often leave the field blank, so a club mismatch
-	 * is weak evidence and must not be treated as a refutation.
+	 * Weighted a little higher now that year of birth is gone, but still only a
+	 * confirmation. Runners change clubs and often leave the field blank, so a
+	 * mismatch remains weak evidence and must never be a refutation.
 	 *
 	 * @param array<string,mixed> $row        Parsed row.
 	 * @param array<string,mixed> $competitor Known competitor.
@@ -314,7 +292,7 @@ class Name_Matcher {
 		if ( $row_club === $competitor_club ) {
 			$reasons[] = 'same club';
 
-			return 5;
+			return 10;
 		}
 
 		return 0;

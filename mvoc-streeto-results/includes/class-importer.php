@@ -91,7 +91,10 @@ class Importer {
 				$warnings[] = sprintf( '%s: %s', $source['course_label'], $result['warning'] );
 			}
 
-			$rows = ( new Parser() )->parse( $result['rows'], (string) $source['course_label'] );
+			$rows = $this->with_categories(
+				( new Parser() )->parse( $result['rows'], (string) $source['course_label'] ),
+				$event_id
+			);
 
 			$fetch_id = $this->events->record_fetch(
 				(int) $source['id'],
@@ -120,6 +123,7 @@ class Importer {
 
 		$this->events->touch_fetched( $event_id );
 		$this->link_competitors( $event_id );
+		$this->sync_categories( $event_id );
 
 		$resolution = $this->registry->resolve(
 			$parsed,
@@ -174,6 +178,48 @@ class Importer {
 	}
 
 	/**
+	 * Record each linked competitor's category for this event's season.
+	 *
+	 * Derived from what MapRun said at import and stored per season, so a
+	 * runner joins the Over-55 category from the season it applies rather than
+	 * appearing in it across every season already published.
+	 *
+	 * An existing flag is left alone: the co-ordinator may have corrected it,
+	 * and MapRun's self-declared data should not overwrite a deliberate fix.
+	 *
+	 * @param int $event_id Event id.
+	 * @return int Flags newly recorded.
+	 */
+	public function sync_categories( int $event_id ): int {
+		$event = $this->events->find_event_by_id( $event_id );
+		if ( ! $event ) {
+			return 0;
+		}
+
+		$series_id = (int) $event['series_id'];
+		$existing  = $this->competitors->over55_for_series( $series_id );
+		$recorded  = 0;
+
+		foreach ( $this->results->for_event( $event_id ) as $row ) {
+			$competitor_id = (int) ( $row['competitor_id'] ?? 0 );
+
+			if ( ! $competitor_id || null === $row['raw_is_over55'] ) {
+				continue;
+			}
+
+			if ( array_key_exists( $competitor_id, $existing ) ) {
+				continue;
+			}
+
+			$this->competitors->set_over55( $series_id, $competitor_id, (bool) $row['raw_is_over55'] );
+			$existing[ $competitor_id ] = (bool) $row['raw_is_over55'];
+			++$recorded;
+		}
+
+		return $recorded;
+	}
+
+	/**
 	 * Link confirmed names across every event in every series.
 	 *
 	 * Called after the co-ordinator confirms names, so that rows already
@@ -189,10 +235,47 @@ class Importer {
 		foreach ( $this->events->all_series() as $series ) {
 			foreach ( $this->events->events( (int) $series['id'] ) as $event ) {
 				$linked += $this->link_competitors( (int) $event['id'] );
+				$this->sync_categories( (int) $event['id'] );
 			}
 		}
 
 		return $linked;
+	}
+
+	/**
+	 * Turn each row's year of birth into a category flag, then drop the year.
+	 *
+	 * This is the only point at which a date of birth exists in the system, and
+	 * it does not survive past it.
+	 *
+	 * @param array<int,array<string,mixed>> $rows     Parsed rows.
+	 * @param int                            $event_id Event id.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function with_categories( array $rows, int $event_id ): array {
+		$event  = $this->events->find_event_by_id( $event_id );
+		$series = null;
+
+		foreach ( $this->events->all_series() as $candidate ) {
+			if ( $event && (int) $candidate['id'] === (int) $event['series_id'] ) {
+				$series = $candidate;
+				break;
+			}
+		}
+
+		$config = $this->events->scoring_config( $series ?? array() );
+
+		foreach ( $rows as $index => $row ) {
+			$year = $row['year_of_birth'] ?? null;
+
+			$rows[ $index ]['is_over55'] = is_numeric( $year )
+				? $config->is_over55( (int) $year )
+				: null;
+
+			unset( $rows[ $index ]['year_of_birth'] );
+		}
+
+		return $rows;
 	}
 
 	/**

@@ -75,8 +75,23 @@ foreach ( Competitors_Repo::COLUMNS as $column ) {
 
 $results = \MVOC\StreetO\Schema::table( 'results' );
 $rcols   = $wpdb->get_col( "SHOW COLUMNS FROM `$results`" );
-foreach ( array( 'raw_year_of_birth', 'is_withdrawn', 'resolved_penalty' ) as $column ) {
+foreach ( array( 'raw_is_over55', 'is_withdrawn', 'resolved_penalty' ) as $column ) {
 	check( "results.$column exists", in_array( $column, $rcols, true ) );
+}
+
+// dbDelta never drops a column, so a retired one has to be removed explicitly.
+// If that failed, the data would still be there while the code claimed it was
+// not - which is the whole point of removing it.
+foreach ( array( 'year_of_birth', 'is_over55' ) as $gone ) {
+	check( "competitors.$gone dropped", ! in_array( $gone, $columns, true ) );
+}
+check( 'results.raw_year_of_birth dropped', ! in_array( 'raw_year_of_birth', $rcols, true ) );
+
+foreach ( \MVOC\StreetO\Schema::table_names() as $name ) {
+	$table = \MVOC\StreetO\Schema::table( $name );
+	$cols  = $wpdb->get_col( "SHOW COLUMNS FROM `$table`" );
+	$dob   = array_filter( $cols, fn( $c ) => false !== strpos( $c, 'birth' ) );
+	check( "$name holds no date of birth", array() === $dob, implode( ', ', $dob ) );
 }
 
 echo "\nSeries and events\n";
@@ -137,6 +152,31 @@ $orphans = (int) $wpdb->get_var(
 );
 check( 'snapshots cleared with the event', 0 === $orphans );
 check( 'sources cleared with the event', 0 === count( $events_repo->sources( $event_id ) ) );
+
+echo "\nPer-season categories\n";
+$comp_repo = new Competitors_Repo();
+$comp_id   = $comp_repo->create_with_alias(
+	array( 'first_name' => 'Cat', 'surname' => 'Tester', 'is_female' => true ),
+	'cat tester'
+);
+check( 'competitor created without a birth year', $comp_id > 0 );
+
+$comp_repo->set_over55( $series_id, $comp_id, true );
+$flags = $comp_repo->over55_for_series( $series_id );
+check( 'flag stored for the season', ! empty( $flags[ $comp_id ] ) );
+
+// The same person in another season must not inherit it.
+$later_id = $events_repo->ensure_series( $slug . '-later', 'Later season' );
+$later    = $comp_repo->over55_for_series( $later_id );
+check( 'another season does not inherit the flag', empty( $later[ $comp_id ] ) );
+
+$merged = array_column( $comp_repo->all_for_series( $series_id ), 'is_over55', 'id' );
+check( 'flags merge into the competitor list', ! empty( $merged[ $comp_id ] ) );
+
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'series' ), array( 'id' => $later_id ), array( '%d' ) );
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'competitors' ), array( 'id' => $comp_id ), array( '%d' ) );
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'aliases' ), array( 'competitor_id' => $comp_id ), array( '%d' ) );
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'series_competitors' ), array( 'competitor_id' => $comp_id ), array( '%d' ) );
 
 echo "\nActive season\n";
 $other_slug = 'itest2-' . wp_generate_password( 6, false, false );

@@ -101,7 +101,7 @@ class Competitor_Registry {
 			'display_name' => (string) ( $row['display_name'] ?? '' ),
 			'club'         => (string) ( $row['club'] ?? '' ),
 			'gender'       => (string) ( $row['gender'] ?? '' ),
-			'year_of_birth' => $row['year_of_birth'] ?? null,
+			'is_over55'    => $this->derive_over55( $row ),
 			'suggestions'  => $suggestions,
 			'has_strong_suggestion' => (bool) array_filter(
 				$suggestions,
@@ -123,17 +123,36 @@ class Competitor_Registry {
 	 * @return array<string,mixed>
 	 */
 	public function propose_competitor( array $row ): array {
+		return array(
+			'first_name'   => (string) ( $row['first_name'] ?? '' ),
+			'surname'      => (string) ( $row['surname'] ?? '' ),
+			'display_name' => (string) ( $row['display_name'] ?? '' ),
+			'club'         => (string) ( $row['club'] ?? '' ),
+			'is_female'    => 'F' === ( $row['gender'] ?? '' ),
+			// Per season, not on the competitor: everybody's age changes every
+			// year, so a single flag would reclassify past seasons.
+			'is_over55'    => $this->derive_over55( $row ),
+		);
+	}
+
+	/**
+	 * Whether a row implies Over-55, from whichever source is available.
+	 *
+	 * A freshly parsed row still carries MapRun's year of birth, which is used
+	 * here and then discarded. A row read back from the database carries only
+	 * the flag that was derived when it was imported, because the year is never
+	 * stored.
+	 *
+	 * @param array<string,mixed> $row Parsed or stored row.
+	 */
+	private function derive_over55( array $row ): bool {
+		if ( array_key_exists( 'is_over55', $row ) && null !== $row['is_over55'] ) {
+			return (bool) $row['is_over55'];
+		}
+
 		$year = $row['year_of_birth'] ?? null;
 
-		return array(
-			'first_name'    => (string) ( $row['first_name'] ?? '' ),
-			'surname'       => (string) ( $row['surname'] ?? '' ),
-			'display_name'  => (string) ( $row['display_name'] ?? '' ),
-			'club'          => (string) ( $row['club'] ?? '' ),
-			'year_of_birth' => $year,
-			'is_female'     => 'F' === ( $row['gender'] ?? '' ),
-			'is_over55'     => $this->config->is_over55( is_numeric( $year ) ? (int) $year : null ),
-		);
+		return $this->config->is_over55( is_numeric( $year ) ? (int) $year : null );
 	}
 
 	/**
@@ -157,7 +176,7 @@ class Competitor_Registry {
 				continue;
 			}
 
-			foreach ( array( 'club', 'gender', 'year_of_birth' ) as $field ) {
+			foreach ( array( 'club', 'gender', 'is_over55' ) as $field ) {
 				if ( empty( $seen[ $key ][ $field ] ) && ! empty( $entry[ $field ] ) ) {
 					$seen[ $key ][ $field ] = $entry[ $field ];
 				}
@@ -186,9 +205,12 @@ class Competitor_Registry {
 			$drift['is_female'] = $row_female;
 		}
 
-		$year = $row['year_of_birth'] ?? null;
-		if ( is_numeric( $year ) ) {
-			$row_over55 = $this->config->is_over55( (int) $year );
+		$has_age = array_key_exists( 'is_over55', $row ) && null !== $row['is_over55'];
+		$has_age = $has_age || is_numeric( $row['year_of_birth'] ?? null );
+
+		if ( $has_age ) {
+			$row_over55 = $this->derive_over55( $row );
+
 			if ( (bool) ( $competitor['is_over55'] ?? false ) !== $row_over55 ) {
 				$drift['is_over55'] = $row_over55;
 			}

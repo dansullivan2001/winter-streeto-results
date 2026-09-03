@@ -38,8 +38,12 @@ class Schema {
 	 *    because MapRun's YearOfBirth was parsed and then thrown away.
 	 * 5: series.is_active, so a shortcode can name the current season without
 	 *    every page having to be edited when the season rolls over.
+	 * 6: no birth year is stored anywhere. Over-55 is derived from MapRun at
+	 *    import and kept as a flag per season in series_competitors, so an
+	 *    ageing runner joins the category from the season it applies rather
+	 *    than retroactively across every season already published.
 	 */
-	public const DB_VERSION = 5;
+	public const DB_VERSION = 6;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -52,6 +56,7 @@ class Schema {
 		'event_sources',
 		'fetches',
 		'competitors',
+		'series_competitors',
 		'aliases',
 		'results',
 		'result_competitors',
@@ -79,7 +84,40 @@ class Schema {
 			dbDelta( $sql );
 		}
 
+		self::drop_retired_columns();
+
 		update_option( self::OPTION_DB_VERSION, self::DB_VERSION );
+	}
+
+	/**
+	 * Drop columns that no longer exist in the schema.
+	 *
+	 * dbDelta only ever adds and widens, so a column removed from the
+	 * definitions above would otherwise sit in the database indefinitely. That
+	 * matters here because these two held dates of birth: leaving them behind
+	 * would mean the data was still there while the code claimed otherwise.
+	 */
+	private static function drop_retired_columns(): void {
+		global $wpdb;
+
+		$retired = array(
+			'competitors' => array( 'year_of_birth', 'is_over55' ),
+			'results'     => array( 'raw_year_of_birth' ),
+		);
+
+		foreach ( $retired as $table_name => $columns ) {
+			$table = self::table( $table_name );
+
+			foreach ( $columns as $column ) {
+				$exists = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+					$wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", $column ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				);
+
+				if ( $exists ) {
+					$wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN `{$column}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+				}
+			}
+		}
 	}
 
 	/**
@@ -176,13 +214,27 @@ class Schema {
 			surname varchar(100) NOT NULL DEFAULT '',
 			display_name varchar(255) NOT NULL,
 			club varchar(100) NOT NULL DEFAULT '',
-			year_of_birth smallint(5) unsigned NULL,
 			is_female tinyint(1) NOT NULL DEFAULT 0,
-			is_over55 tinyint(1) NOT NULL DEFAULT 0,
 			notes text NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			KEY surname (surname)
+		) {$charset};";
+
+		// A competitor's category for one season. Competitors are deliberately
+		// global, so a name confirmed one year still resolves the next — but
+		// age is not: everybody's changes every year. Holding Over-55 per
+		// season means a runner joins the category when it applies and no
+		// already-published season silently reclassifies them.
+		$table = self::table( 'series_competitors' );
+		$sql[] = "CREATE TABLE {$table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			series_id bigint(20) unsigned NOT NULL,
+			competitor_id bigint(20) unsigned NOT NULL,
+			is_over55 tinyint(1) NOT NULL DEFAULT 0,
+			PRIMARY KEY  (id),
+			KEY series_id (series_id),
+			UNIQUE KEY series_competitor (series_id,competitor_id)
 		) {$charset};";
 
 		// Confirmed name variants. Grows as the co-ordinator resolves names, so
@@ -212,7 +264,7 @@ class Schema {
 			raw_surname varchar(100) NOT NULL DEFAULT '',
 			raw_club varchar(100) NOT NULL DEFAULT '',
 			raw_gender varchar(10) NOT NULL DEFAULT '',
-			raw_year_of_birth smallint(5) unsigned NULL,
+			raw_is_over55 tinyint(1) NULL,
 			classifier varchar(20) NOT NULL DEFAULT '',
 			course_label varchar(20) NOT NULL DEFAULT '',
 			raw_score int(11) NULL,

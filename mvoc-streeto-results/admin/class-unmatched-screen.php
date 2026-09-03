@@ -261,7 +261,8 @@ class Unmatched_Screen {
 				'display_name'  => $effective['display_name'],
 				'club'          => $row['raw_club'],
 				'gender'        => $row['raw_gender'],
-				'year_of_birth' => $row['raw_year_of_birth'] ? (int) $row['raw_year_of_birth'] : null,
+				'is_over55'     => $row['raw_is_over55'],
+				'year_of_birth' => null,
 				'competitor_id' => $row['competitor_id'],
 			);
 		}
@@ -307,7 +308,7 @@ class Unmatched_Screen {
 		$detail = array_filter(
 			array(
 				$entry['club'],
-				$entry['year_of_birth'] ? sprintf( 'b. %d', (int) $entry['year_of_birth'] ) : '',
+				! empty( $entry['is_over55'] ) ? __( 'over 55', 'mvoc-streeto' ) : '',
 				'F' === $entry['gender'] ? __( 'female', 'mvoc-streeto' ) : '',
 			)
 		);
@@ -330,8 +331,6 @@ class Unmatched_Screen {
 				<input type="hidden" name="<?php echo esc_attr( $base . '[' . $plain . ']' ); ?>"
 					value="<?php echo esc_attr( (string) $proposed[ $plain ] ); ?>" />
 			<?php endforeach; ?>
-			<input type="hidden" name="<?php echo esc_attr( $base . '[year_of_birth]' ); ?>"
-				value="<?php echo esc_attr( (string) ( $proposed['year_of_birth'] ?? 0 ) ); ?>" />
 			<?php if ( $proposed['is_female'] ) : ?>
 				<input type="hidden" name="<?php echo esc_attr( $base . '[is_female]' ); ?>" value="1" />
 			<?php endif; ?>
@@ -472,7 +471,6 @@ class Unmatched_Screen {
 				'surname'       => sanitize_text_field( (string) ( $fields['surname'] ?? '' ) ),
 				'display_name'  => sanitize_text_field( (string) ( $fields['display_name'] ?? '' ) ),
 				'club'          => sanitize_text_field( (string) ( $fields['club'] ?? '' ) ),
-				'year_of_birth' => (int) ( $fields['year_of_birth'] ?? 0 ),
 				'is_female'     => ! empty( $fields['is_female'] ),
 				'is_over55'     => ! empty( $fields['is_over55'] ),
 			);

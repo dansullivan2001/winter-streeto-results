@@ -31,9 +31,7 @@ class Competitors_Repo {
 		'surname',
 		'display_name',
 		'club',
-		'year_of_birth',
 		'is_female',
-		'is_over55',
 	);
 
 	/**
@@ -41,7 +39,7 @@ class Competitors_Repo {
 	 *
 	 * @var string[]
 	 */
-	private const FORMATS = array( '%s', '%s', '%s', '%s', '%d', '%d', '%d' );
+	private const FORMATS = array( '%s', '%s', '%s', '%s', '%d' );
 
 	/**
 	 * Every competitor, as plain arrays for the domain classes.
@@ -87,10 +85,12 @@ class Competitors_Repo {
 	 * @return array<string,mixed>
 	 */
 	private function hydrate( array $row ): array {
-		$row['id']            = (int) $row['id'];
-		$row['is_female']     = (bool) $row['is_female'];
-		$row['is_over55']     = (bool) $row['is_over55'];
-		$row['year_of_birth'] = $row['year_of_birth'] ? (int) $row['year_of_birth'] : null;
+		$row['id']        = (int) $row['id'];
+		$row['is_female'] = (bool) $row['is_female'];
+
+		// Over-55 belongs to a season, not to a person, so it is merged in by
+		// whoever knows which season they are asking about.
+		$row['is_over55'] = false;
 
 		return $row;
 	}
@@ -141,18 +141,84 @@ class Competitors_Repo {
 		$surname = (string) ( $competitor['surname'] ?? '' );
 
 		$values = array(
-			'first_name'    => $first,
-			'surname'       => $surname,
-			'display_name'  => (string) ( $competitor['display_name'] ?? trim( $first . ' ' . $surname ) ),
-			'club'          => (string) ( $competitor['club'] ?? '' ),
-			'year_of_birth' => (int) ( $competitor['year_of_birth'] ?? 0 ),
-			'is_female'     => ! empty( $competitor['is_female'] ) ? 1 : 0,
-			'is_over55'     => ! empty( $competitor['is_over55'] ) ? 1 : 0,
+			'first_name'   => $first,
+			'surname'      => $surname,
+			'display_name' => (string) ( $competitor['display_name'] ?? trim( $first . ' ' . $surname ) ),
+			'club'         => (string) ( $competitor['club'] ?? '' ),
+			'is_female'    => ! empty( $competitor['is_female'] ) ? 1 : 0,
 		);
 
 		// Keyed by COLUMNS so the declared contract and what is actually
 		// written cannot drift apart.
 		return array_replace( array_fill_keys( self::COLUMNS, null ), $values );
+	}
+
+	/**
+	 * Everyone marked Over-55 for a season, as competitor id => true.
+	 *
+	 * @param int $series_id Series id.
+	 * @return array<int,bool>
+	 */
+	public function over55_for_series( int $series_id ): array {
+		global $wpdb;
+
+		$table = Schema::table( 'series_competitors' );
+		$rows  = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"SELECT competitor_id, is_over55 FROM `{$table}` WHERE series_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$series_id
+			),
+			ARRAY_A
+		);
+
+		$flags = array();
+		foreach ( $rows ?: array() as $row ) {
+			$flags[ (int) $row['competitor_id'] ] = (bool) $row['is_over55'];
+		}
+
+		return $flags;
+	}
+
+	/**
+	 * Set a competitor's category for one season.
+	 *
+	 * @param int  $series_id     Series id.
+	 * @param int  $competitor_id Competitor id.
+	 * @param bool $is_over55     Whether they are Over-55 that season.
+	 */
+	public function set_over55( int $series_id, int $competitor_id, bool $is_over55 ): void {
+		global $wpdb;
+
+		$table = Schema::table( 'series_competitors' );
+
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"INSERT INTO `{$table}` (series_id, competitor_id, is_over55) VALUES (%d, %d, %d)
+				 ON DUPLICATE KEY UPDATE is_over55 = VALUES(is_over55)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$series_id,
+				$competitor_id,
+				$is_over55 ? 1 : 0
+			)
+		);
+	}
+
+	/**
+	 * Competitors with a season's category flags merged in.
+	 *
+	 * @param int $series_id Series id.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function all_for_series( int $series_id ): array {
+		$flags = $this->over55_for_series( $series_id );
+
+		return array_map(
+			static function ( array $competitor ) use ( $flags ): array {
+				$competitor['is_over55'] = $flags[ $competitor['id'] ] ?? false;
+
+				return $competitor;
+			},
+			$this->all()
+		);
 	}
 
 	/**
@@ -214,6 +280,26 @@ class Competitors_Repo {
 			Schema::table( 'aliases' ),
 			Schema::table( 'results' ),
 			Schema::table( 'result_competitors' ),
+		);
+
+		// The absorbed competitor's per-season categories go first: the unique
+		// key on (series, competitor) would otherwise collide where both
+		// records have a row for the same season.
+		$series_competitors = Schema::table( 'series_competitors' );
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"DELETE FROM `{$series_competitors}` WHERE competitor_id = %d
+				 AND series_id IN ( SELECT series_id FROM ( SELECT series_id FROM `{$series_competitors}` WHERE competitor_id = %d ) AS keep )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$from_id,
+				$into_id
+			)
+		);
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$series_competitors,
+			array( 'competitor_id' => $into_id ),
+			array( 'competitor_id' => $from_id ),
+			array( '%d' ),
+			array( '%d' )
 		);
 
 		foreach ( $tables as $table ) {

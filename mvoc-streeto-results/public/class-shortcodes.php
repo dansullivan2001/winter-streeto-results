@@ -257,7 +257,9 @@ class Shortcodes {
 		$engine = new Scoring_Engine( $config );
 
 		$competitors = array();
-		foreach ( $this->competitors->all() as $competitor ) {
+		// Per season: Over-55 belongs to the season a runner competed in, so a
+		// published league never reclassifies anyone as they age.
+		foreach ( $this->competitors->all_for_series( (int) $series['id'] ) as $competitor ) {
 			$competitor['event_points'] = array_fill( 0, count( $published ), null );
 			$competitors[ $competitor['id'] ] = $competitor;
 		}

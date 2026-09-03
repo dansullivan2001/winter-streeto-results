@@ -47,11 +47,7 @@ class Competitors_Screen {
 			<h1><?php esc_html_e( 'Competitors', 'mvoc-streeto' ); ?></h1>
 			<p class="description">
 				<?php
-				printf(
-					/* translators: %d: the year used to decide age categories. */
-					esc_html__( 'Ladies and Over-55 are taken from MapRun, using age reached during %d. Correct anything MapRun has wrong — an edit here sticks and is never overwritten by a later import.', 'mvoc-streeto' ),
-					(int) $config->category_year
-				);
+				esc_html_e( 'Ladies is taken from MapRun. Correct anything it has wrong — an edit here sticks and is never overwritten by a later import. Over-55 belongs to a season rather than to a person, so it is set per series on the event screens.', 'mvoc-streeto' );
 				?>
 			</p>
 
@@ -74,9 +70,7 @@ class Competitors_Screen {
 						<tr>
 							<th><?php esc_html_e( 'Name', 'mvoc-streeto' ); ?></th>
 							<th><?php esc_html_e( 'Club', 'mvoc-streeto' ); ?></th>
-							<th><?php esc_html_e( 'Born', 'mvoc-streeto' ); ?></th>
 							<th><?php esc_html_e( 'Ladies', 'mvoc-streeto' ); ?></th>
-							<th><?php esc_html_e( 'Over 55', 'mvoc-streeto' ); ?></th>
 							<th><?php esc_html_e( 'Merge into', 'mvoc-streeto' ); ?></th>
 						</tr>
 					</thead>
@@ -88,14 +82,9 @@ class Competitors_Screen {
 									<strong><?php echo esc_html( $competitor['display_name'] ); ?></strong>
 								</td>
 								<td><?php echo esc_html( $competitor['club'] ); ?></td>
-								<td><?php echo $competitor['year_of_birth'] ? esc_html( (string) $competitor['year_of_birth'] ) : '&mdash;'; ?></td>
 								<td>
 									<input type="checkbox" name="is_female[<?php echo esc_attr( (string) $id ); ?>]"
 										value="1" <?php checked( $competitor['is_female'] ); ?> />
-								</td>
-								<td>
-									<input type="checkbox" name="is_over55[<?php echo esc_attr( (string) $id ); ?>]"
-										value="1" <?php checked( $competitor['is_over55'] ); ?> />
 								</td>
 								<td>
 									<select name="merge_into[<?php echo esc_attr( (string) $id ); ?>]">
@@ -140,7 +129,6 @@ class Competitors_Screen {
 		check_admin_referer( self::NONCE );
 
 		$female = $this->checkbox_ids( 'is_female' );
-		$over55 = $this->checkbox_ids( 'is_over55' );
 		$merges = $this->merge_map();
 
 		// Merges run first: flags submitted for a competitor about to be
@@ -159,9 +147,7 @@ class Competitors_Screen {
 					'surname'       => $competitor['surname'],
 					'display_name'  => $competitor['display_name'],
 					'club'          => $competitor['club'],
-					'year_of_birth' => $competitor['year_of_birth'],
 					'is_female'     => in_array( $id, $female, true ),
-					'is_over55'     => in_array( $id, $over55, true ),
 				)
 			);
 		}

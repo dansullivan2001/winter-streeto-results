@@ -91,7 +91,7 @@ class Results_Repo {
 			'raw_score',
 			'resolved_score',
 			'resolved_penalty',
-			'raw_year_of_birth',
+			'raw_is_over55',
 			'raw_time_secs',
 			'resolved_time_secs',
 		);

@@ -115,9 +115,23 @@ class SchemaConsistencyTest extends TestCase {
 		);
 	}
 
-	public function test_year_of_birth_is_present(): void {
-		// The specific regression: named explicitly so the reason this test
-		// exists stays visible.
-		$this->assertContains( 'year_of_birth', $this->schema_columns()['competitors'] );
+	public function test_no_table_stores_a_date_of_birth(): void {
+		// Over-55 is derived from MapRun at import and kept as a flag per
+		// season, so no birth year is held anywhere. This asserts that stays
+		// true rather than creeping back in as a convenience.
+		foreach ( $this->schema_columns() as $table => $columns ) {
+			foreach ( $columns as $column ) {
+				$this->assertStringNotContainsString(
+					'birth',
+					$column,
+					sprintf( '%s.%s looks like a date of birth.', $table, $column )
+				);
+			}
+		}
+	}
+
+	public function test_the_per_season_category_table_exists(): void {
+		$this->assertArrayHasKey( 'series_competitors', $this->schema_columns() );
+		$this->assertContains( 'is_over55', $this->schema_columns()['series_competitors'] );
 	}
 }

@@ -148,9 +148,10 @@ class Import_Reconciler {
 			'raw_surname'    => (string) ( $row['surname'] ?? '' ),
 			'raw_club'       => (string) ( $row['club'] ?? '' ),
 			'raw_gender'     => (string) ( $row['gender'] ?? '' ),
-			// Kept so the Over-55 category can still be derived later, when a
-			// competitor is created from a row that was imported weeks ago.
-			'raw_year_of_birth' => isset( $row['year_of_birth'] ) ? (int) $row['year_of_birth'] : null,
+			// The flag MapRun's year implied, not the year itself, so a
+			// competitor created weeks after the import still lands in the
+			// right category without a date of birth being kept.
+			'raw_is_over55'  => array_key_exists( 'is_over55', $row ) ? ( $row['is_over55'] ? 1 : 0 ) : null,
 			'classifier'     => (string) ( $row['classifier'] ?? '' ),
 			'course_label'   => (string) ( $row['course_label'] ?? '' ),
 			'raw_score'      => isset( $row['score'] ) ? (int) $row['score'] : null,
