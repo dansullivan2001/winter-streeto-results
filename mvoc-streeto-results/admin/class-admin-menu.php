@@ -49,5 +49,27 @@ class Admin_Menu {
 			self::SLUG,
 			array( $explorer, 'render' )
 		);
+
+		$unmatched = new Unmatched_Screen();
+
+		add_submenu_page(
+			self::SLUG,
+			__( 'Confirm names', 'mvoc-streeto' ),
+			__( 'Confirm names', 'mvoc-streeto' ),
+			Plugin::CAPABILITY,
+			self::SLUG . '-names',
+			array( $unmatched, 'render' )
+		);
+
+		$competitors = new Competitors_Screen();
+
+		add_submenu_page(
+			self::SLUG,
+			__( 'Competitors', 'mvoc-streeto' ),
+			__( 'Competitors', 'mvoc-streeto' ),
+			Plugin::CAPABILITY,
+			self::SLUG . '-competitors',
+			array( $competitors, 'render' )
+		);
 	}
 }
