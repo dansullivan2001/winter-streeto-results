@@ -138,6 +138,30 @@ $orphans = (int) $wpdb->get_var(
 check( 'snapshots cleared with the event', 0 === $orphans );
 check( 'sources cleared with the event', 0 === count( $events_repo->sources( $event_id ) ) );
 
+echo "\nActive season\n";
+$other_slug = 'itest2-' . wp_generate_password( 6, false, false );
+$other_id   = $events_repo->ensure_series( $other_slug, 'Second integration series' );
+
+$active = $events_repo->active_series();
+check( 'an active season exists', null !== $active );
+check(
+	'a later season does not steal the flag',
+	$active && (int) $active['id'] !== $other_id,
+	'promoting next year early would swap the public site over before it starts'
+);
+
+$events_repo->set_active( $other_id );
+$now_active = $events_repo->active_series();
+check( 'promotion takes effect', $now_active && (int) $now_active['id'] === $other_id );
+
+$actives = array_filter( $events_repo->all_series(), fn( $s ) => ! empty( $s['is_active'] ) );
+check( 'exactly one season is active', 1 === count( $actives ), (string) count( $actives ) );
+
+if ( $active ) {
+	$events_repo->set_active( (int) $active['id'] );
+}
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'series' ), array( 'id' => $other_id ), array( '%d' ) );
+
 echo "\nSeason derivation\n";
 check( 'slug matches the live series format', '2026-27' === Season::slug( 2026 ) );
 check( 'fixtures land on third Tuesdays', '2026-09-15' === Season::fixtures( 2026 )[0]['event_date'] );

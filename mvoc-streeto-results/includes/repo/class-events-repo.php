@@ -90,6 +90,50 @@ class Events_Repo {
 	}
 
 	/**
+	 * The season currently being run, if one is marked.
+	 *
+	 * @return array<string,mixed>|null
+	 */
+	public function active_series(): ?array {
+		global $wpdb;
+
+		$table = Schema::table( 'series' );
+		$row   = $wpdb->get_row( "SELECT * FROM `{$table}` WHERE is_active = 1 LIMIT 1", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+
+		if ( ! $row ) {
+			return null;
+		}
+
+		$row['id'] = (int) $row['id'];
+
+		return $row;
+	}
+
+	/**
+	 * Mark one series as the season being run, clearing any other.
+	 *
+	 * Exactly one is active, so a shortcode with no series attribute has an
+	 * unambiguous answer.
+	 *
+	 * @param int $series_id Series id.
+	 */
+	public function set_active( int $series_id ): void {
+		global $wpdb;
+
+		$table = Schema::table( 'series' );
+
+		$wpdb->query( "UPDATE `{$table}` SET is_active = 0 WHERE is_active = 1" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$table,
+			array( 'is_active' => 1 ),
+			array( 'id' => $series_id ),
+			array( '%d' ),
+			array( '%d' )
+		);
+	}
+
+	/**
 	 * Create a series if its slug is new, and return its id either way.
 	 *
 	 * @param string              $slug   Series slug.
@@ -104,14 +148,21 @@ class Events_Repo {
 
 		global $wpdb;
 
+		// The first series created becomes the active one, so a fresh install
+		// works without a second step. A later season does not steal the flag:
+		// next year's league should not replace the live one on the public site
+		// months before it starts, so promoting it stays deliberate.
+		$first = null === $this->active_series();
+
 		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			Schema::table( 'series' ),
 			array(
 				'slug'           => $slug,
 				'name'           => $name,
 				'scoring_config' => ( $config ?? new Scoring_Config() )->to_json(),
+				'is_active'      => $first ? 1 : 0,
 			),
-			array( '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%d' )
 		);
 
 		return (int) $wpdb->insert_id;

@@ -36,8 +36,10 @@ class Schema {
 	 * 4: results.raw_year_of_birth. Without it the Over-55 category could not
 	 *    be derived when creating a competitor from an already-imported row,
 	 *    because MapRun's YearOfBirth was parsed and then thrown away.
+	 * 5: series.is_active, so a shortcode can name the current season without
+	 *    every page having to be edited when the season rolls over.
 	 */
-	public const DB_VERSION = 4;
+	public const DB_VERSION = 5;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -115,6 +117,7 @@ class Schema {
 			slug varchar(100) NOT NULL,
 			name varchar(255) NOT NULL,
 			scoring_config longtext NULL,
+			is_active tinyint(1) NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			UNIQUE KEY slug (slug)

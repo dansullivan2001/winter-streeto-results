@@ -104,7 +104,7 @@ class Shortcodes {
 
 		wp_enqueue_style( 'mvoc-streeto' );
 
-		$series = $this->events->find_series( $atts['series'] );
+		$series = $this->resolve_series( (string) $atts['series'] );
 		$config = $this->events->scoring_config( $series ?? array() );
 
 		$scored = ( new Scoring_Engine( $config ) )->score_event(
@@ -144,7 +144,7 @@ class Shortcodes {
 			'mvoc_streeto_league'
 		);
 
-		$series = $this->events->find_series( $atts['series'] );
+		$series = $this->resolve_series( (string) $atts['series'] );
 		if ( ! $series ) {
 			return $this->notice( __( 'The league is not available yet.', 'mvoc-streeto' ) );
 		}
@@ -158,6 +158,27 @@ class Shortcodes {
 		}
 
 		return $this->template( 'league-table', array( 'model' => $model ) );
+	}
+
+	/**
+	 * The series a shortcode refers to.
+	 *
+	 * An omitted series means "whichever season is current", so a standing
+	 * league page on the club site never needs editing when the season rolls
+	 * over. A named one always wins, so an archived season's page keeps showing
+	 * that season.
+	 *
+	 * @param string $slug Series slug from the shortcode, possibly empty.
+	 * @return array<string,mixed>|null
+	 */
+	private function resolve_series( string $slug ): ?array {
+		$slug = trim( $slug );
+
+		if ( '' !== $slug ) {
+			return $this->events->find_series( $slug );
+		}
+
+		return $this->events->active_series();
 	}
 
 	/**
@@ -287,7 +308,7 @@ class Shortcodes {
 	 * @return array<string,mixed>|null
 	 */
 	private function resolve_event( string $series_slug, int $event_number ): ?array {
-		$series = $this->events->find_series( $series_slug );
+		$series = $this->resolve_series( $series_slug );
 		if ( ! $series ) {
 			return null;
 		}

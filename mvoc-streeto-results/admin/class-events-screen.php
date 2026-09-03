@@ -32,6 +32,11 @@ class Events_Screen {
 	private const CURRENT_SEASON = 2026;
 
 	/**
+	 * Where each user's last-viewed series is remembered.
+	 */
+	private const LAST_SERIES_META = 'mvoc_streeto_last_series';
+
+	/**
 	 * Statuses an event can be put into from this screen.
 	 *
 	 * @var array<string,string>
@@ -92,6 +97,24 @@ class Events_Screen {
 
 				<h2><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></h2>
 				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Current season', 'mvoc-streeto' ); ?></th>
+						<td>
+							<?php if ( ! empty( $series['is_active'] ) ) : ?>
+								<strong><?php esc_html_e( 'This is the current season.', 'mvoc-streeto' ); ?></strong>
+								<p class="description">
+									<?php esc_html_e( 'A shortcode with no series attribute shows this one, so a standing league page never needs editing when the season rolls over.', 'mvoc-streeto' ); ?>
+								</p>
+							<?php else : ?>
+								<button type="submit" name="mvoc_streeto_action" value="make_active" class="button">
+									<?php esc_html_e( 'Make this the current season', 'mvoc-streeto' ); ?>
+								</button>
+								<p class="description">
+									<?php esc_html_e( 'Only one season is current at a time. Promote a new one when it actually starts — until then the public site keeps showing the season being run.', 'mvoc-streeto' ); ?>
+								</p>
+							<?php endif; ?>
+						</td>
+					</tr>
 					<tr>
 						<th scope="row"><label for="series-name"><?php esc_html_e( 'Name', 'mvoc-streeto' ); ?></label></th>
 						<td>
@@ -253,6 +276,12 @@ class Events_Screen {
 				<code>[mvoc_streeto_league series="<?php echo esc_html( $series['slug'] ); ?>"]</code><br />
 				<code>[mvoc_streeto_league series="<?php echo esc_html( $series['slug'] ); ?>" category="ladies"]</code>
 			</p>
+			<p class="description">
+				<?php esc_html_e( 'Leaving the series out shows whichever season is current, which is what a standing league page wants:', 'mvoc-streeto' ); ?>
+			</p>
+			<p>
+				<code>[mvoc_streeto_league]</code>
+			</p>
 		</div>
 		<?php
 	}
@@ -270,11 +299,32 @@ class Events_Screen {
 			$slug = sanitize_title( wp_unslash( $_POST['series_slug'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
+		// An explicit choice is remembered, so coming back to this screen lands
+		// where you left it rather than snapping to the newest season. This is
+		// a personal preference, not shared state, which is why it lives in
+		// user meta and not on the series itself.
 		if ( $slug ) {
 			foreach ( $all_series as $series ) {
 				if ( $series['slug'] === $slug ) {
+					update_user_meta( get_current_user_id(), self::LAST_SERIES_META, $slug );
+
 					return $series;
 				}
+			}
+		}
+
+		$remembered = (string) get_user_meta( get_current_user_id(), self::LAST_SERIES_META, true );
+		foreach ( $all_series as $series ) {
+			if ( $series['slug'] === $remembered ) {
+				return $series;
+			}
+		}
+
+		// Nothing remembered: the season being run is a better guess than the
+		// most recently created one, which may be next year's, set up early.
+		foreach ( $all_series as $series ) {
+			if ( ! empty( $series['is_active'] ) ) {
+				return $series;
 			}
 		}
 
@@ -298,7 +348,17 @@ class Events_Screen {
 					<?php foreach ( $all_series as $series ) : ?>
 						<option value="<?php echo esc_attr( $series['slug'] ); ?>"
 							<?php selected( $current['slug'] ?? '', $series['slug'] ); ?>>
-							<?php echo esc_html( $series['name'] ); ?>
+							<?php
+							echo esc_html(
+								empty( $series['is_active'] )
+									? $series['name']
+									: sprintf(
+										/* translators: %s: series name. */
+										__( '%s (current)', 'mvoc-streeto' ),
+										$series['name']
+									)
+							);
+							?>
 						</option>
 					<?php endforeach; ?>
 				</select>
@@ -417,6 +477,16 @@ class Events_Screen {
 		$series = $this->current_series( $this->repo->all_series() );
 		if ( ! $series ) {
 			return '';
+		}
+
+		if ( 'make_active' === $action ) {
+			$this->repo->set_active( (int) $series['id'] );
+
+			return sprintf(
+				/* translators: %s: series name. */
+				__( '%s is now the current season.', 'mvoc-streeto' ),
+				$series['name']
+			);
 		}
 
 		if ( 'add_event' === $action ) {
