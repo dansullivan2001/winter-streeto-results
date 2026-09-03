@@ -36,6 +36,16 @@ class Events_Repo {
 	public const STATUS_PUBLISHED = 'published';
 
 	/**
+	 * An event that will not take place.
+	 *
+	 * Kept rather than deleted, which is what the club's own workbook did with
+	 * the two events cancelled in 2019/20: the series keeps its shape, event
+	 * numbering stays stable, and nobody has to wonder later why the season
+	 * jumps from 3 to 5.
+	 */
+	public const STATUS_CANCELLED = 'cancelled';
+
+	/**
 	 * Find a series by slug.
 	 *
 	 * @param string $slug Series slug.
@@ -209,6 +219,7 @@ class Events_Repo {
 			? (int) $row['organiser_competitor_id']
 			: null;
 		$row['is_published']            = self::STATUS_PUBLISHED === $row['status'];
+		$row['is_cancelled']            = self::STATUS_CANCELLED === $row['status'];
 
 		return $row;
 	}
@@ -307,6 +318,57 @@ class Events_Repo {
 			array( '%s' ),
 			array( '%d' )
 		);
+	}
+
+	/**
+	 * How many result rows an event holds.
+	 *
+	 * @param int $event_id Event id.
+	 */
+	public function result_count( int $event_id ): int {
+		global $wpdb;
+
+		$table = Schema::table( 'results' );
+
+		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare( "SELECT COUNT(*) FROM `{$table}` WHERE event_id = %d", $event_id ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+	}
+
+	/**
+	 * Delete an event, but only while it holds no results.
+	 *
+	 * Deliberately refuses once anything has been imported. Removing an event
+	 * with results would take the raw MapRun snapshots and the co-ordinator's
+	 * corrections with it, and there is no undo — an event that will not run
+	 * should be cancelled instead, which keeps the series' shape.
+	 *
+	 * @param int $event_id Event id.
+	 * @return bool Whether it was deleted.
+	 */
+	public function delete_event( int $event_id ): bool {
+		if ( $this->result_count( $event_id ) > 0 ) {
+			return false;
+		}
+
+		global $wpdb;
+
+		// Snapshots belong to sources, so they go before the sources do.
+		$fetches = Schema::table( 'fetches' );
+		$sources = Schema::table( 'event_sources' );
+
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"DELETE FROM `{$fetches}` WHERE event_source_id IN
+				 ( SELECT id FROM `{$sources}` WHERE event_id = %d )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$event_id
+			)
+		);
+
+		$wpdb->delete( $sources, array( 'event_id' => $event_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->delete( Schema::table( 'events' ), array( 'id' => $event_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+		return true;
 	}
 
 	/**

@@ -177,7 +177,10 @@ class Shortcodes {
 		$events = array_values(
 			array_filter(
 				$this->events->events( $series['id'] ),
-				static fn( array $event ): bool => $event['is_published'] || $previewing
+				// A cancelled event never counts, for anyone. It is kept in the
+				// series so the numbering stays stable, not so it can score.
+				static fn( array $event ): bool => ! $event['is_cancelled']
+					&& ( $event['is_published'] || $previewing )
 			)
 		);
 
@@ -291,6 +294,10 @@ class Shortcodes {
 
 		$event = $this->events->find_event( $series['id'], $event_number );
 		if ( ! $event ) {
+			return null;
+		}
+
+		if ( $event['is_cancelled'] ) {
 			return null;
 		}
 

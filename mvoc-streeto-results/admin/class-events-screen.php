@@ -26,6 +26,16 @@ class Events_Screen {
 	public const DEFAULT_SLUG = '2026-27';
 
 	/**
+	 * Statuses an event can be put into from this screen.
+	 *
+	 * @var array<string,string>
+	 */
+	private const STATUS_ACTIONS = array(
+		Events_Repo::STATUS_DRAFT     => 'Draft',
+		Events_Repo::STATUS_CANCELLED => 'Cancelled',
+	);
+
+	/**
 	 * The club's published fixture list for 2026/27, used only to seed.
 	 *
 	 * @var array<int,array{0:string,1:string}>
@@ -62,8 +72,9 @@ class Events_Screen {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'mvoc-streeto' ) );
 		}
 
-		$notice = $this->handle_post();
-		$series = $this->repo->find_series( self::DEFAULT_SLUG );
+		$notice     = $this->handle_post();
+		$all_series = $this->repo->all_series();
+		$series     = $this->current_series( $all_series );
 
 		?>
 		<div class="wrap">
@@ -73,14 +84,9 @@ class Events_Screen {
 				<div class="notice notice-success"><p><?php echo esc_html( $notice ); ?></p></div>
 			<?php endif; ?>
 
+			<?php $this->render_series_bar( $all_series, $series ); ?>
+
 			<?php if ( ! $series ) : ?>
-				<p><?php esc_html_e( 'No series set up yet. This creates the 2026/27 series with the eight published fixtures — every name, date and venue stays editable afterwards.', 'mvoc-streeto' ); ?></p>
-				<form method="post">
-					<?php wp_nonce_field( self::NONCE ); ?>
-					<button type="submit" name="mvoc_streeto_action" value="seed" class="button button-primary">
-						<?php esc_html_e( 'Create the 2026/27 series', 'mvoc-streeto' ); ?>
-					</button>
-				</form>
 				</div>
 				<?php
 				return;
@@ -92,6 +98,7 @@ class Events_Screen {
 
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE ); ?>
+				<input type="hidden" name="series_slug" value="<?php echo esc_attr( $series['slug'] ); ?>" />
 
 				<h2><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></h2>
 				<table class="form-table" role="presentation">
@@ -180,15 +187,43 @@ class Events_Screen {
 										placeholder="&hellip; ScoreQ40" />
 								</td>
 								<td>
-									<?php
-									echo $event['is_published']
-										? esc_html__( 'Published', 'mvoc-streeto' )
-										: esc_html__( 'Draft', 'mvoc-streeto' );
-									?>
+									<?php $count = $this->repo->result_count( (int) $event['id'] ); ?>
+									<?php if ( $event['is_published'] ) : ?>
+										<strong><?php esc_html_e( 'Published', 'mvoc-streeto' ); ?></strong>
+									<?php else : ?>
+										<select name="<?php echo esc_attr( $field . '[status]' ); ?>">
+											<?php foreach ( self::STATUS_ACTIONS as $value => $label ) : ?>
+												<option value="<?php echo esc_attr( $value ); ?>"
+													<?php selected( $event['status'], $value ); ?>>
+													<?php echo esc_html( $label ); ?>
+												</option>
+											<?php endforeach; ?>
+										</select>
+									<?php endif; ?>
 									<br />
 									<a href="<?php echo esc_url( $this->review_url( (int) $event['id'] ) ); ?>">
 										<?php esc_html_e( 'Results', 'mvoc-streeto' ); ?>
 									</a>
+									<?php if ( 0 === $count ) : ?>
+										<br />
+										<button type="submit" class="button-link delete"
+											name="mvoc_streeto_action"
+											value="delete:<?php echo esc_attr( (string) $event['id'] ); ?>"
+											onclick="return confirm('<?php echo esc_js( __( 'Delete this event? Nothing has been imported for it.', 'mvoc-streeto' ) ); ?>');">
+											<?php esc_html_e( 'Delete', 'mvoc-streeto' ); ?>
+										</button>
+									<?php else : ?>
+										<br />
+										<span class="description">
+											<?php
+											printf(
+												/* translators: %d: number of imported result rows. */
+												esc_html( _n( '%d result', '%d results', $count, 'mvoc-streeto' ) ),
+												(int) $count
+											);
+											?>
+										</span>
+									<?php endif; ?>
 								</td>
 							</tr>
 						<?php endforeach; ?>
@@ -197,6 +232,9 @@ class Events_Screen {
 
 				<p class="description">
 					<?php esc_html_e( 'Organisers rarely exist as competitors before the first event has been imported, so typing a name creates one. When they later appear in MapRun results, the name is already known and matches automatically.', 'mvoc-streeto' ); ?>
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'An event can only be deleted while nothing has been imported for it — deleting one with results would take the MapRun snapshots and your corrections with it. Mark an event that will not run as Cancelled instead, which keeps the numbering intact.', 'mvoc-streeto' ); ?>
 				</p>
 
 				<h2><?php esc_html_e( 'Add an event', 'mvoc-streeto' ); ?></h2>
@@ -226,6 +264,86 @@ class Events_Screen {
 				<code>[mvoc_streeto_league series="<?php echo esc_html( $series['slug'] ); ?>" category="ladies"]</code>
 			</p>
 		</div>
+		<?php
+	}
+
+	/**
+	 * The series being edited: the one asked for, else the most recent.
+	 *
+	 * @param array<int,array<string,mixed>> $all_series Every series.
+	 * @return array<string,mixed>|null
+	 */
+	private function current_series( array $all_series ): ?array {
+		$slug = isset( $_GET['series'] ) ? sanitize_title( wp_unslash( $_GET['series'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( ! $slug && isset( $_POST['series_slug'] ) ) {
+			$slug = sanitize_title( wp_unslash( $_POST['series_slug'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
+		if ( $slug ) {
+			foreach ( $all_series as $series ) {
+				if ( $series['slug'] === $slug ) {
+					return $series;
+				}
+			}
+		}
+
+		return $all_series[0] ?? null;
+	}
+
+	/**
+	 * The series switcher, and the forms for creating one.
+	 *
+	 * @param array<int,array<string,mixed>> $all_series Every series.
+	 * @param array<string,mixed>|null       $current    The one being edited.
+	 */
+	private function render_series_bar( array $all_series, ?array $current ): void {
+		?>
+		<?php if ( count( $all_series ) > 1 ) : ?>
+			<form method="get" style="margin:1em 0;">
+				<input type="hidden" name="page" value="<?php echo esc_attr( Admin_Menu::SLUG ); ?>" />
+				<label for="mvoc-series"><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></label>
+				<select id="mvoc-series" name="series" onchange="this.form.submit()">
+					<?php foreach ( $all_series as $series ) : ?>
+						<option value="<?php echo esc_attr( $series['slug'] ); ?>"
+							<?php selected( $current['slug'] ?? '', $series['slug'] ); ?>>
+							<?php echo esc_html( $series['name'] ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+				<noscript><button type="submit" class="button"><?php esc_html_e( 'Go', 'mvoc-streeto' ); ?></button></noscript>
+			</form>
+		<?php endif; ?>
+
+		<?php if ( ! $current ) : ?>
+			<p><?php esc_html_e( 'No series yet. Create the 2026/27 season with its eight published fixtures, or start an empty one — every name, date and venue stays editable either way.', 'mvoc-streeto' ); ?></p>
+		<?php endif; ?>
+
+		<details <?php echo $current ? '' : 'open'; ?> style="margin-bottom:1.5em;">
+			<summary><?php esc_html_e( 'New series', 'mvoc-streeto' ); ?></summary>
+			<form method="post" style="margin-top:0.75em;">
+				<?php wp_nonce_field( self::NONCE ); ?>
+				<p>
+					<button type="submit" name="mvoc_streeto_action" value="seed" class="button">
+						<?php esc_html_e( 'Create 2026/27 with its eight fixtures', 'mvoc-streeto' ); ?>
+					</button>
+				</p>
+				<p>
+					<input type="text" name="new_series[name]" class="regular-text"
+						placeholder="<?php esc_attr_e( 'e.g. Winter StreetO 2027/28', 'mvoc-streeto' ); ?>" />
+					<input type="text" name="new_series[slug]" class="regular-text"
+						placeholder="<?php esc_attr_e( 'e.g. 2027-28', 'mvoc-streeto' ); ?>" />
+					<input type="number" name="new_series[category_year]" style="width:7em"
+						placeholder="<?php esc_attr_e( 'Age year', 'mvoc-streeto' ); ?>" />
+					<button type="submit" name="mvoc_streeto_action" value="add_series" class="button">
+						<?php esc_html_e( 'Create empty series', 'mvoc-streeto' ); ?>
+					</button>
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'The slug is what shortcodes refer to, so keep it short and stable. The age year decides the Over-55 categories — British Orienteering uses the age reached during the year, and a winter league takes the year it starts, so 2027/28 uses 2027.', 'mvoc-streeto' ); ?>
+				</p>
+			</form>
+		</details>
 		<?php
 	}
 
@@ -260,7 +378,15 @@ class Events_Screen {
 			return $this->seed_series();
 		}
 
-		$series = $this->repo->find_series( self::DEFAULT_SLUG );
+		if ( 'add_series' === $action ) {
+			return $this->add_series();
+		}
+
+		if ( 0 === strpos( $action, 'delete:' ) ) {
+			return $this->delete_event( (int) substr( $action, strlen( 'delete:' ) ) );
+		}
+
+		$series = $this->current_series( $this->repo->all_series() );
 		if ( ! $series ) {
 			return '';
 		}
@@ -296,6 +422,65 @@ class Events_Screen {
 		}
 
 		return __( 'Series created with eight events.', 'mvoc-streeto' );
+	}
+
+	/**
+	 * Create an empty series.
+	 */
+	private function add_series(): string {
+		$fields = isset( $_POST['new_series'] ) && is_array( $_POST['new_series'] )
+			? wp_unslash( $_POST['new_series'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			: array();
+
+		$name = sanitize_text_field( (string) ( $fields['name'] ?? '' ) );
+		$slug = sanitize_title( (string) ( $fields['slug'] ?? '' ) );
+
+		if ( '' === $name || '' === $slug ) {
+			return '';
+		}
+
+		if ( $this->repo->find_series( $slug ) ) {
+			return sprintf(
+				/* translators: %s: series slug. */
+				__( 'A series with the slug "%s" already exists.', 'mvoc-streeto' ),
+				$slug
+			);
+		}
+
+		$year   = (int) ( $fields['category_year'] ?? 0 );
+		$config = new \MVOC\StreetO\Domain\Scoring_Config(
+			$year > 0 ? array( 'category_year' => $year ) : array()
+		);
+
+		$this->repo->ensure_series( $slug, $name, $config );
+
+		return sprintf(
+			/* translators: %s: series name. */
+			__( 'Created "%s".', 'mvoc-streeto' ),
+			$name
+		);
+	}
+
+	/**
+	 * Delete an event, refusing once results exist.
+	 *
+	 * @param int $event_id Event id.
+	 */
+	private function delete_event( int $event_id ): string {
+		$event = $this->repo->find_event_by_id( $event_id );
+		if ( ! $event ) {
+			return '';
+		}
+
+		if ( ! $this->repo->delete_event( $event_id ) ) {
+			return __( 'That event has results imported, so it was not deleted. Mark it Cancelled instead.', 'mvoc-streeto' );
+		}
+
+		return sprintf(
+			/* translators: %s: event title. */
+			__( 'Deleted "%s".', 'mvoc-streeto' ),
+			$event['title']
+		);
 	}
 
 	/**
@@ -381,7 +566,12 @@ class Events_Screen {
 					'venue'                   => $title ?: $event['venue'],
 					'event_date'              => sanitize_text_field( (string) ( $fields['event_date'] ?? '' ) ),
 					'organiser_competitor_id' => $this->resolve_organiser( $fields ),
-					'status'                  => $event['status'],
+					// A published event keeps its status: taking it back to
+					// draft is done on the review screen, deliberately, rather
+					// than as a side effect of saving a date.
+					'status'                  => $event['is_published']
+						? $event['status']
+						: $this->requested_status( $fields, (string) $event['status'] ),
 				)
 			);
 
@@ -406,6 +596,18 @@ class Events_Screen {
 			_n( 'Saved %d event.', 'Saved %d events.', $saved, 'mvoc-streeto' ),
 			$saved
 		);
+	}
+
+	/**
+	 * The status a submitted event should take.
+	 *
+	 * @param array<string,mixed> $fields   Submitted fields.
+	 * @param string              $fallback Current status.
+	 */
+	private function requested_status( array $fields, string $fallback ): string {
+		$status = sanitize_key( (string) ( $fields['status'] ?? '' ) );
+
+		return isset( self::STATUS_ACTIONS[ $status ] ) ? $status : $fallback;
 	}
 
 	/**
