@@ -184,13 +184,20 @@ class Importer {
 	 * runner joins the Over-55 category from the season it applies rather than
 	 * appearing in it across every season already published.
 	 *
-	 * An existing flag is left alone: the co-ordinator may have corrected it,
-	 * and MapRun's self-declared data should not overwrite a deliberate fix.
+	 * An existing flag is normally left alone: the co-ordinator may have
+	 * corrected it, and MapRun's self-declared data should not overwrite a
+	 * deliberate fix.
 	 *
-	 * @param int $event_id Event id.
-	 * @return int Flags newly recorded.
+	 * That guard cannot tell a deliberate correction from a value that was
+	 * only ever written by a bulk save, so `$force` exists to rebuild a
+	 * season's flags from MapRun when they are known to be wrong. It is never
+	 * automatic — overwriting someone's corrections has to be asked for.
+	 *
+	 * @param int  $event_id Event id.
+	 * @param bool $force    Overwrite flags that already exist.
+	 * @return int Flags recorded or changed.
 	 */
-	public function sync_categories( int $event_id ): int {
+	public function sync_categories( int $event_id, bool $force = false ): int {
 		$event = $this->events->find_event_by_id( $event_id );
 		if ( ! $event ) {
 			return 0;
@@ -207,16 +214,68 @@ class Importer {
 				continue;
 			}
 
+			$flag = (bool) $row['raw_is_over55'];
+
 			if ( array_key_exists( $competitor_id, $existing ) ) {
-				continue;
+				if ( ! $force || $existing[ $competitor_id ] === $flag ) {
+					continue;
+				}
 			}
 
-			$this->competitors->set_over55( $series_id, $competitor_id, (bool) $row['raw_is_over55'] );
-			$existing[ $competitor_id ] = (bool) $row['raw_is_over55'];
+			$this->competitors->set_over55( $series_id, $competitor_id, $flag );
+			$existing[ $competitor_id ] = $flag;
 			++$recorded;
 		}
 
 		return $recorded;
+	}
+
+	/**
+	 * Rebuild a season's Over-55 flags from what MapRun supplied.
+	 *
+	 * The recovery path when the flags are wrong — after a schema change, or a
+	 * bulk save that wrote a value for everyone. It reads what was stored at
+	 * import, so events imported before MapRun's age data was being kept need
+	 * re-importing first; how many rows carry it is reported by
+	 * maprun_age_coverage() so that is visible rather than guessed at.
+	 *
+	 * @param int $series_id Series id.
+	 * @return int Flags changed.
+	 */
+	public function refresh_categories( int $series_id ): int {
+		$changed = 0;
+
+		foreach ( $this->events->events( $series_id ) as $event ) {
+			$changed += $this->sync_categories( (int) $event['id'], true );
+		}
+
+		return $changed;
+	}
+
+	/**
+	 * How many of a season's result rows carry MapRun's age data.
+	 *
+	 * @param int $series_id Series id.
+	 * @return array{with:int,total:int}
+	 */
+	public function maprun_age_coverage( int $series_id ): array {
+		$with  = 0;
+		$total = 0;
+
+		foreach ( $this->events->events( $series_id ) as $event ) {
+			foreach ( $this->results->for_event( (int) $event['id'] ) as $row ) {
+				++$total;
+
+				if ( null !== $row['raw_is_over55'] ) {
+					++$with;
+				}
+			}
+		}
+
+		return array(
+			'with'  => $with,
+			'total' => $total,
+		);
 	}
 
 	/**

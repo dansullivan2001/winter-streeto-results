@@ -7,6 +7,7 @@
 
 namespace MVOC\StreetO\Admin;
 
+use MVOC\StreetO\Importer;
 use MVOC\StreetO\Plugin;
 use MVOC\StreetO\Repo\Competitors_Repo;
 use MVOC\StreetO\Repo\Events_Repo;
@@ -60,6 +61,37 @@ class Competitors_Screen {
 			<p class="description">
 				<?php esc_html_e( 'Ladies belongs to the person. Over-55 belongs to the season, because everybody\'s age changes every year — so it is shown and edited for one season at a time, and correcting it never disturbs a season already published.', 'mvoc-streeto' ); ?>
 			</p>
+
+			<?php if ( $series ) : ?>
+				<?php $coverage = ( new Importer() )->maprun_age_coverage( (int) $series['id'] ); ?>
+				<form method="post" style="margin:1em 0;padding:0.75em;border:1px solid #ccd0d4;background:#fff;">
+					<?php wp_nonce_field( self::NONCE ); ?>
+					<input type="hidden" name="series_slug" value="<?php echo esc_attr( $series['slug'] ); ?>" />
+					<strong><?php esc_html_e( 'Rebuild Over-55 from MapRun', 'mvoc-streeto' ); ?></strong>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: 1: rows carrying MapRun age data, 2: total rows in the season. */
+							esc_html__( 'MapRun age data is stored on %1$d of this season\'s %2$d result rows.', 'mvoc-streeto' ),
+							(int) $coverage['with'],
+							(int) $coverage['total']
+						);
+						?>
+						<?php if ( $coverage['with'] < $coverage['total'] ) : ?>
+							<br />
+							<?php esc_html_e( 'Rows imported before the plugin began keeping it carry none. Re-import those events first — re-importing is safe and keeps every correction — then rebuild.', 'mvoc-streeto' ); ?>
+						<?php endif; ?>
+					</p>
+					<p>
+						<button type="submit" name="mvoc_streeto_action" value="refresh_over55" class="button"
+							<?php disabled( 0 === $coverage['with'] ); ?>
+							onclick="return confirm('<?php echo esc_js( __( 'Rebuild this season\'s Over-55 flags from MapRun? Any you have corrected by hand will be overwritten.', 'mvoc-streeto' ) ); ?>');">
+							<?php esc_html_e( 'Rebuild from MapRun', 'mvoc-streeto' ); ?>
+						</button>
+						<span class="description"><?php esc_html_e( 'Overwrites manual corrections for this season only.', 'mvoc-streeto' ); ?></span>
+					</p>
+				</form>
+			<?php endif; ?>
 
 			<?php if ( $all_series ) : ?>
 				<form method="get" style="margin:1em 0;">
@@ -172,6 +204,28 @@ class Competitors_Screen {
 		}
 
 		check_admin_referer( self::NONCE );
+
+		$action = sanitize_key( wp_unslash( $_POST['mvoc_streeto_action'] ) );
+
+		if ( 'refresh_over55' === $action ) {
+			if ( ! $series ) {
+				return '';
+			}
+
+			$changed = ( new Importer() )->refresh_categories( (int) $series['id'] );
+
+			return sprintf(
+				/* translators: 1: number of flags changed, 2: series name. */
+				_n(
+					'Rebuilt %1$d Over-55 flag for %2$s from MapRun.',
+					'Rebuilt %1$d Over-55 flags for %2$s from MapRun.',
+					$changed,
+					'mvoc-streeto'
+				),
+				$changed,
+				$series['name']
+			);
+		}
 
 		$female = $this->checkbox_ids( 'is_female' );
 		$over55 = $this->checkbox_ids( 'is_over55' );
