@@ -33,8 +33,11 @@ class Schema {
 	 *    added here), plus results.is_withdrawn and events.published_at.
 	 *    resolved_penalty becomes nullable so that a penalty corrected *to*
 	 *    zero is distinguishable from no correction at all.
+	 * 4: results.raw_year_of_birth. Without it the Over-55 category could not
+	 *    be derived when creating a competitor from an already-imported row,
+	 *    because MapRun's YearOfBirth was parsed and then thrown away.
 	 */
-	public const DB_VERSION = 3;
+	public const DB_VERSION = 4;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -206,6 +209,7 @@ class Schema {
 			raw_surname varchar(100) NOT NULL DEFAULT '',
 			raw_club varchar(100) NOT NULL DEFAULT '',
 			raw_gender varchar(10) NOT NULL DEFAULT '',
+			raw_year_of_birth smallint(5) unsigned NULL,
 			classifier varchar(20) NOT NULL DEFAULT '',
 			course_label varchar(20) NOT NULL DEFAULT '',
 			raw_score int(11) NULL,

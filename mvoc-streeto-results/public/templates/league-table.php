@@ -19,6 +19,12 @@ defined( 'ABSPATH' ) || exit;
 	data-collapse-label="<?php esc_attr_e( 'Hide scores', 'mvoc-streeto' ); ?>">
 	<h3 class="mvoc-streeto-league-heading"><?php echo esc_html( $model['label'] ); ?></h3>
 
+	<?php if ( ! empty( $model['includes_drafts'] ) ) : ?>
+		<p class="mvoc-streeto-draft">
+			<?php esc_html_e( 'Includes unpublished events — visible only to you. Visitors see the published events only.', 'mvoc-streeto' ); ?>
+		</p>
+	<?php endif; ?>
+
 	<table class="mvoc-streeto-table mvoc-streeto-league-table">
 		<thead>
 			<tr>

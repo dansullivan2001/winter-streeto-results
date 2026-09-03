@@ -2,10 +2,15 @@
 /**
  * Unmatched-names queue: confirm who each new MapRun name belongs to.
  *
- * This is the screen that replaces the spreadsheet's "League Check" column,
- * where the co-ordinator counted name occurrences by eye to spot mismatches.
- * Every confirmation here is stored as an alias, so a spelling is decided once
- * and then resolves silently at every later event.
+ * This replaces the spreadsheet's "League Check" column, where the co-ordinator
+ * counted name occurrences by eye to spot mismatches. Every confirmation here
+ * is stored as an alias, so a spelling is decided once and resolves silently at
+ * every later event.
+ *
+ * Names come from the rows already imported against an event, not from a fresh
+ * fetch: the data is in hand by the time anyone reaches this screen, so asking
+ * MapRun again would be slower, would need the network, and could disagree with
+ * what is actually stored.
  *
  * Nothing is ever pre-selected, however strong the suggestion. A wrong merge
  * hands one runner another's league points, and that is a worse failure than
@@ -19,15 +24,15 @@ namespace MVOC\StreetO\Admin;
 use MVOC\StreetO\Domain\Competitor_Registry;
 use MVOC\StreetO\Domain\Name_Matcher;
 use MVOC\StreetO\Importer;
-use MVOC\StreetO\MapRun\Client;
-use MVOC\StreetO\MapRun\Parser;
 use MVOC\StreetO\Plugin;
 use MVOC\StreetO\Repo\Competitors_Repo;
+use MVOC\StreetO\Repo\Events_Repo;
+use MVOC\StreetO\Repo\Results_Repo;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Fetches an event and queues its unrecognised names for confirmation.
+ * Queues an event's unrecognised names for confirmation.
  */
 class Unmatched_Screen {
 
@@ -37,13 +42,26 @@ class Unmatched_Screen {
 
 	private Competitor_Registry $registry;
 
+	private Events_Repo $events;
+
+	private Results_Repo $results;
+
 	/**
 	 * @param Competitors_Repo|null    $repo     Competitor persistence.
 	 * @param Competitor_Registry|null $registry Resolution logic.
+	 * @param Events_Repo|null         $events   Events persistence.
+	 * @param Results_Repo|null        $results  Results persistence.
 	 */
-	public function __construct( ?Competitors_Repo $repo = null, ?Competitor_Registry $registry = null ) {
+	public function __construct(
+		?Competitors_Repo $repo = null,
+		?Competitor_Registry $registry = null,
+		?Events_Repo $events = null,
+		?Results_Repo $results = null
+	) {
 		$this->repo     = $repo ?? new Competitors_Repo();
 		$this->registry = $registry ?? new Competitor_Registry();
+		$this->events   = $events ?? new Events_Repo();
+		$this->results  = $results ?? new Results_Repo();
 	}
 
 	/**
@@ -54,84 +72,75 @@ class Unmatched_Screen {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'mvoc-streeto' ) );
 		}
 
-		$event_name = '';
-		$pasted     = '';
-		$error      = '';
-		$warning    = '';
-		$notice     = '';
-		$unmatched  = array();
-		$resolved   = 0;
+		$notice = '';
 
 		if ( isset( $_POST['mvoc_streeto_action'] ) ) {
 			check_admin_referer( self::NONCE );
+			$notice = $this->confirm_choices();
+		}
 
-			$action     = sanitize_key( wp_unslash( $_POST['mvoc_streeto_action'] ) );
-			$event_name = isset( $_POST['event_name'] ) ? sanitize_text_field( wp_unslash( $_POST['event_name'] ) ) : '';
-			// Not sanitised as text: that would mangle the JSON. Validated by decoding.
-			$pasted = isset( $_POST['pasted_json'] ) ? trim( wp_unslash( $_POST['pasted_json'] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$events   = $this->all_events();
+		$event_id = $this->selected_event_id( $events );
+		$event    = $event_id ? $this->events->find_event_by_id( $event_id ) : null;
 
-			if ( 'confirm' === $action ) {
-				$notice = $this->confirm_choices();
-			}
+		$unmatched = array();
+		$resolved  = 0;
 
-			try {
-				$rows = $this->load_rows( $action, $event_name, $pasted, $warning );
-
-				if ( null !== $rows ) {
-					$result    = $this->registry->resolve( $rows, $this->repo->all(), $this->repo->aliases() );
-					$unmatched = $result['unmatched'];
-					$resolved  = count( $result['rows'] ) - count( $unmatched );
-				}
-			} catch ( \RuntimeException $e ) {
-				$error = $e->getMessage();
-			}
+		if ( $event ) {
+			$result    = $this->resolve_event( $event_id );
+			$unmatched = $result['unmatched'];
+			$resolved  = $result['resolved'];
 		}
 
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Confirm names', 'mvoc-streeto' ); ?></h1>
 			<p class="description">
-				<?php esc_html_e( 'Load an event and tell the plugin who each unrecognised name belongs to. Each answer is remembered, so a spelling is only ever asked about once.', 'mvoc-streeto' ); ?>
+				<?php esc_html_e( 'Tell the plugin who each unrecognised name belongs to. Each answer is remembered, so a spelling is only ever asked about once.', 'mvoc-streeto' ); ?>
 			</p>
 
 			<?php if ( $notice ) : ?>
 				<div class="notice notice-success"><p><?php echo esc_html( $notice ); ?></p></div>
 			<?php endif; ?>
 
-			<?php if ( $error ) : ?>
-				<div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div>
-			<?php endif; ?>
-
-			<?php if ( $warning ) : ?>
-				<div class="notice notice-warning">
-					<p><strong><?php esc_html_e( 'MapRun warning:', 'mvoc-streeto' ); ?></strong> <?php echo esc_html( $warning ); ?></p>
+			<?php if ( ! $events ) : ?>
+				<p><?php esc_html_e( 'No events yet. Create the series first, then import an event.', 'mvoc-streeto' ); ?></p>
 				</div>
-			<?php endif; ?>
+				<?php
+				return;
+			endif;
+			?>
+
+			<form method="get">
+				<input type="hidden" name="page" value="<?php echo esc_attr( Admin_Menu::SLUG . '-names' ); ?>" />
+				<p>
+					<label for="mvoc-event">
+						<?php esc_html_e( 'Event', 'mvoc-streeto' ); ?>
+					</label>
+					<select id="mvoc-event" name="event" onchange="this.form.submit()">
+						<?php foreach ( $events as $option ) : ?>
+							<option value="<?php echo esc_attr( (string) $option['id'] ); ?>"
+								<?php selected( $event_id, (int) $option['id'] ); ?>>
+								<?php
+								printf(
+									'%d. %s%s',
+									(int) $option['event_number'],
+									esc_html( $option['title'] ),
+									$option['imported'] ? '' : esc_html__( ' — not imported', 'mvoc-streeto' )
+								);
+								?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<noscript>
+						<button type="submit" class="button"><?php esc_html_e( 'Go', 'mvoc-streeto' ); ?></button>
+					</noscript>
+				</p>
+			</form>
 
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE ); ?>
-
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="mvoc-event-name"><?php esc_html_e( 'MapRun event name', 'mvoc-streeto' ); ?></label></th>
-						<td>
-							<input type="text" id="mvoc-event-name" name="event_name" class="regular-text"
-								value="<?php echo esc_attr( $event_name ); ?>" />
-							<button type="submit" name="mvoc_streeto_action" value="fetch" class="button button-primary">
-								<?php esc_html_e( 'Load', 'mvoc-streeto' ); ?>
-							</button>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="mvoc-pasted-json"><?php esc_html_e( 'Or paste JSON', 'mvoc-streeto' ); ?></label></th>
-						<td>
-							<textarea id="mvoc-pasted-json" name="pasted_json" rows="4" class="large-text code"><?php echo esc_textarea( $pasted ); ?></textarea>
-							<button type="submit" name="mvoc_streeto_action" value="paste" class="button">
-								<?php esc_html_e( 'Load pasted JSON', 'mvoc-streeto' ); ?>
-							</button>
-						</td>
-					</tr>
-				</table>
+				<input type="hidden" name="event" value="<?php echo esc_attr( (string) $event_id ); ?>" />
 
 				<?php if ( $unmatched ) : ?>
 					<h2>
@@ -169,10 +178,122 @@ class Unmatched_Screen {
 							?>
 						</p>
 					</div>
+				<?php else : ?>
+					<p><?php esc_html_e( 'Nothing imported for this event yet.', 'mvoc-streeto' ); ?></p>
 				<?php endif; ?>
 			</form>
+
+			<?php if ( $event ) : ?>
+				<p>
+					<a href="<?php echo esc_url( $this->review_url( $event_id ) ); ?>">
+						<?php esc_html_e( '&larr; Back to the event results', 'mvoc-streeto' ); ?>
+					</a>
+				</p>
+			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Every event, flagged with whether anything has been imported for it.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function all_events(): array {
+		$events = array();
+
+		foreach ( $this->events->all_series() as $series ) {
+			foreach ( $this->events->events( (int) $series['id'] ) as $event ) {
+				$event['imported'] = (bool) $this->results->for_event( (int) $event['id'] );
+				$events[]          = $event;
+			}
+		}
+
+		return $events;
+	}
+
+	/**
+	 * Which event to show: the one asked for, else the last one imported.
+	 *
+	 * Defaulting to the most recent import means arriving here from a fresh
+	 * import lands on the right event without a query string.
+	 *
+	 * @param array<int,array<string,mixed>> $events Events with import flags.
+	 */
+	private function selected_event_id( array $events ): int {
+		$requested = isset( $_GET['event'] ) ? (int) $_GET['event'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( ! $requested && isset( $_POST['event'] ) ) {
+			$requested = (int) $_POST['event']; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
+		if ( $requested ) {
+			return $requested;
+		}
+
+		$imported = array_values( array_filter( $events, static fn( array $e ): bool => $e['imported'] ) );
+		$last     = end( $imported );
+
+		return $last ? (int) $last['id'] : (int) ( $events[0]['id'] ?? 0 );
+	}
+
+	/**
+	 * Resolve an event's stored rows against the registry.
+	 *
+	 * @param int $event_id Event id.
+	 * @return array{unmatched:array<int,array<string,mixed>>,resolved:int}
+	 */
+	private function resolve_event( int $event_id ): array {
+		$rows = array();
+
+		foreach ( $this->results->for_event( $event_id ) as $row ) {
+			$effective = Results_Repo::effective( $row );
+
+			// Withdrawn rows are no longer in MapRun, so confirming a name for
+			// one would be busywork over a result that will not be published.
+			if ( $effective['is_withdrawn'] ) {
+				continue;
+			}
+
+			$rows[] = array(
+				'first_name'    => $row['raw_first_name'],
+				'surname'       => $row['raw_surname'],
+				'display_name'  => $effective['display_name'],
+				'club'          => $row['raw_club'],
+				'gender'        => $row['raw_gender'],
+				'year_of_birth' => $row['raw_year_of_birth'] ? (int) $row['raw_year_of_birth'] : null,
+				'competitor_id' => $row['competitor_id'],
+			);
+		}
+
+		$result = $this->registry->resolve( $rows, $this->repo->all(), $this->repo->aliases() );
+
+		$resolved = 0;
+		foreach ( $result['rows'] as $row ) {
+			if ( $row['competitor_id'] ) {
+				++$resolved;
+			}
+		}
+
+		return array(
+			'unmatched' => $result['unmatched'],
+			'resolved'  => $resolved,
+		);
+	}
+
+	/**
+	 * Admin URL for an event's review screen.
+	 *
+	 * @param int $event_id Event id.
+	 */
+	private function review_url( int $event_id ): string {
+		return add_query_arg(
+			array(
+				'page'  => Admin_Menu::SLUG . '-review',
+				'event' => $event_id,
+			),
+			admin_url( 'admin.php' )
+		);
 	}
 
 	/**
@@ -201,8 +322,7 @@ class Unmatched_Screen {
 			</h3>
 
 			<?php
-			// Carried through the form so that confirming does not depend on
-			// MapRun being reachable a second time.
+			// Carried through the form so confirming needs no second lookup.
 			$proposed = $entry['proposed'];
 			$base     = 'proposed[' . $key . ']';
 			foreach ( array( 'first_name', 'surname', 'display_name', 'club' ) as $plain ) :
@@ -236,8 +356,8 @@ class Unmatched_Screen {
 							sprintf(
 								/* translators: 1: Ladies yes/no, 2: Over-55 yes/no. */
 								__( '(Ladies: %1$s, Over 55: %2$s — from MapRun, editable afterwards)', 'mvoc-streeto' ),
-								$entry['proposed']['is_female'] ? __( 'yes', 'mvoc-streeto' ) : __( 'no', 'mvoc-streeto' ),
-								$entry['proposed']['is_over55'] ? __( 'yes', 'mvoc-streeto' ) : __( 'no', 'mvoc-streeto' )
+								$proposed['is_female'] ? __( 'yes', 'mvoc-streeto' ) : __( 'no', 'mvoc-streeto' ),
+								$proposed['is_over55'] ? __( 'yes', 'mvoc-streeto' ) : __( 'no', 'mvoc-streeto' )
 							)
 						);
 						?>
@@ -276,37 +396,7 @@ class Unmatched_Screen {
 	}
 
 	/**
-	 * Load rows for the requested action, or null when none was asked for.
-	 *
-	 * @param string $action     Submitted action.
-	 * @param string $event_name MapRun event name.
-	 * @param string $pasted     Pasted JSON.
-	 * @param string $warning    Warning message, set by reference.
-	 * @return array<int,array<string,mixed>>|null
-	 * @throws \RuntimeException On a bad fetch or payload.
-	 */
-	private function load_rows( string $action, string $event_name, string $pasted, string &$warning ): ?array {
-		$client = new Client();
-
-		if ( 'fetch' === $action && '' !== $event_name ) {
-			$result = $client->fetch( $event_name );
-		} elseif ( 'paste' === $action && '' !== $pasted ) {
-			$result = $client->ingest( $pasted );
-		} else {
-			return null;
-		}
-
-		$warning = (string) ( $result['warning'] ?? '' );
-
-		return ( new Parser() )->parse( $result['rows'], '60' );
-	}
-
-	/**
 	 * Apply the co-ordinator's choices, returning a notice.
-	 *
-	 * Choices are keyed by alias key, and each is either a competitor id to
-	 * link the spelling to, or "new" to create a competitor from the MapRun
-	 * details. An empty value means "decide later" and is skipped.
 	 */
 	private function confirm_choices(): string {
 		if ( ! isset( $_POST['choice'] ) || ! is_array( $_POST['choice'] ) ) {
@@ -360,9 +450,6 @@ class Unmatched_Screen {
 
 	/**
 	 * Competitor details for names chosen as "new", keyed by alias key.
-	 *
-	 * Carried through the form rather than re-fetched, so confirming does not
-	 * depend on MapRun being reachable a second time.
 	 *
 	 * @return array<string,array<string,mixed>>
 	 */

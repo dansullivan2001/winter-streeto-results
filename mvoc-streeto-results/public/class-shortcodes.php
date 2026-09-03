@@ -168,34 +168,55 @@ class Shortcodes {
 	 * @return array<string,mixed>
 	 */
 	private function league_model( array $series, string $category ): array {
-		$published = array_values(
+		// An event still in draft is visible to whoever could publish it, and
+		// the league has to agree: showing a draft event's results next to a
+		// league that ignores them made the two tables contradict each other
+		// on the same page.
+		$previewing = current_user_can( Plugin::CAPABILITY );
+
+		$events = array_values(
 			array_filter(
 				$this->events->events( $series['id'] ),
-				static fn( array $event ): bool => $event['is_published']
+				static fn( array $event ): bool => $event['is_published'] || $previewing
 			)
 		);
 
-		// Keyed on the latest publish so the cache clears itself the moment an
-		// event goes live, without needing to remember to flush anything.
-		$stamp = '';
-		foreach ( $published as $event ) {
-			$stamp = max( $stamp, (string) ( $event['published_at'] ?? '' ) );
-		}
+		$model = null;
+		$key   = '';
 
-		$key    = self::CACHE_PREFIX . 'league_' . md5( $series['slug'] . '|' . $category . '|' . $stamp );
-		$cached = get_transient( $key );
+		// A preview is never cached. Sharing a cache entry with the public
+		// version would be a way to leak unpublished results to visitors, and
+		// no amount of key-juggling is worth that risk for one admin page view.
+		if ( ! $previewing ) {
+			// Keyed on the latest publish so the cache clears itself the moment
+			// an event goes live, without anyone remembering to flush it.
+			$stamp = '';
+			foreach ( $events as $event ) {
+				$stamp = max( $stamp, (string) ( $event['published_at'] ?? '' ) );
+			}
 
-		if ( is_array( $cached ) ) {
-			return $cached;
+			$key    = self::CACHE_PREFIX . 'league_' . md5( $series['slug'] . '|' . $category . '|' . $stamp );
+			$cached = get_transient( $key );
+
+			if ( is_array( $cached ) ) {
+				return $cached;
+			}
 		}
 
 		$model = ( new League_Presenter() )->present(
-			$this->standings( $series, $published ),
-			array_map( static fn( array $event ): string => (string) $event['title'], $published ),
+			$this->standings( $series, $events ),
+			array_map( static fn( array $event ): string => (string) $event['title'], $events ),
 			$category
 		);
 
-		set_transient( $key, $model, DAY_IN_SECONDS );
+		$model['includes_drafts'] = $previewing && (bool) array_filter(
+			$events,
+			static fn( array $event ): bool => ! $event['is_published']
+		);
+
+		if ( ! $previewing ) {
+			set_transient( $key, $model, DAY_IN_SECONDS );
+		}
 
 		return $model;
 	}
