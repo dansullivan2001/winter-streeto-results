@@ -234,6 +234,8 @@ class Results_Repo {
 	 * @param array<string,mixed> $row             Name, score, penalty, course.
 	 */
 	public function add_manual( int $event_id, int $event_source_id, array $row ): int {
+		// An event MapRun cannot score has no source at all, so zero is a
+		// legitimate value here rather than a missing one.
 		global $wpdb;
 
 		$score   = isset( $row['score'] ) ? (int) $row['score'] : null;
