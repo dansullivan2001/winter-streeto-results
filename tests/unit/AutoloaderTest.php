@@ -48,6 +48,8 @@ class AutoloaderTest extends TestCase {
 			array( \MVOC\StreetO\Repo\Results_Repo::class ),
 			array( \MVOC\StreetO\Importer::class ),
 			array( \MVOC\StreetO\Front\Shortcodes::class ),
+			array( \MVOC\StreetO\Admin\Events_Screen::class ),
+			array( \MVOC\StreetO\Admin\Event_Review_Screen::class ),
 			array( \MVOC\StreetO\Admin\Admin_Menu::class ),
 			array( \MVOC\StreetO\Admin\MapRun_Explorer_Screen::class ),
 		);
