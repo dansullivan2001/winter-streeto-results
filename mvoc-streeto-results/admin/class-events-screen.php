@@ -205,12 +205,12 @@ class Events_Screen {
 										value="<?php echo esc_attr( (string) $event['event_date'] ); ?>" />
 								</td>
 								<td>
-									<input type="text" class="regular-text"
+									<input type="text" style="width:16em"
 										name="<?php echo esc_attr( $field . '[title]' ); ?>"
 										value="<?php echo esc_attr( (string) $event['title'] ); ?>" />
 								</td>
 								<td>
-									<select name="<?php echo esc_attr( $field . '[organiser]' ); ?>">
+									<select style="width:12em" name="<?php echo esc_attr( $field . '[organiser]' ); ?>">
 										<option value="0"><?php esc_html_e( '— none —', 'mvoc-streeto' ); ?></option>
 										<?php foreach ( $competitors as $competitor ) : ?>
 											<option value="<?php echo esc_attr( (string) $competitor['id'] ); ?>"
@@ -220,7 +220,7 @@ class Events_Screen {
 										<?php endforeach; ?>
 									</select>
 									<br />
-									<input type="text" class="regular-text"
+									<input type="text" style="width:12em"
 										name="<?php echo esc_attr( $field . '[organiser_name]' ); ?>"
 										placeholder="<?php esc_attr_e( 'or type a name', 'mvoc-streeto' ); ?>" />
 								</td>
@@ -233,7 +233,7 @@ class Events_Screen {
 									);
 									?>
 									<td>
-										<input type="text" class="regular-text"
+										<input type="text" style="width:20em"
 											autocomplete="off" data-lpignore="true"
 											name="<?php echo esc_attr( $field . '[source_' . $course . ']' ); ?>"
 											value="<?php echo esc_attr( $sources[ $course ] ?? '' ); ?>"
