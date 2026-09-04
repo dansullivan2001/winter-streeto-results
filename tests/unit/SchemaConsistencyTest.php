@@ -33,14 +33,18 @@ class SchemaConsistencyTest extends TestCase {
 			dirname( __DIR__, 2 ) . '/mvoc-streeto-results/includes/class-schema.php'
 		);
 
-		// Each table is written as:  $table = self::table( 'name' );
-		// followed by a CREATE TABLE block using that variable.
-		preg_match_all(
-			"/self::table\(\s*'([a-z_]+)'\s*\).*?CREATE TABLE \{\\\$table\} \((.*?)\)\s*\{\\\$charset\}/s",
-			$source,
-			$matches,
-			PREG_SET_ORDER
-		);
+		// Each definition is written as:
+		//
+		//     $table = self::table( 'name' );
+		//     $sql[] = "CREATE TABLE {$table} ( ... ) {$charset};";
+		//
+		// Both halves are required. Matching on self::table() alone paired a
+		// call made elsewhere - the migration that collapses duplicate sources
+		// - with the next CREATE block, silently swallowing a table.
+		$pattern = '/\$table\s*=\s*self::table\(\s*\'([a-z_]+)\'\s*\);\s*'
+			. '\$sql\[\]\s*=\s*"CREATE TABLE \{\$table\} \((.*?)\)\s*\{\$charset\}/s';
+
+		preg_match_all( $pattern, $source, $matches, PREG_SET_ORDER );
 
 		$tables = array();
 
@@ -80,11 +84,20 @@ class SchemaConsistencyTest extends TestCase {
 	 * other assertion here would pass vacuously.
 	 */
 	public function test_every_declared_table_is_found(): void {
-		$tables = $this->schema_columns();
+		// Compared as sets, not sequences: Schema::table() is called outside
+		// the CREATE TABLE definitions too - by the migration that collapses
+		// duplicates, for one - so the order the parser meets them in is not
+		// the order they are declared, and pinning it would fail for reasons
+		// that say nothing about the schema.
+		$found    = array_keys( $this->schema_columns() );
+		$declared = \MVOC\StreetO\Schema::table_names();
+
+		sort( $found );
+		sort( $declared );
 
 		$this->assertSame(
-			\MVOC\StreetO\Schema::table_names(),
-			array_keys( $tables ),
+			$declared,
+			$found,
 			'The schema parser and Schema::table_names() disagree.'
 		);
 	}

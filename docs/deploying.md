@@ -64,6 +64,13 @@ picked up.
 
 ## Releasing an update
 
+0. Run every check, and do not proceed unless it passes:
+   ```sh
+   ./tools/verify.sh ~/Local\ Sites/mvoc/app/public
+   ```
+   One command that exits non-zero if anything fails. v0.3.3 went out with a
+   failing test because the checks were run individually and the failure
+   scrolled past.
 1. Bump `Version:` in `mvoc-streeto-results/mvoc-streeto-results.php` (both the header comment
    and the `MVOC_STREETO_VERSION` constant) — every change that reaches the live site needs a
    new version, even a small fix, or WordPress has nothing to compare against and the update
