@@ -73,6 +73,8 @@ class Events_Screen {
 				<div class="notice notice-success"><p><?php echo esc_html( $notice ); ?></p></div>
 			<?php endif; ?>
 
+			<?php $this->render_diagnostics( $series ); ?>
+
 			<?php $this->render_series_bar( $all_series, $series ); ?>
 
 			<?php if ( ! $series ) : ?>
@@ -340,6 +342,91 @@ class Events_Screen {
 		</div>
 		<?php
 	}
+
+	/**
+	 * A readout of what the last submission actually contained.
+	 *
+	 * Off unless ?mvoc_debug=1 is on the URL. It exists because a report of
+	 * "clearing a MapRun name does not save" could not be reproduced here -
+	 * not through the repository, the save handler, or a full render with a
+	 * real POST - so the next useful thing is to see what the server on the
+	 * affected site is actually receiving.
+	 *
+	 * @param array<string,mixed>|null $series The series being edited.
+	 */
+	private function render_diagnostics( ?array $series ): void {
+		if ( ! isset( $_GET['mvoc_debug'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+
+		$lines = array();
+
+		$lines[] = 'plugin version   : ' . MVOC_STREETO_VERSION;
+		$lines[] = 'request method   : ' . sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ?? '?' ) );
+		$lines[] = 'action received  : ' . ( isset( $_POST['mvoc_streeto_action'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			? '"' . sanitize_key( wp_unslash( $_POST['mvoc_streeto_action'] ) ) . '"' // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			: '(none - no action was posted)' );
+		$lines[] = 'series_slug post : ' . ( isset( $_POST['series_slug'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			? '"' . sanitize_title( wp_unslash( $_POST['series_slug'] ) ) . '"' // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			: '(none)' );
+		$lines[] = 'series resolved  : ' . ( $series ? '"' . $series['slug'] . '" id=' . $series['id'] : '(none)' );
+		$lines[] = '';
+
+		if ( isset( $_POST['events'] ) && is_array( $_POST['events'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$lines[] = 'source fields as received:';
+
+			foreach ( wp_unslash( $_POST['events'] ) as $number => $fields ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+				if ( ! is_array( $fields ) ) {
+					continue;
+				}
+
+				foreach ( array( '60', '40' ) as $course ) {
+					$key = 'source_' . $course;
+
+					$lines[] = sprintf(
+						'  event %-2s %s : %s',
+						(int) $number,
+						$key,
+						array_key_exists( $key, $fields )
+							? '"' . sanitize_text_field( (string) $fields[ $key ] ) . '"'
+							: '(KEY ABSENT - the browser did not send this field)'
+					);
+				}
+			}
+		} else {
+			$lines[] = 'source fields as received: (no events posted)';
+		}
+
+		$lines[] = '';
+		$lines[] = 'stored now:';
+
+		if ( $series ) {
+			foreach ( $this->repo->events( (int) $series['id'] ) as $event ) {
+				$sources = $this->repo->sources( (int) $event['id'] );
+
+				$lines[] = sprintf(
+					'  event %-2s : %s',
+					(int) $event['event_number'],
+					$sources
+						? implode(
+							', ',
+							array_map(
+								static fn( array $s ): string => $s['course_label'] . '="' . $s['maprun_event_name'] . '"',
+								$sources
+							)
+						)
+						: '(none)'
+				);
+			}
+		}
+
+		printf(
+			'<div class="notice notice-info"><p><strong>%s</strong></p><pre style="overflow:auto;font-size:12px;">%s</pre></div>',
+			esc_html__( 'Diagnostics', 'mvoc-streeto' ),
+			esc_html( implode( "\n", $lines ) )
+		);
+	}
+
 
 	/**
 	 * The series being edited: the one asked for, else the most recent.
