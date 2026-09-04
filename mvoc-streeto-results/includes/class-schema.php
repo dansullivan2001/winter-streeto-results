@@ -38,12 +38,16 @@ class Schema {
 	 *    because MapRun's YearOfBirth was parsed and then thrown away.
 	 * 5: series.is_active, so a shortcode can name the current season without
 	 *    every page having to be edited when the season rolls over.
+	 * 7: event_sources gains a unique key on (event_id, course_label). Without
+	 *    it a second row for the same course could exist, and clearing a name
+	 *    would delete one and leave the other - which looks exactly like the
+	 *    save being ignored.
 	 * 6: no birth year is stored anywhere. Over-55 is derived from MapRun at
 	 *    import and kept as a flag per season in series_competitors, so an
 	 *    ageing runner joins the category from the season it applies rather
 	 *    than retroactively across every season already published.
 	 */
-	public const DB_VERSION = 6;
+	public const DB_VERSION = 7;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -80,6 +84,11 @@ class Schema {
 	public static function install(): void {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
+		// A unique key cannot be added over existing duplicates, so any are
+		// collapsed first - keeping the newest, which is what a co-ordinator
+		// most recently typed.
+		self::deduplicate_event_sources();
+
 		foreach ( self::definitions() as $sql ) {
 			dbDelta( $sql );
 		}
@@ -87,6 +96,41 @@ class Schema {
 		self::drop_retired_columns();
 
 		update_option( self::OPTION_DB_VERSION, self::DB_VERSION );
+	}
+
+	/**
+	 * Collapse duplicate MapRun sources for the same event and course.
+	 *
+	 * Runs before dbDelta so the unique key added in v7 can be applied. Keeps
+	 * the highest id, on the basis that it is the most recent thing entered.
+	 */
+	private static function deduplicate_event_sources(): void {
+		global $wpdb;
+
+		$table = self::table( 'event_sources' );
+
+		if ( ! $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+			return;
+		}
+
+		$duplicates = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"SELECT event_id, course_label, MAX(id) AS keep
+			 FROM `{$table}`
+			 GROUP BY event_id, course_label
+			 HAVING COUNT(*) > 1", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		foreach ( $duplicates ?: array() as $row ) {
+			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$wpdb->prepare(
+					"DELETE FROM `{$table}` WHERE event_id = %d AND course_label = %s AND id <> %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$row['event_id'],
+					$row['course_label'],
+					$row['keep']
+				)
+			);
+		}
 	}
 
 	/**
@@ -197,7 +241,8 @@ class Schema {
 			maprun_event_name varchar(255) NOT NULL,
 			course_label varchar(20) NOT NULL,
 			PRIMARY KEY  (id),
-			KEY event_id (event_id)
+			KEY event_id (event_id),
+			UNIQUE KEY event_course (event_id,course_label)
 		) {$charset};";
 
 		// Immutable snapshot of a MapRun response. Never updated, only inserted.
