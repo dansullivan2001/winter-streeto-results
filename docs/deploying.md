@@ -124,6 +124,18 @@ mangled in transit. None were visible without WordPress actually running.
 
 Worth running all three before any deploy.
 
+## If a MapRun event has to be replaced
+
+It happens: an event is found to be faulty and a corrected version is uploaded, which is why
+one of last season's is named "Dork v2". Point the plugin at the new name on the Series and
+events screen and re-import.
+
+If that happens *after* results have already come in, the new event carries entirely
+different MapRun ids. Nothing is lost: the old rows are withdrawn rather than deleted, so
+they keep their corrections and stay visible on the review screen flagged "not in the latest
+import", and the new rows are added alongside. Anyone who ran only under the old event drops
+off the published table until you decide what to do with them — visibly, not silently.
+
 ## The test that matters most
 
 Import, make a correction, then **import again** and check the correction is still there.

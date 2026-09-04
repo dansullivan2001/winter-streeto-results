@@ -41,9 +41,11 @@ class MapRunNameTest extends TestCase {
 			array( 'Carshalton', '2025-11-18', 'Carshalton Nov25 PXAS ScoreQ60' ),
 			array( 'Ashtead', '2025-12-16', 'Ashtead Dec25 PXAS ScoreQ60' ),
 			array( 'Esher', '2026-01-20', 'Esher Jan26 PXAS ScoreQ60' ),
-			// "Dork v2" is what was actually used - an abbreviated venue with a
-			// version suffix. The venue is free text and the plugin passes it
-			// through, so an unusual one is reproduced rather than corrected.
+			// "Dork v2" is what was actually used: the original MapRun event
+			// had a fault and a corrected version was uploaded before the
+			// night. So the suffix is a recovery, not a naming habit - but it
+			// still shows the venue is free text at MapRun's end, which is why
+			// a generated name is only ever a suggestion.
 			array( 'Dork v2', '2026-02-17', 'Dork v2 Feb26 PXAS ScoreQ60' ),
 			array( 'Cobham', '2026-03-17', 'Cobham Mar26 PXAS ScoreQ60' ),
 			array( 'Worcester Park', '2026-04-21', 'Worcester Park Apr26 PXAS ScoreQ60' ),

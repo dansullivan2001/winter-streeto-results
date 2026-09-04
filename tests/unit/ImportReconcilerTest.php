@@ -226,6 +226,53 @@ class ImportReconcilerTest extends TestCase {
 		);
 	}
 
+	public function test_a_replaced_maprun_event_loses_nothing(): void {
+		// This happens for real: an event is found to be faulty and a corrected
+		// version is uploaded to MapRun before the night, which is why one of
+		// last season's is named "Dork v2". If it were ever replaced *after*
+		// results had come in, pointing the plugin at the new event would meet
+		// an entirely different set of MapRun ids.
+		//
+		// Nothing may be lost in that case. The old rows are withdrawn rather
+		// than deleted, so they keep their ids and therefore their corrections,
+		// stay visible on the review screen, and can be brought back. The new
+		// rows are added alongside.
+		$actions = ( new Import_Reconciler() )->reconcile(
+			array(
+				$this->stored( 1, 'v1-a' ),
+				$this->stored( 2, 'v1-b' ),
+				$this->stored( 3, '', array( 'is_manual' => true ) ),
+			),
+			array( $this->incoming( 'v2-a' ), $this->incoming( 'v2-b' ) )
+		);
+
+		$this->assertSame(
+			array(
+				1           => Import_Reconciler::WITHDRAW,
+				2           => Import_Reconciler::WITHDRAW,
+				'new:v2-a'  => Import_Reconciler::INSERT,
+				'new:v2-b'  => Import_Reconciler::INSERT,
+			),
+			$this->by_target( $actions )
+		);
+
+		// Nothing is deleted, so no correction is destroyed by the swap.
+		foreach ( $actions as $action ) {
+			$this->assertNotSame( 'delete', $action['action'] );
+		}
+	}
+
+	public function test_a_hand_added_runner_survives_a_replaced_event(): void {
+		// Someone entered by hand because their phone failed must not vanish
+		// because MapRun's event was swapped underneath them.
+		$actions = ( new Import_Reconciler() )->reconcile(
+			array( $this->stored( 9, '', array( 'is_manual' => true ) ) ),
+			array( $this->incoming( 'v2-a' ) )
+		);
+
+		$this->assertSame( array( 'new:v2-a' => Import_Reconciler::INSERT ), $this->by_target( $actions ) );
+	}
+
 	public function test_raw_columns_never_include_a_resolved_value(): void {
 		// An import refreshes only what MapRun is authoritative about. Any
 		// resolved_* column here would overwrite a correction on every fetch.

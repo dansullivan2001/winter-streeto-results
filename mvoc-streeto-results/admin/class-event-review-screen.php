@@ -389,7 +389,7 @@ class Event_Review_Screen {
 						$notes[] = __( 'failed upload', 'mvoc-streeto' );
 					}
 					if ( ! empty( $row['is_withdrawn'] ) ) {
-						$notes[] = __( 'no longer in MapRun', 'mvoc-streeto' );
+						$notes[] = __( 'not in the latest import — MapRun may have replaced the event', 'mvoc-streeto' );
 					}
 					if ( ! empty( $row['is_manual'] ) ) {
 						$notes[] = __( 'added by hand', 'mvoc-streeto' );
