@@ -89,6 +89,20 @@ class Events_Screen {
 				<?php wp_nonce_field( self::NONCE ); ?>
 				<input type="hidden" name="series_slug" value="<?php echo esc_attr( $series['slug'] ); ?>" />
 
+				<?php
+				// Pressing Enter in a text field submits a form using its first
+				// submit button. Without this that was "Fill in the suggested
+				// names", so clearing a MapRun name and pressing Enter refilled
+				// it from the suggestion - which looks exactly like the save
+				// having failed. Saving is the primary action, so it is the one
+				// Enter should take.
+				?>
+				<button type="submit" name="mvoc_streeto_action" value="save"
+					tabindex="-1" aria-hidden="true"
+					style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;">
+					<?php esc_html_e( 'Save changes', 'mvoc-streeto' ); ?>
+				</button>
+
 				<h2><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></h2>
 				<table class="form-table" role="presentation">
 					<tr>

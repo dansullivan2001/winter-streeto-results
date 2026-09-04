@@ -3,7 +3,7 @@
  * Plugin Name:       MVOC StreetO Results
  * Plugin URI:        https://github.com/dansullivan2001/winter-streeto-results
  * Description:       Pulls Winter StreetO series results from MapRun, lets the league co-ordinator correct them, and renders event and league tables via shortcodes.
- * Version:           0.3.1
+ * Version:           0.3.2
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Mole Valley Orienteering Club
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MVOC_STREETO_VERSION', '0.3.1' );
+define( 'MVOC_STREETO_VERSION', '0.3.2' );
 define( 'MVOC_STREETO_FILE', __FILE__ );
 define( 'MVOC_STREETO_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MVOC_STREETO_URL', plugin_dir_url( __FILE__ ) );
