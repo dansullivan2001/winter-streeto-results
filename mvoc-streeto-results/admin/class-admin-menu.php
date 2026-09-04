@@ -94,5 +94,16 @@ class Admin_Menu {
 			self::SLUG . '-explorer',
 			array( new MapRun_Explorer_Screen(), 'render' )
 		);
+
+		// Capability is 'manage_options' rather than Plugin::CAPABILITY: a
+		// League Co-ordinator must never see the full data scrub below.
+		add_submenu_page(
+			self::SLUG,
+			__( 'Tools', 'mvoc-streeto' ),
+			__( 'Tools', 'mvoc-streeto' ),
+			'manage_options',
+			self::SLUG . '-tools',
+			array( new Tools_Screen(), 'render' )
+		);
 	}
 }

@@ -25,13 +25,6 @@ class Events_Screen {
 
 	private const NONCE = 'mvoc_streeto_events';
 
-	public const DEFAULT_SLUG = '2026-27';
-
-	/**
-	 * The season the club is currently running.
-	 */
-	private const CURRENT_SEASON = 2026;
-
 	/**
 	 * Where each user's last-viewed series is remembered.
 	 */
@@ -219,7 +212,24 @@ class Events_Screen {
 										<input type="text" class="regular-text"
 											name="<?php echo esc_attr( $field . '[source_' . $course . ']' ); ?>"
 											value="<?php echo esc_attr( $sources[ $course ] ?? '' ); ?>"
-											placeholder="<?php echo esc_attr( $suggested ); ?>" />
+											<?php if ( '' !== $suggested ) : ?>
+												<?php
+												// Prefixed, because an unprefixed placeholder is the
+												// same string as the value it replaces: clearing a box
+												// then looked identical to not having cleared it, which
+												// is indistinguishable from the save having failed.
+												printf(
+													'placeholder="%s"',
+													esc_attr(
+														sprintf(
+															/* translators: %s: a suggested MapRun event name. */
+															__( 'Suggested: %s', 'mvoc-streeto' ),
+															$suggested
+														)
+													)
+												);
+												?>
+											<?php endif; ?> />
 									</td>
 								<?php endforeach; ?>
 								<td>
@@ -423,12 +433,12 @@ class Events_Screen {
 				</p>
 				<p class="description">
 					<?php
+					$example = $this->default_start_year( $existing );
 					printf(
-						/* translators: 1: example series name, 2: example slug, 3: example shortcode. */
-						esc_html__( 'Everything is derived from that year. %1$s becomes the name, %2$s the shortcode slug, and the eight fixtures are dated to the third Tuesday of each month from September to April — which is where all eight of this season\'s published dates fall. Names, dates and venues all stay editable, so move anything that clashes.', 'mvoc-streeto' ),
-						'<strong>' . esc_html( Season::name( self::CURRENT_SEASON + 1 ) ) . '</strong>',
-						'<code>' . esc_html( Season::slug( self::CURRENT_SEASON + 1 ) ) . '</code>',
-						''
+						/* translators: 1: example series name, 2: example slug. */
+						esc_html__( 'Everything is derived from that year. %1$s becomes the name, %2$s the shortcode slug, and the eight fixtures are dated to the third Tuesday of each month from September to April — which is where all eight of the 2026/27 season\'s published dates fall. Names, dates and venues all stay editable, so move anything that clashes.', 'mvoc-streeto' ),
+						'<strong>' . esc_html( Season::name( $example ) ) . '</strong>',
+						'<code>' . esc_html( Season::slug( $example ) ) . '</code>'
 					);
 					?>
 				</p>

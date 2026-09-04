@@ -334,4 +334,22 @@ class Schema {
 	public static function table_names(): array {
 		return self::TABLES;
 	}
+
+	/**
+	 * Empty every data table without dropping them.
+	 *
+	 * Unlike uninstall, this is reachable only from Admin\Tools_Screen, behind
+	 * `manage_options` and a typed confirmation — it exists so a season's worth
+	 * of test data can be cleared between runs without reinstalling the plugin.
+	 */
+	public static function truncate_all(): void {
+		global $wpdb;
+
+		foreach ( self::TABLES as $table_name ) {
+			$table = self::table( $table_name );
+			// Table names cannot be bound as parameters; self::TABLES is a
+			// hard-coded constant, so there is no untrusted input in this statement.
+			$wpdb->query( "TRUNCATE TABLE `{$table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
+	}
 }

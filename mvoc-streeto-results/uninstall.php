@@ -16,24 +16,21 @@ if ( ! get_option( 'mvoc_streeto_delete_data_on_uninstall' ) ) {
 	return;
 }
 
+// Loaded directly rather than through the autoloader: Schema has no
+// dependencies of its own, and this keeps uninstall from needing the
+// MVOC_STREETO_DIR constant the autoloader relies on, which is never
+// defined in this minimal context.
+require_once __DIR__ . '/includes/class-schema.php';
+
 global $wpdb;
 
-$mvoc_streeto_tables = array(
-	'overrides',
-	'result_competitors',
-	'results',
-	'aliases',
-	'competitors',
-	'fetches',
-	'event_sources',
-	'events',
-	'series',
-);
-
-foreach ( $mvoc_streeto_tables as $mvoc_streeto_table ) {
-	$mvoc_streeto_name = $wpdb->prefix . 'mvoc_so_' . $mvoc_streeto_table;
-	// Table names cannot be bound as parameters; the list above is a hard-coded
-	// constant, so there is no untrusted input in this statement.
+// Sourced from Schema::table_names() rather than duplicated here: a
+// hard-coded copy previously drifted out of sync with the real schema and
+// silently left series_competitors behind on every uninstall.
+foreach ( \MVOC\StreetO\Schema::table_names() as $mvoc_streeto_table ) {
+	$mvoc_streeto_name = \MVOC\StreetO\Schema::table( $mvoc_streeto_table );
+	// Table names cannot be bound as parameters; Schema::table_names() only
+	// ever returns this plugin's own hard-coded table list.
 	$wpdb->query( "DROP TABLE IF EXISTS `{$mvoc_streeto_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 }
 
