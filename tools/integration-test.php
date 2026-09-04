@@ -106,8 +106,19 @@ $event_id = $events_repo->save_event(
 );
 check( 'event created', $event_id > 0 );
 
-$events_repo->save_sources( $event_id, array( array( 'maprun_event_name' => 'X ScoreQ60', 'course_label' => '60' ) ) );
+$events_repo->save_sources( $event_id, array( '60' => 'X ScoreQ60' ) );
 check( 'source saved', 1 === count( $events_repo->sources( $event_id ) ) );
+
+// Clearing a name must actually clear it. It used to be silently ignored,
+// because saving was additive and an empty box never reached the repository.
+$events_repo->save_sources( $event_id, array( '60' => 'X ScoreQ60 renamed' ) );
+$renamed = $events_repo->sources( $event_id );
+check( 'renaming a source works', 'X ScoreQ60 renamed' === ( $renamed[0]['maprun_event_name'] ?? '' ) );
+
+$events_repo->save_sources( $event_id, array( '60' => '' ) );
+check( 'clearing a source removes it', 0 === count( $events_repo->sources( $event_id ) ) );
+
+$events_repo->save_sources( $event_id, array( '60' => 'X ScoreQ60' ) );
 
 echo "\nManual rows\n";
 $results_repo = new Results_Repo();
@@ -140,6 +151,12 @@ check( 'penalty corrected to zero sticks', 0 === $zeroed['penalty'], var_export(
 echo "\nDeleting events\n";
 check( 'delete refused while results exist', false === $events_repo->delete_event( $event_id ) );
 check( 'result count seen', 1 === $events_repo->result_count( $event_id ) );
+
+// While a result still exists, clearing its source must not orphan it - the
+// name is the only record of where the result came from.
+$guard = $events_repo->save_sources( $event_id, array( '60' => '' ) );
+check( 'a source with results is not silently removed', array( '60' ) === $guard['kept'] );
+check( 'and it is still there', 1 === count( $events_repo->sources( $event_id ) ) );
 
 $results_repo->delete_manual( $result_id );
 check( 'manual row removed', 0 === $events_repo->result_count( $event_id ) );

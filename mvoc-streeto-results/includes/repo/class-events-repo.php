@@ -448,44 +448,74 @@ class Events_Repo {
 	}
 
 	/**
-	 * Replace an event's MapRun sources.
+	 * Set an event's MapRun sources to exactly what is given.
 	 *
-	 * Sources are configuration rather than data — changing a mistyped event
-	 * name should not orphan anything, and results keep their own
-	 * event_source_id, so a replaced source is only ever a relabelling.
+	 * Declarative rather than additive: a course whose name is submitted empty
+	 * is removed, not skipped. It used to be additive, which meant clearing a
+	 * mistyped name silently did nothing and the old one came back on reload.
 	 *
-	 * @param int                            $event_id Event id.
-	 * @param array<int,array<string,string>> $sources  Each with maprun_event_name and course_label.
+	 * A source that already has results is kept even when cleared, because
+	 * deleting it would orphan those rows from the event they were imported
+	 * for, and the name is the only record of where they came from. The caller
+	 * is told, so it can say so rather than appearing to ignore the edit.
+	 *
+	 * @param int                  $event_id Event id.
+	 * @param array<string,string> $names    Course label => MapRun event name.
+	 * @return array{saved:int,removed:int,kept:string[]} Courses kept despite being cleared.
 	 */
-	public function save_sources( int $event_id, array $sources ): void {
+	public function save_sources( int $event_id, array $names ): array {
 		global $wpdb;
 
-		$table = Schema::table( 'event_sources' );
+		$table   = Schema::table( 'event_sources' );
+		$saved   = 0;
+		$removed = 0;
+		$kept    = array();
 
-		foreach ( $sources as $source ) {
-			$name   = trim( (string) ( $source['maprun_event_name'] ?? '' ) );
-			$course = trim( (string) ( $source['course_label'] ?? '' ) );
+		$existing = array();
+		foreach ( $this->sources( $event_id ) as $source ) {
+			$existing[ (string) $source['course_label'] ] = $source;
+		}
 
-			if ( '' === $name || '' === $course ) {
+		foreach ( $names as $course => $name ) {
+			$course = trim( (string) $course );
+			$name   = trim( (string) $name );
+
+			if ( '' === $course ) {
 				continue;
 			}
 
-			$existing = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-				$wpdb->prepare(
-					"SELECT id FROM `{$table}` WHERE event_id = %d AND course_label = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					$event_id,
-					$course
-				)
-			);
+			$current = $existing[ $course ] ?? null;
 
-			if ( $existing ) {
-				$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			if ( '' === $name ) {
+				if ( ! $current ) {
+					continue;
+				}
+
+				if ( $this->source_result_count( (int) $current['id'] ) > 0 ) {
+					$kept[] = $course;
+					continue;
+				}
+
+				$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 					$table,
-					array( 'maprun_event_name' => $name ),
-					array( 'id' => (int) $existing ),
-					array( '%s' ),
+					array( 'id' => (int) $current['id'] ),
 					array( '%d' )
 				);
+				++$removed;
+				continue;
+			}
+
+			if ( $current ) {
+				if ( $current['maprun_event_name'] !== $name ) {
+					$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+						$table,
+						array( 'maprun_event_name' => $name ),
+						array( 'id' => (int) $current['id'] ),
+						array( '%s' ),
+						array( '%d' )
+					);
+					++$saved;
+				}
 				continue;
 			}
 
@@ -498,7 +528,29 @@ class Events_Repo {
 				),
 				array( '%d', '%s', '%s' )
 			);
+			++$saved;
 		}
+
+		return array(
+			'saved'   => $saved,
+			'removed' => $removed,
+			'kept'    => $kept,
+		);
+	}
+
+	/**
+	 * How many result rows were imported through one source.
+	 *
+	 * @param int $event_source_id Source id.
+	 */
+	public function source_result_count( int $event_source_id ): int {
+		global $wpdb;
+
+		$table = Schema::table( 'results' );
+
+		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare( "SELECT COUNT(*) FROM `{$table}` WHERE event_source_id = %d", $event_source_id ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
 	}
 
 	/**

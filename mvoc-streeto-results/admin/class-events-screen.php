@@ -644,14 +644,11 @@ class Events_Screen {
 				$existing[ $source['course_label'] ] = $source['maprun_event_name'];
 			}
 
-			$sources = array();
+			$names = array();
 
 			foreach ( array( '60', '40' ) as $course ) {
 				if ( ! empty( $existing[ $course ] ) ) {
-					$sources[] = array(
-						'maprun_event_name' => $existing[ $course ],
-						'course_label'      => $course,
-					);
+					$names[ $course ] = $existing[ $course ];
 					continue;
 				}
 
@@ -664,16 +661,14 @@ class Events_Screen {
 				// The 40-minute event often does not exist yet, so only the
 				// 60 is filled by default; the short course is left for the
 				// co-ordinator once MapRun has one.
-				if ( '' !== $suggested && '60' === $course ) {
-					$sources[] = array(
-						'maprun_event_name' => $suggested,
-						'course_label'      => $course,
-					);
+				$names[ $course ] = ( '' !== $suggested && '60' === $course ) ? $suggested : '';
+
+				if ( '' !== $names[ $course ] ) {
 					++$filled;
 				}
 			}
 
-			$this->repo->save_sources( (int) $event['id'], $sources );
+			$this->repo->save_sources( (int) $event['id'], $names );
 		}
 
 		return sprintf(
@@ -715,6 +710,7 @@ class Events_Screen {
 		}
 
 		$saved = 0;
+		$kept  = array();
 
 		foreach ( wp_unslash( $_POST['events'] ) as $number => $fields ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$event = $this->repo->find_event( $series['id'], (int) $number );
@@ -742,27 +738,35 @@ class Events_Screen {
 				)
 			);
 
-			$sources = array();
+			// Every course is submitted, blanks included: an empty box means
+			// "remove this", which is only expressible if it is sent.
+			$names = array();
 			foreach ( array( '60', '40' ) as $course ) {
-				$name = sanitize_text_field( (string) ( $fields[ 'source_' . $course ] ?? '' ) );
-
-				if ( '' !== $name ) {
-					$sources[] = array(
-						'maprun_event_name' => $name,
-						'course_label'      => $course,
-					);
-				}
+				$names[ $course ] = sanitize_text_field( (string) ( $fields[ 'source_' . $course ] ?? '' ) );
 			}
 
-			$this->repo->save_sources( (int) $event['id'], $sources );
+			$result = $this->repo->save_sources( (int) $event['id'], $names );
+			$kept   = array_merge( $kept, $result['kept'] );
 			++$saved;
 		}
 
-		return sprintf(
+		$notice = sprintf(
 			/* translators: %d: number of events saved. */
 			_n( 'Saved %d event.', 'Saved %d events.', $saved, 'mvoc-streeto' ),
 			$saved
 		);
+
+		if ( $kept ) {
+			// Saying nothing here would look exactly like the bug this
+			// replaced: an edit apparently ignored.
+			$notice .= ' ' . sprintf(
+				/* translators: %s: course lengths, e.g. "60, 40". */
+				__( 'The MapRun name for the %s minute course was kept, because results have already been imported through it — the name is the only record of where they came from. Exclude or remove those results first if you really need to clear it.', 'mvoc-streeto' ),
+				implode( ', ', array_unique( $kept ) )
+			);
+		}
+
+		return $notice;
 	}
 
 	/**
