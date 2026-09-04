@@ -93,7 +93,7 @@ class Event_Review_Screen {
 					/* translators: 1: event number, 2: event title. */
 					esc_html__( 'Event %1$d — %2$s', 'mvoc-streeto' ),
 					(int) $event['event_number'],
-					esc_html( $event['title'] )
+					esc_html( $event['label'] )
 				);
 				?>
 			</h1>

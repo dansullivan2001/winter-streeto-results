@@ -270,6 +270,17 @@ class Events_Repo {
 			? (int) $row['organiser_competitor_id']
 			: null;
 		$row['is_published']            = self::STATUS_PUBLISHED === $row['status'];
+
+		// A title may legitimately be empty - clearing one has to be possible -
+		// so everywhere that needs something to print gets a fallback rather
+		// than a blank league column heading or an empty page title.
+		$row['label'] = '' !== trim( (string) $row['title'] )
+			? $row['title']
+			: sprintf(
+				/* translators: %d: event number within the series. */
+				__( 'Event %d', 'mvoc-streeto' ),
+				(int) $row['event_number']
+			);
 		$row['is_cancelled']            = self::STATUS_CANCELLED === $row['status'];
 
 		return $row;

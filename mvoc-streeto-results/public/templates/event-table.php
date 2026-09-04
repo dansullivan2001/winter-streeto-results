@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 	<div class="mvoc-streeto-scroll">
 		<table class="mvoc-streeto-table">
 			<caption class="screen-reader-text">
-				<?php echo esc_html( $event['title'] ); ?>
+				<?php echo esc_html( $event['label'] ); ?>
 			</caption>
 			<thead>
 				<tr>

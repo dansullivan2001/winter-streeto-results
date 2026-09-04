@@ -848,8 +848,13 @@ class Events_Screen {
 
 			$updated = array(
 				'event_number'            => (int) $number,
-				'title'                   => $title ?: $event['title'],
-				'venue'                   => $title ?: $event['venue'],
+				// Saved as submitted, empty included. This used to fall back to
+				// the stored title whenever the box was blank, which made
+				// clearing an event's name impossible: it silently came back on
+				// every save. Somewhere to display is a rendering concern, and
+				// is handled by falling back to "Event N" at that point.
+				'title'                   => $title,
+				'venue'                   => $title,
 				'event_date'              => sanitize_text_field( (string) ( $fields['event_date'] ?? '' ) ),
 				'organiser_competitor_id' => $this->resolve_organiser( $fields ),
 				// A published event keeps its status: taking it back to draft

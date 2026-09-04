@@ -125,7 +125,7 @@ class Unmatched_Screen {
 								printf(
 									'%d. %s%s',
 									(int) $option['event_number'],
-									esc_html( $option['title'] ),
+									esc_html( $option['label'] ),
 									$option['imported'] ? '' : esc_html__( ' — not imported', 'mvoc-streeto' )
 								);
 								?>

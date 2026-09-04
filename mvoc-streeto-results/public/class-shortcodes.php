@@ -229,7 +229,7 @@ class Shortcodes {
 
 		$model = ( new League_Presenter() )->present(
 			$this->standings( $series, $events ),
-			array_map( static fn( array $event ): string => (string) $event['title'], $events ),
+			array_map( static fn( array $event ): string => (string) $event['label'], $events ),
 			$category
 		);
 
@@ -288,7 +288,7 @@ class Shortcodes {
 			}
 
 			if ( $event['organiser_competitor_id'] && isset( $competitors[ $event['organiser_competitor_id'] ] ) ) {
-				$competitors[ $event['organiser_competitor_id'] ]['organised'] = $event['title'];
+				$competitors[ $event['organiser_competitor_id'] ]['organised'] = $event['label'];
 			}
 		}
 

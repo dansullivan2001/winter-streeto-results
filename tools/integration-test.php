@@ -120,6 +120,16 @@ check( 'clearing a source removes it', 0 === count( $events_repo->sources( $even
 
 $events_repo->save_sources( $event_id, array( '60' => 'X ScoreQ60' ) );
 
+// An event title must be clearable - it used to fall back to the stored value
+// whenever the box was empty, so clearing one silently came back on every save.
+$events_repo->save_event( $series_id, array( 'event_number' => 1, 'title' => '', 'venue' => '' ) );
+$cleared = $events_repo->find_event( $series_id, 1 );
+check( 'an event title can be cleared', '' === $cleared['title'], '"' . $cleared['title'] . '"' );
+check( 'and it still has something to display', 'Event 1' === $cleared['label'], $cleared['label'] );
+
+$events_repo->save_event( $series_id, array( 'event_number' => 1, 'title' => 'Test event', 'venue' => 'Test event' ) );
+check( 'a title set again is used for display', 'Test event' === $events_repo->find_event( $series_id, 1 )['label'] );
+
 echo "\nManual rows\n";
 $results_repo = new Results_Repo();
 $source_id    = (int) $events_repo->sources( $event_id )[0]['id'];
