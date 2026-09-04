@@ -1,0 +1,37 @@
+name: Release
+
+# Pushing a version tag (vX.Y.Z) builds the installable zip via
+# tools/build-zip.sh and publishes it as a GitHub Release asset. That asset
+# is what the plugin's own update checker (class-update-checker.php) polls
+# for — see docs/deploying.md "Releasing an update" for the full flow.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches the plugin's Version header
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="$(grep -m1 '^ \* Version:' mvoc-streeto-results/mvoc-streeto-results.php | awk '{print $3}')"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "error: tag v$TAG does not match Version header ($VERSION)" >&2
+            exit 1
+          fi
+
+      - name: Build the plugin zip
+        run: ./tools/build-zip.sh
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/*.zip
+          generate_release_notes: true

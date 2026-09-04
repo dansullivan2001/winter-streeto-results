@@ -68,20 +68,25 @@ picked up.
    and the `MVOC_STREETO_VERSION` constant) — every change that reaches the live site needs a
    new version, even a small fix, or WordPress has nothing to compare against and the update
    never appears.
-2. Build the zip: `./tools/build-zip.sh`. It refuses to run if the version is already tagged,
-   which catches a forgotten bump before it ships.
-3. Commit, then tag and push:
+2. Commit, then tag and push:
    ```sh
    git tag vX.Y.Z
    git push origin main --tags
    ```
-4. On GitHub, **Releases → Draft a new release**, pick the tag just pushed, and attach the zip
-   from step 2 as a release asset. This step matters: the update checker is configured to fetch
-   the attached zip rather than GitHub's auto-generated source archive, because the source
-   archive contains the whole repo — tests, fixtures, docs — not just the installable plugin
-   folder. A tag with no release, or a release with no zip attached, is invisible to it.
-5. Sites running an older version will now see the update in wp-admin within a few hours (the
+3. That's it. `.github/workflows/release.yml` picks up the tag, checks it matches the version
+   header, builds the zip via `tools/build-zip.sh`, and publishes a GitHub Release with the zip
+   attached as a release asset — watch it under the repo's **Actions** tab. This step matters:
+   the update checker is configured to fetch the attached zip rather than GitHub's
+   auto-generated source archive, because the source archive contains the whole repo — tests,
+   fixtures, docs — not just the installable plugin folder. A tag whose workflow run failed (a
+   forgotten version bump, most likely) leaves no release, so it stays invisible to the checker
+   until fixed.
+4. Sites running an older version will now see the update in wp-admin within a few hours (the
    checker caches for 12 hours), or immediately via **Dashboard → Updates → Check Again**.
+
+To build a zip locally without releasing — for the manual testing in "Where to test" above —
+`./tools/build-zip.sh` still works directly; it only refuses to run if the version is already
+tagged against a *different* commit.
 
 ## The one question only the club's server can answer
 
