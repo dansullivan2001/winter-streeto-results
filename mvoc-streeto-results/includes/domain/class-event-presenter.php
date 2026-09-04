@@ -47,11 +47,11 @@ class Event_Presenter {
 	/**
 	 * Build the table model.
 	 *
-	 * @param array<int,array<string,mixed>> $scored    Rows from Scoring_Engine.
-	 * @param array<string,mixed>            $organiser Optional organiser competitor.
+	 * @param array<int,array<string,mixed>> $scored     Rows from Scoring_Engine.
+	 * @param array<int,array<string,mixed>> $organisers Organiser competitors, usually zero or one.
 	 * @return array{columns:string[],rows:array<int,array<string,mixed>>,has_short_course:bool}
 	 */
-	public function present( array $scored, array $organiser = array() ): array {
+	public function present( array $scored, array $organisers = array() ): array {
 		$rows             = array();
 		$has_short_course = false;
 
@@ -81,9 +81,10 @@ class Event_Presenter {
 			);
 		}
 
-		if ( $organiser ) {
-			// The organiser is listed but not ranked, exactly as the workbook
+		foreach ( $organisers as $organiser ) {
+			// Organisers are listed but not ranked, exactly as the workbook
 			// did — they take their bonus in the league, not on the night.
+			// Usually one row, occasionally more where an event is run jointly.
 			$rows[] = array(
 				'position'       => null,
 				'position_label' => '',

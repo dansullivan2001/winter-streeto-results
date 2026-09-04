@@ -119,17 +119,15 @@ class Shortcodes {
 			)
 		);
 
-		$organiser = array();
-		if ( $event['organiser_competitor_id'] ) {
-			foreach ( $this->competitors->all() as $competitor ) {
-				if ( $competitor['id'] === $event['organiser_competitor_id'] ) {
-					$organiser = $competitor;
-					break;
-				}
-			}
-		}
+		$organiser_ids = $this->events->organisers( (int) $event['id'] );
+		$organisers    = array_values(
+			array_filter(
+				$this->competitors->all(),
+				static fn( array $competitor ): bool => in_array( $competitor['id'], $organiser_ids, true )
+			)
+		);
 
-		$model = ( new Event_Presenter( $config ) )->present( $scored, $organiser );
+		$model = ( new Event_Presenter( $config ) )->present( $scored, $organisers );
 
 		return $this->template( 'event-table', array( 'model' => $model, 'event' => $event ) );
 	}
@@ -305,8 +303,10 @@ class Shortcodes {
 					: max( $existing, $row['league_points'] );
 			}
 
-			if ( $event['organiser_competitor_id'] && isset( $competitors[ $event['organiser_competitor_id'] ] ) ) {
-				$competitors[ $event['organiser_competitor_id'] ]['organised'] = $event['label'];
+			foreach ( $this->events->organisers( (int) $event['id'] ) as $organiser_id ) {
+				if ( isset( $competitors[ $organiser_id ] ) ) {
+					$competitors[ $organiser_id ]['organised'] = $event['label'];
+				}
 			}
 		}
 

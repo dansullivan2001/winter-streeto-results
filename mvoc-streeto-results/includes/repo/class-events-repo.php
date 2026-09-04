@@ -29,7 +29,6 @@ class Events_Repo {
 		'title',
 		'event_date',
 		'venue',
-		'organiser_competitor_id',
 		'status',
 	);
 
@@ -264,13 +263,10 @@ class Events_Repo {
 	 * @return array<string,mixed>
 	 */
 	private function hydrate_event( array $row ): array {
-		$row['id']                      = (int) $row['id'];
-		$row['series_id']               = (int) $row['series_id'];
-		$row['event_number']            = (int) $row['event_number'];
-		$row['organiser_competitor_id'] = $row['organiser_competitor_id']
-			? (int) $row['organiser_competitor_id']
-			: null;
-		$row['is_published']            = self::STATUS_PUBLISHED === $row['status'];
+		$row['id']           = (int) $row['id'];
+		$row['series_id']    = (int) $row['series_id'];
+		$row['event_number'] = (int) $row['event_number'];
+		$row['is_published'] = self::STATUS_PUBLISHED === $row['status'];
 
 		// A title may legitimately be empty - clearing one has to be possible -
 		// so everywhere that needs something to print gets a fallback rather
@@ -282,7 +278,7 @@ class Events_Repo {
 				__( 'Event %d', 'mvoc-streeto' ),
 				(int) $row['event_number']
 			);
-		$row['is_cancelled']            = self::STATUS_CANCELLED === $row['status'];
+		$row['is_cancelled'] = self::STATUS_CANCELLED === $row['status'];
 
 		return $row;
 	}
@@ -300,16 +296,15 @@ class Events_Repo {
 		$existing = $this->find_event( $series_id, $number );
 
 		$values = array(
-			'series_id'               => $series_id,
-			'event_number'            => $number,
-			'title'                   => (string) ( $event['title'] ?? '' ),
-			'event_date'              => ( $event['event_date'] ?? '' ) ?: null,
-			'venue'                   => (string) ( $event['venue'] ?? '' ),
-			'organiser_competitor_id' => ( $event['organiser_competitor_id'] ?? 0 ) ?: null,
-			'status'                  => (string) ( $event['status'] ?? self::STATUS_DRAFT ),
+			'series_id'    => $series_id,
+			'event_number' => $number,
+			'title'        => (string) ( $event['title'] ?? '' ),
+			'event_date'   => ( $event['event_date'] ?? '' ) ?: null,
+			'venue'        => (string) ( $event['venue'] ?? '' ),
+			'status'       => (string) ( $event['status'] ?? self::STATUS_DRAFT ),
 		);
 
-		$formats = array( '%d', '%d', '%s', '%s', '%s', '%d', '%s' );
+		$formats = array( '%d', '%d', '%s', '%s', '%s', '%s' );
 
 		if ( $existing ) {
 			$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -436,6 +431,79 @@ class Events_Repo {
 
 		$wpdb->delete( $sources, array( 'event_id' => $event_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$wpdb->delete( Schema::table( 'events' ), array( 'id' => $event_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+		return true;
+	}
+
+	/**
+	 * Competitor ids organising an event. Usually one, occasionally more.
+	 *
+	 * @param int $event_id Event id.
+	 * @return int[]
+	 */
+	public function organisers( int $event_id ): array {
+		global $wpdb;
+
+		$table = Schema::table( 'event_organisers' );
+		$ids   = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare( "SELECT competitor_id FROM `{$table}` WHERE event_id = %d ORDER BY id", $event_id ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+
+		return array_map( 'intval', $ids ?: array() );
+	}
+
+	/**
+	 * Set an event's organisers to exactly the given competitors.
+	 *
+	 * Declarative rather than additive, matching save_sources: whoever is not
+	 * in the list submitted is removed, not just left alone.
+	 *
+	 * @param int   $event_id       Event id.
+	 * @param int[] $competitor_ids Competitor ids, deduplicated by this method.
+	 * @return bool Whether the stored set actually changed.
+	 */
+	public function save_organisers( int $event_id, array $competitor_ids ): bool {
+		global $wpdb;
+
+		$competitor_ids = array_values( array_unique( array_filter( array_map( 'intval', $competitor_ids ) ) ) );
+
+		$existing = $this->organisers( $event_id );
+
+		$added   = array_diff( $competitor_ids, $existing );
+		$removed = array_diff( $existing, $competitor_ids );
+
+		if ( ! $added && ! $removed ) {
+			return false;
+		}
+
+		$table = Schema::table( 'event_organisers' );
+
+		foreach ( $removed as $competitor_id ) {
+			$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$table,
+				array(
+					'event_id'      => $event_id,
+					'competitor_id' => $competitor_id,
+				),
+				array( '%d', '%d' )
+			);
+		}
+
+		foreach ( $added as $competitor_id ) {
+			$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$table,
+				array(
+					'event_id'      => $event_id,
+					'competitor_id' => $competitor_id,
+				),
+				array( '%d', '%d' )
+			);
+		}
+
+		// The organiser bonus is part of the league, so a change here has to
+		// invalidate the same cache save_event does - otherwise a page that
+		// only touches the organiser leaves a stale table for a day.
+		League_Cache::bump();
 
 		return true;
 	}

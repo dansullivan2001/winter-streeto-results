@@ -46,8 +46,12 @@ class Schema {
 	 *    import and kept as a flag per season in series_competitors, so an
 	 *    ageing runner joins the category from the season it applies rather
 	 *    than retroactively across every season already published.
+	 * 8: event_organisers join table replaces events.organiser_competitor_id,
+	 *    so the rare event run jointly by two or more people can list them all
+	 *    rather than forcing one name into a single column. Existing values
+	 *    are migrated in before the column is dropped.
 	 */
-	public const DB_VERSION = 7;
+	public const DB_VERSION = 8;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -57,6 +61,7 @@ class Schema {
 	private const TABLES = array(
 		'series',
 		'events',
+		'event_organisers',
 		'event_sources',
 		'fetches',
 		'competitors',
@@ -93,6 +98,7 @@ class Schema {
 			dbDelta( $sql );
 		}
 
+		self::migrate_organisers();
 		self::drop_retired_columns();
 
 		update_option( self::OPTION_DB_VERSION, self::DB_VERSION );
@@ -134,6 +140,32 @@ class Schema {
 	}
 
 	/**
+	 * Move existing single organisers into the new join table.
+	 *
+	 * Runs after dbDelta creates event_organisers but before the old column is
+	 * dropped, so the one organiser every event already had is not lost. Safe
+	 * to run more than once: the unique key on (event_id, competitor_id) makes
+	 * a re-run a no-op once the row is already there.
+	 */
+	private static function migrate_organisers(): void {
+		global $wpdb;
+
+		$events_table = self::table( 'events' );
+
+		if ( ! $wpdb->get_var( "SHOW COLUMNS FROM `{$events_table}` LIKE 'organiser_competitor_id'" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+			return;
+		}
+
+		$organisers_table = self::table( 'event_organisers' );
+
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"INSERT IGNORE INTO `{$organisers_table}` (event_id, competitor_id)
+			 SELECT id, organiser_competitor_id FROM `{$events_table}`
+			 WHERE organiser_competitor_id IS NOT NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+	}
+
+	/**
 	 * Drop columns that no longer exist in the schema.
 	 *
 	 * dbDelta only ever adds and widens, so a column removed from the
@@ -147,6 +179,7 @@ class Schema {
 		$retired = array(
 			'competitors' => array( 'year_of_birth', 'is_over55' ),
 			'results'     => array( 'raw_year_of_birth' ),
+			'events'      => array( 'organiser_competitor_id' ),
 		);
 
 		foreach ( $retired as $table_name => $columns ) {
@@ -222,7 +255,6 @@ class Schema {
 			title varchar(255) NOT NULL,
 			event_date date NULL,
 			venue varchar(255) NOT NULL DEFAULT '',
-			organiser_competitor_id bigint(20) unsigned NULL,
 			status varchar(20) NOT NULL DEFAULT 'draft',
 			last_fetched_at datetime NULL,
 			published_at datetime NULL,
@@ -230,6 +262,21 @@ class Schema {
 			PRIMARY KEY  (id),
 			KEY series_id (series_id),
 			UNIQUE KEY series_event (series_id,event_number)
+		) {$charset};";
+
+		// An event normally has one organiser. Modelled as a relationship rather
+		// than a column - the same choice made for result_competitors below -
+		// so the rare event run jointly by two or more people can list them all
+		// rather than one name winning a single column.
+		$table = self::table( 'event_organisers' );
+		$sql[] = "CREATE TABLE {$table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			event_id bigint(20) unsigned NOT NULL,
+			competitor_id bigint(20) unsigned NOT NULL,
+			PRIMARY KEY  (id),
+			KEY event_id (event_id),
+			KEY competitor_id (competitor_id),
+			UNIQUE KEY event_organiser (event_id,competitor_id)
 		) {$charset};";
 
 		// One row per MapRun event feeding a club event. Two rows where the 60

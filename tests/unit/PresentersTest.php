@@ -85,7 +85,7 @@ class PresentersTest extends TestCase {
 	public function test_the_organiser_is_listed_last_and_unranked(): void {
 		$model = ( new Event_Presenter() )->present(
 			$this->scored(),
-			array( 'display_name' => 'Greta Yalding', 'club' => 'MVOC' )
+			array( array( 'display_name' => 'Greta Yalding', 'club' => 'MVOC' ) )
 		);
 
 		$last = end( $model['rows'] );
@@ -94,6 +94,22 @@ class PresentersTest extends TestCase {
 		$this->assertTrue( $last['is_organiser'] );
 		$this->assertNull( $last['position'] );
 		$this->assertNull( $last['league_points'] );
+	}
+
+	public function test_an_event_run_jointly_lists_every_organiser(): void {
+		// Rare, but it happens: two people share the organising for one event.
+		$model = ( new Event_Presenter() )->present(
+			$this->scored(),
+			array(
+				array( 'display_name' => 'Greta Yalding', 'club' => 'MVOC' ),
+				array( 'display_name' => 'Hugh Carshalton', 'club' => '' ),
+			)
+		);
+
+		$organisers = array_values( array_filter( $model['rows'], static fn( array $r ): bool => ! empty( $r['is_organiser'] ) ) );
+
+		$this->assertCount( 2, $organisers );
+		$this->assertSame( array( 'Greta Yalding', 'Hugh Carshalton' ), array_column( $organisers, 'name' ) );
 	}
 
 	public function test_no_footnote_when_everyone_ran_the_long_course(): void {

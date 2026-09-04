@@ -78,12 +78,13 @@ class Event_Review_Screen {
 		$feedback = $this->handle_post( $event );
 		$event    = $this->events->find_event_by_id( $event_id ) ?? $event;
 
-		$rows        = $this->results->for_event( $event_id );
-		$effective   = array_map( array( Results_Repo::class, 'effective' ), $rows );
-		$config      = $this->events->scoring_config( $this->series_for( $event ) );
-		$scored      = ( new Scoring_Engine( $config ) )->score_event( $effective );
-		$competitors = $this->competitors->all();
-		$duplicates  = ( new Duplicate_Detector() )->find( $effective );
+		$rows               = $this->results->for_event( $event_id );
+		$effective          = array_map( array( Results_Repo::class, 'effective' ), $rows );
+		$config             = $this->events->scoring_config( $this->series_for( $event ) );
+		$scored             = ( new Scoring_Engine( $config ) )->score_event( $effective );
+		$competitors        = $this->competitors->all();
+		$current_organisers = $this->events->organisers( $event_id );
+		$duplicates         = ( new Duplicate_Detector() )->find( $effective );
 
 		?>
 		<div class="wrap">
@@ -216,17 +217,23 @@ class Event_Review_Screen {
 
 				<h2><?php esc_html_e( '5. Organiser', 'mvoc-streeto' ); ?></h2>
 				<p>
-					<select name="organiser_competitor_id">
-						<option value="0"><?php esc_html_e( '— none —', 'mvoc-streeto' ); ?></option>
+					<?php
+					// A multi-select with nothing checked sends no "organisers" key
+					// at all, which is indistinguishable from the field never having
+					// been on the page. This marker is what "submitted, but empty"
+					// looks like, so clearing every organiser can actually be saved.
+					?>
+					<input type="hidden" name="organisers_submitted" value="1" />
+					<select name="organisers[]" multiple style="width:16em;height:6em">
 						<?php foreach ( $competitors as $competitor ) : ?>
 							<option value="<?php echo esc_attr( (string) $competitor['id'] ); ?>"
-								<?php selected( $event['organiser_competitor_id'], $competitor['id'] ); ?>>
+								<?php selected( in_array( $competitor['id'], $current_organisers, true ) ); ?>>
 								<?php echo esc_html( $competitor['display_name'] ); ?>
 							</option>
 						<?php endforeach; ?>
 					</select>
 					<span class="description">
-						<?php esc_html_e( 'Listed on the results but not ranked. They score their best result again in the league.', 'mvoc-streeto' ); ?>
+						<?php esc_html_e( 'Listed on the results but not ranked. They score their best result again in the league. Almost always one person — hold Ctrl/Cmd to pick more than one where an event was run jointly.', 'mvoc-streeto' ); ?>
 					</span>
 				</p>
 
@@ -476,18 +483,15 @@ class Event_Review_Screen {
 	 * @param array<string,mixed>                     $event  Event row.
 	 */
 	private function render_preview( array $scored, $config, array $event ): void {
-		$organiser = array();
+		$organiser_ids = $this->events->organisers( (int) $event['id'] );
+		$organisers    = array_values(
+			array_filter(
+				$this->competitors->all(),
+				static fn( array $competitor ): bool => in_array( $competitor['id'], $organiser_ids, true )
+			)
+		);
 
-		if ( $event['organiser_competitor_id'] ) {
-			foreach ( $this->competitors->all() as $competitor ) {
-				if ( $competitor['id'] === $event['organiser_competitor_id'] ) {
-					$organiser = $competitor;
-					break;
-				}
-			}
-		}
-
-		$model = ( new Event_Presenter( $config ) )->present( $scored, $organiser );
+		$model = ( new Event_Presenter( $config ) )->present( $scored, $organisers );
 
 		echo '<table class="widefat striped"><thead><tr>';
 		foreach ( $model['columns'] as $column ) {
@@ -556,7 +560,7 @@ class Event_Review_Screen {
 		}
 
 		$saved = $this->save_corrections();
-		$this->save_organiser( $event_id );
+		$this->save_organisers( $event_id );
 
 		if ( 'publish' === $action ) {
 			$this->events->publish( $event_id );
@@ -764,23 +768,20 @@ class Event_Review_Screen {
 	}
 
 	/**
-	 * Store the event's organiser.
+	 * Store the event's organisers.
 	 *
 	 * @param int $event_id Event id.
 	 */
-	private function save_organiser( int $event_id ): void {
-		if ( ! isset( $_POST['organiser_competitor_id'] ) ) {
+	private function save_organisers( int $event_id ): void {
+		if ( ! isset( $_POST['organisers_submitted'] ) ) {
 			return;
 		}
 
-		$event = $this->events->find_event_by_id( $event_id );
-		if ( ! $event ) {
-			return;
-		}
+		$ids = isset( $_POST['organisers'] ) && is_array( $_POST['organisers'] )
+			? wp_unslash( $_POST['organisers'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			: array();
 
-		$event['organiser_competitor_id'] = (int) $_POST['organiser_competitor_id']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-
-		$this->events->save_event( (int) $event['series_id'], $event );
+		$this->events->save_organisers( $event_id, array_map( 'intval', $ids ) );
 	}
 
 	/**

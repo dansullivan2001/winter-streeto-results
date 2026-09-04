@@ -190,9 +190,10 @@ class Events_Screen {
 					<tbody>
 						<?php foreach ( $events as $event ) : ?>
 							<?php
-							$number  = (int) $event['event_number'];
-							$field   = 'events[' . $number . ']';
-							$sources = array();
+							$number             = (int) $event['event_number'];
+							$field              = 'events[' . $number . ']';
+							$sources            = array();
+							$current_organisers = $this->repo->organisers( (int) $event['id'] );
 
 							foreach ( $this->repo->sources( $event['id'] ) as $source ) {
 								$sources[ $source['course_label'] ] = $source['maprun_event_name'];
@@ -210,11 +211,11 @@ class Events_Screen {
 										value="<?php echo esc_attr( (string) $event['title'] ); ?>" />
 								</td>
 								<td>
-									<select style="width:12em" name="<?php echo esc_attr( $field . '[organiser]' ); ?>">
-										<option value="0"><?php esc_html_e( '— none —', 'mvoc-streeto' ); ?></option>
+									<input type="hidden" name="<?php echo esc_attr( $field . '[organisers_submitted]' ); ?>" value="1" />
+									<select multiple style="width:12em;height:4.5em" name="<?php echo esc_attr( $field . '[organisers][]' ); ?>">
 										<?php foreach ( $competitors as $competitor ) : ?>
 											<option value="<?php echo esc_attr( (string) $competitor['id'] ); ?>"
-												<?php selected( $event['organiser_competitor_id'], $competitor['id'] ); ?>>
+												<?php selected( in_array( $competitor['id'], $current_organisers, true ) ); ?>>
 												<?php echo esc_html( $competitor['display_name'] ); ?>
 											</option>
 										<?php endforeach; ?>
@@ -849,32 +850,35 @@ class Events_Screen {
 			$title = sanitize_text_field( (string) ( $fields['title'] ?? '' ) );
 
 			$updated = array(
-				'event_number'            => (int) $number,
+				'event_number' => (int) $number,
 				// Saved as submitted, empty included. This used to fall back to
 				// the stored title whenever the box was blank, which made
 				// clearing an event's name impossible: it silently came back on
 				// every save. Somewhere to display is a rendering concern, and
 				// is handled by falling back to "Event N" at that point.
-				'title'                   => $title,
-				'venue'                   => $title,
-				'event_date'              => sanitize_text_field( (string) ( $fields['event_date'] ?? '' ) ),
-				'organiser_competitor_id' => $this->resolve_organiser( $fields ),
+				'title'        => $title,
+				'venue'        => $title,
+				'event_date'   => sanitize_text_field( (string) ( $fields['event_date'] ?? '' ) ),
 				// A published event keeps its status: taking it back to draft
 				// is done on the review screen, deliberately, rather than as a
 				// side effect of saving a date.
-				'status'                  => $event['is_published']
+				'status'       => $event['is_published']
 					? $event['status']
 					: $this->requested_status( $fields, (string) $event['status'] ),
 			);
 
+			$organisers_before = $this->repo->organisers( (int) $event['id'] );
+			$organisers_after  = $this->resolve_organisers( $fields );
+
 			// Compare before writing, so the message can report what actually
 			// changed. Saying "saved 8 events" after one edit is technically
 			// true and useless: it gives no way to tell a change took.
-			if ( self::event_differs( $event, $updated ) ) {
+			if ( self::event_differs( $event, $updated ) || self::organisers_differ( $organisers_before, $organisers_after ) ) {
 				++$events_changed;
 			}
 
 			$this->repo->save_event( $series['id'], $updated );
+			$this->repo->save_organisers( (int) $event['id'], $organisers_after );
 
 			// Every course is submitted, blanks included: an empty box means
 			// "remove this", which is only expressible if it is sent.
@@ -946,7 +950,20 @@ class Events_Screen {
 			}
 		}
 
-		return (int) ( $stored['organiser_competitor_id'] ?? 0 ) !== (int) ( $updated['organiser_competitor_id'] ?? 0 );
+		return false;
+	}
+
+	/**
+	 * Whether a submitted set of organisers differs from the stored one.
+	 *
+	 * @param int[] $stored  Organiser competitor ids as stored.
+	 * @param int[] $updated Organiser competitor ids as submitted.
+	 */
+	private static function organisers_differ( array $stored, array $updated ): bool {
+		sort( $stored );
+		sort( $updated );
+
+		return $stored !== $updated;
 	}
 
 	/**
@@ -962,7 +979,8 @@ class Events_Screen {
 	}
 
 	/**
-	 * The organiser for an event: the one chosen, or one created from a name.
+	 * The organisers for an event: whichever are chosen, plus one created from
+	 * a typed name.
 	 *
 	 * Organisers rarely exist as competitors before the first import, so a
 	 * typed name creates the record and its alias. That alias is what makes
@@ -970,8 +988,13 @@ class Events_Screen {
 	 * than becoming a second identity for the same person.
 	 *
 	 * @param array<string,mixed> $fields Submitted event fields.
+	 * @return int[]
 	 */
-	private function resolve_organiser( array $fields ): int {
+	private function resolve_organisers( array $fields ): array {
+		$selected = isset( $fields['organisers'] ) && is_array( $fields['organisers'] )
+			? array_map( 'intval', $fields['organisers'] )
+			: array();
+
 		$typed = sanitize_text_field( (string) ( $fields['organiser_name'] ?? '' ) );
 
 		if ( '' !== $typed ) {
@@ -979,24 +1002,24 @@ class Events_Screen {
 			$first   = $parts[0] ?? '';
 			$surname = $parts[1] ?? '';
 
-			$competitor = array(
-				'first_name'   => $first,
-				'surname'      => $surname,
-				'display_name' => $typed,
-			);
-
 			$alias_key = \MVOC\StreetO\Domain\Name_Matcher::alias_key( $first, $surname );
 
 			// Reuse an existing competitor with that name rather than making a
 			// second one: a duplicate identity would split their league points.
 			$aliases = $this->competitors->aliases();
-			if ( isset( $aliases[ $alias_key ] ) ) {
-				return (int) $aliases[ $alias_key ];
-			}
 
-			return $this->competitors->create_with_alias( $competitor, $alias_key );
+			$selected[] = isset( $aliases[ $alias_key ] )
+				? (int) $aliases[ $alias_key ]
+				: $this->competitors->create_with_alias(
+					array(
+						'first_name'   => $first,
+						'surname'      => $surname,
+						'display_name' => $typed,
+					),
+					$alias_key
+				);
 		}
 
-		return (int) ( $fields['organiser'] ?? 0 );
+		return array_values( array_unique( array_filter( $selected ) ) );
 	}
 }
