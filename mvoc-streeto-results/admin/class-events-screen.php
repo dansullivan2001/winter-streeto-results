@@ -83,8 +83,9 @@ class Events_Screen {
 				return;
 			endif;
 
-			$events      = $this->repo->events( $series['id'] );
-			$competitors = $this->competitors->all();
+			$events           = $this->repo->events( $series['id'] );
+			$competitors      = $this->competitors->all();
+			$competitor_names = array_column( $competitors, 'display_name', 'id' );
 			?>
 
 			<?php
@@ -174,6 +175,18 @@ class Events_Screen {
 					<span class="description"><?php esc_html_e( 'Only fills boxes that are empty — nothing you have already entered is touched.', 'mvoc-streeto' ); ?></span>
 				</p>
 
+				<?php
+				// Feeds the "add organiser" boxes below: typing a name still
+				// creates a new competitor if it does not match, but suggesting
+				// existing ones means the whole competitor list never has to be
+				// shown or scrolled just to add someone already on record.
+				?>
+				<datalist id="mvoc-streeto-competitors">
+					<?php foreach ( $competitors as $competitor ) : ?>
+						<option value="<?php echo esc_attr( $competitor['display_name'] ); ?>"></option>
+					<?php endforeach; ?>
+				</datalist>
+
 				<div style="overflow-x:auto;">
 				<table class="widefat striped">
 					<thead>
@@ -211,19 +224,21 @@ class Events_Screen {
 										value="<?php echo esc_attr( (string) $event['title'] ); ?>" />
 								</td>
 								<td>
-									<input type="hidden" name="<?php echo esc_attr( $field . '[organisers_submitted]' ); ?>" value="1" />
-									<select multiple style="width:12em;height:4.5em" name="<?php echo esc_attr( $field . '[organisers][]' ); ?>">
-										<?php foreach ( $competitors as $competitor ) : ?>
-											<option value="<?php echo esc_attr( (string) $competitor['id'] ); ?>"
-												<?php selected( in_array( $competitor['id'], $current_organisers, true ) ); ?>>
-												<?php echo esc_html( $competitor['display_name'] ); ?>
-											</option>
+									<?php if ( $current_organisers ) : ?>
+										<?php foreach ( $current_organisers as $organiser_id ) : ?>
+											<label style="display:block;white-space:nowrap;">
+												<input type="checkbox"
+													name="<?php echo esc_attr( $field . '[keep_organiser][' . $organiser_id . ']' ); ?>"
+													value="1" checked="checked" />
+												<?php echo esc_html( $competitor_names[ $organiser_id ] ?? '#' . $organiser_id ); ?>
+											</label>
 										<?php endforeach; ?>
-									</select>
-									<br />
-									<input type="text" style="width:12em"
+									<?php else : ?>
+										<span class="description"><?php esc_html_e( '— none —', 'mvoc-streeto' ); ?></span><br />
+									<?php endif; ?>
+									<input type="text" style="width:12em" list="mvoc-streeto-competitors"
 										name="<?php echo esc_attr( $field . '[organiser_name]' ); ?>"
-										placeholder="<?php esc_attr_e( 'or type a name', 'mvoc-streeto' ); ?>" />
+										placeholder="<?php esc_attr_e( 'add organiser', 'mvoc-streeto' ); ?>" />
 								</td>
 								<?php foreach ( array( '60', '40' ) as $course ) : ?>
 									<?php
@@ -868,7 +883,7 @@ class Events_Screen {
 			);
 
 			$organisers_before = $this->repo->organisers( (int) $event['id'] );
-			$organisers_after  = $this->resolve_organisers( $fields );
+			$organisers_after  = $this->resolve_organisers( $fields, $organisers_before );
 
 			// Compare before writing, so the message can report what actually
 			// changed. Saying "saved 8 events" after one edit is technically
@@ -979,47 +994,33 @@ class Events_Screen {
 	}
 
 	/**
-	 * The organisers for an event: whichever are chosen, plus one created from
-	 * a typed name.
+	 * The organisers for an event: whichever of the existing ones are still
+	 * checked, plus one created from a typed name.
 	 *
-	 * Organisers rarely exist as competitors before the first import, so a
-	 * typed name creates the record and its alias. That alias is what makes
-	 * them match automatically when they next appear in MapRun results, rather
-	 * than becoming a second identity for the same person.
+	 * Each existing organiser gets its own "keep" checkbox rather than a
+	 * multi-select, so unchecking one can never take the others with it - and
+	 * with only ever a handful checked, the whole competitor list is never on
+	 * screen at once. A typed name is matched or created exactly as before.
 	 *
-	 * @param array<string,mixed> $fields Submitted event fields.
+	 * @param array<string,mixed> $fields  Submitted event fields.
+	 * @param int[]               $current Organisers as currently stored.
 	 * @return int[]
 	 */
-	private function resolve_organisers( array $fields ): array {
-		$selected = isset( $fields['organisers'] ) && is_array( $fields['organisers'] )
-			? array_map( 'intval', $fields['organisers'] )
-			: array();
+	private function resolve_organisers( array $fields, array $current ): array {
+		$kept = array();
+
+		foreach ( $current as $organiser_id ) {
+			if ( ! empty( $fields['keep_organiser'][ $organiser_id ] ) ) {
+				$kept[] = $organiser_id;
+			}
+		}
 
 		$typed = sanitize_text_field( (string) ( $fields['organiser_name'] ?? '' ) );
 
 		if ( '' !== $typed ) {
-			$parts   = preg_split( '/\s+/', trim( $typed ), 2 );
-			$first   = $parts[0] ?? '';
-			$surname = $parts[1] ?? '';
-
-			$alias_key = \MVOC\StreetO\Domain\Name_Matcher::alias_key( $first, $surname );
-
-			// Reuse an existing competitor with that name rather than making a
-			// second one: a duplicate identity would split their league points.
-			$aliases = $this->competitors->aliases();
-
-			$selected[] = isset( $aliases[ $alias_key ] )
-				? (int) $aliases[ $alias_key ]
-				: $this->competitors->create_with_alias(
-					array(
-						'first_name'   => $first,
-						'surname'      => $surname,
-						'display_name' => $typed,
-					),
-					$alias_key
-				);
+			$kept[] = $this->competitors->resolve_or_create_by_name( $typed );
 		}
 
-		return array_values( array_unique( array_filter( $selected ) ) );
+		return array_values( array_unique( array_filter( $kept ) ) );
 	}
 }

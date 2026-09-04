@@ -260,6 +260,40 @@ class Competitors_Repo {
 	}
 
 	/**
+	 * A competitor id for a typed name: an existing match, or a new record.
+	 *
+	 * Used wherever a co-ordinator types a name rather than picking from a
+	 * list — an organiser, most often, since they rarely exist as a competitor
+	 * before the first event has been imported. Reuses an existing competitor
+	 * with that name rather than making a second one, which would split their
+	 * league points; the alias recorded here is what makes them match
+	 * automatically once they next appear in MapRun results.
+	 *
+	 * @param string $typed Name as typed, already sanitized.
+	 */
+	public function resolve_or_create_by_name( string $typed ): int {
+		$parts   = preg_split( '/\s+/', trim( $typed ), 2 );
+		$first   = $parts[0] ?? '';
+		$surname = $parts[1] ?? '';
+
+		$alias_key = Name_Matcher::alias_key( $first, $surname );
+
+		$aliases = $this->aliases();
+		if ( isset( $aliases[ $alias_key ] ) ) {
+			return (int) $aliases[ $alias_key ];
+		}
+
+		return $this->create_with_alias(
+			array(
+				'first_name'   => $first,
+				'surname'      => $surname,
+				'display_name' => $typed,
+			),
+			$alias_key
+		);
+	}
+
+	/**
 	 * Merge one competitor into another, moving aliases and results across.
 	 *
 	 * Used when the co-ordinator spots that two records are the same person —

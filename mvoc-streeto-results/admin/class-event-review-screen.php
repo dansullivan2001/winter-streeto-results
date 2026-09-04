@@ -83,6 +83,7 @@ class Event_Review_Screen {
 		$config             = $this->events->scoring_config( $this->series_for( $event ) );
 		$scored             = ( new Scoring_Engine( $config ) )->score_event( $effective );
 		$competitors        = $this->competitors->all();
+		$competitor_names   = array_column( $competitors, 'display_name', 'id' );
 		$current_organisers = $this->events->organisers( $event_id );
 		$duplicates         = ( new Duplicate_Detector() )->find( $effective );
 
@@ -217,23 +218,27 @@ class Event_Review_Screen {
 
 				<h2><?php esc_html_e( '5. Organiser', 'mvoc-streeto' ); ?></h2>
 				<p>
-					<?php
-					// A multi-select with nothing checked sends no "organisers" key
-					// at all, which is indistinguishable from the field never having
-					// been on the page. This marker is what "submitted, but empty"
-					// looks like, so clearing every organiser can actually be saved.
-					?>
-					<input type="hidden" name="organisers_submitted" value="1" />
-					<select name="organisers[]" multiple style="width:16em;height:6em">
-						<?php foreach ( $competitors as $competitor ) : ?>
-							<option value="<?php echo esc_attr( (string) $competitor['id'] ); ?>"
-								<?php selected( in_array( $competitor['id'], $current_organisers, true ) ); ?>>
-								<?php echo esc_html( $competitor['display_name'] ); ?>
-							</option>
+					<?php if ( $current_organisers ) : ?>
+						<?php foreach ( $current_organisers as $organiser_id ) : ?>
+							<label style="display:block;">
+								<input type="checkbox" name="<?php echo esc_attr( 'keep_organiser[' . $organiser_id . ']' ); ?>"
+									value="1" checked="checked" />
+								<?php echo esc_html( $competitor_names[ $organiser_id ] ?? '#' . $organiser_id ); ?>
+							</label>
 						<?php endforeach; ?>
-					</select>
+					<?php else : ?>
+						<span class="description"><?php esc_html_e( '— none —', 'mvoc-streeto' ); ?></span><br />
+					<?php endif; ?>
+					<input type="text" style="width:16em" list="mvoc-streeto-competitors"
+						name="organiser_name" placeholder="<?php esc_attr_e( 'add organiser', 'mvoc-streeto' ); ?>" />
+					<datalist id="mvoc-streeto-competitors">
+						<?php foreach ( $competitors as $competitor ) : ?>
+							<option value="<?php echo esc_attr( $competitor['display_name'] ); ?>"></option>
+						<?php endforeach; ?>
+					</datalist>
+					<br />
 					<span class="description">
-						<?php esc_html_e( 'Listed on the results but not ranked. They score their best result again in the league. Almost always one person — hold Ctrl/Cmd to pick more than one where an event was run jointly.', 'mvoc-streeto' ); ?>
+						<?php esc_html_e( 'Listed on the results but not ranked. They score their best result again in the league. Almost always one person — untick to remove, or type a name to add another where an event was run jointly.', 'mvoc-streeto' ); ?>
 					</span>
 				</p>
 
@@ -773,15 +778,31 @@ class Event_Review_Screen {
 	 * @param int $event_id Event id.
 	 */
 	private function save_organisers( int $event_id ): void {
-		if ( ! isset( $_POST['organisers_submitted'] ) ) {
+		// organiser_name is a plain text input, always submitted with the rest
+		// of the form (blank included) - unlike a checkbox, its presence is a
+		// reliable sign the organiser section was actually on the page.
+		if ( ! isset( $_POST['organiser_name'] ) ) {
 			return;
 		}
 
-		$ids = isset( $_POST['organisers'] ) && is_array( $_POST['organisers'] )
-			? wp_unslash( $_POST['organisers'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$keep = isset( $_POST['keep_organiser'] ) && is_array( $_POST['keep_organiser'] )
+			? wp_unslash( $_POST['keep_organiser'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			: array();
 
-		$this->events->save_organisers( $event_id, array_map( 'intval', $ids ) );
+		$kept = array();
+		foreach ( $this->events->organisers( $event_id ) as $organiser_id ) {
+			if ( ! empty( $keep[ $organiser_id ] ) ) {
+				$kept[] = $organiser_id;
+			}
+		}
+
+		$typed = sanitize_text_field( wp_unslash( $_POST['organiser_name'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		if ( '' !== $typed ) {
+			$kept[] = $this->competitors->resolve_or_create_by_name( $typed );
+		}
+
+		$this->events->save_organisers( $event_id, array_unique( $kept ) );
 	}
 
 	/**
