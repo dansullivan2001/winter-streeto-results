@@ -95,6 +95,27 @@ To build a zip locally without releasing — for the manual testing in "Where to
 `./tools/build-zip.sh` still works directly; it only refuses to run if the version is already
 tagged against a *different* commit.
 
+### If "Check for updates" shows a 403
+
+GitHub caps unauthenticated API requests at 60/hour per IP address — shared across every
+tenant on the host, not just this plugin, so it is easy for shared hosting to exhaust it
+before this plugin ever asks. The fix is a token, which raises the limit to 5000/hour:
+
+1. On GitHub: **Settings → Developer settings → Personal access tokens → Fine-grained tokens
+   → Generate new token**. Repository access: only `winter-streeto-results`. No permissions
+   need granting — the repo is public, so read access is free; the token just proves the
+   request isn't anonymous.
+2. Add it to `wp-config.php` on the live site, above the `/* That's all, stop editing! */`
+   line:
+   ```php
+   define( 'MVOC_STREETO_GITHUB_TOKEN', 'github_pat_...' );
+   ```
+3. **Check for updates** again. It should not need the site to be restarted — the constant is
+   read on every check.
+
+The token only ever reads public release metadata, and lives in `wp-config.php`, never in the
+plugin or the repo.
+
 ## The one question only the club's server can answer
 
 **StreetO Results → MapRun Explorer → Test connection.**
