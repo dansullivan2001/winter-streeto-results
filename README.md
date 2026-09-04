@@ -56,8 +56,8 @@ Then put the shortcodes on the event page:
 
 ```
 [mvoc_streeto_event series="2026-27" number="1"]
-[mvoc_streeto_league series="2026-27"]
-[mvoc_streeto_league series="2026-27" category="ladies"]
+[mvoc_streeto_league series="2026-27" through_event="1"]
+[mvoc_streeto_league series="2026-27" through_event="1" category="ladies"]
 ```
 
 The league table shows every ranking side by side — Pos, Ladies, M55 and W55 — the way the
@@ -66,8 +66,16 @@ club's spreadsheet did, with a cell left blank where someone is not in that cate
 still shows where each of them sits overall. Categories are `overall`, `ladies`, `o55_men`
 and `o55_women`.
 
-Leaving the series out shows whichever season is marked current, so a standing league page
-never needs editing when the season rolls over.
+`through_event` caps the standings at that event number, so event 1's page keeps recording
+the league as it stood after event 1 even once later events publish. It's still computed
+live rather than snapshotted, so a correction made to event 1 afterwards still shows up
+there. Leave it out for the full current standings — that's what a standing "latest league"
+page wants, and leaving the series out too means it never needs editing when the season
+rolls over:
+
+```
+[mvoc_streeto_league]
+```
 
 ## Scoring
 

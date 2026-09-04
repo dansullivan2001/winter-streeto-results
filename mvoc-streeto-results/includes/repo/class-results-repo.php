@@ -13,6 +13,7 @@
 namespace MVOC\StreetO\Repo;
 
 use MVOC\StreetO\Domain\Import_Reconciler;
+use MVOC\StreetO\League_Cache;
 use MVOC\StreetO\Schema;
 
 defined( 'ABSPATH' ) || exit;
@@ -125,6 +126,8 @@ class Results_Repo {
 				array( '%d' )
 			);
 
+			League_Cache::bump();
+
 			return;
 		}
 
@@ -141,6 +144,8 @@ class Results_Repo {
 			$columns['is_excluded'] = ! empty( $action['row']['is_failed'] ) ? 1 : 0;
 
 			$wpdb->insert( $table, $columns ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+			League_Cache::bump();
 
 			return;
 		}
@@ -159,6 +164,8 @@ class Results_Repo {
 			null,
 			array( '%d' )
 		);
+
+		League_Cache::bump();
 	}
 
 	/**
@@ -195,6 +202,8 @@ class Results_Repo {
 			null,
 			array( '%d' )
 		);
+
+		League_Cache::bump();
 	}
 
 	/**
@@ -262,6 +271,8 @@ class Results_Repo {
 			)
 		);
 
+		League_Cache::bump();
+
 		return (int) $wpdb->insert_id;
 	}
 
@@ -284,6 +295,8 @@ class Results_Repo {
 			),
 			array( '%d', '%d' )
 		);
+
+		League_Cache::bump();
 	}
 
 	/**

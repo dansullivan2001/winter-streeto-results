@@ -328,15 +328,15 @@ class Events_Screen {
 
 			<h2><?php esc_html_e( 'Shortcodes', 'mvoc-streeto' ); ?></h2>
 			<p class="description">
-				<?php esc_html_e( 'Put these on each event page — the results first, then the league.', 'mvoc-streeto' ); ?>
+				<?php esc_html_e( 'Put these on each event page — the results first, then the league as it stood after that event. through_event caps the table at that event number but stays live, so a later correction to it still shows up here:', 'mvoc-streeto' ); ?>
 			</p>
 			<p>
 				<code>[mvoc_streeto_event series="<?php echo esc_html( $series['slug'] ); ?>" number="1"]</code><br />
-				<code>[mvoc_streeto_league series="<?php echo esc_html( $series['slug'] ); ?>"]</code><br />
-				<code>[mvoc_streeto_league series="<?php echo esc_html( $series['slug'] ); ?>" category="ladies"]</code>
+				<code>[mvoc_streeto_league series="<?php echo esc_html( $series['slug'] ); ?>" through_event="1"]</code><br />
+				<code>[mvoc_streeto_league series="<?php echo esc_html( $series['slug'] ); ?>" through_event="1" category="ladies"]</code>
 			</p>
 			<p class="description">
-				<?php esc_html_e( 'Leaving the series out shows whichever season is current, which is what a standing league page wants:', 'mvoc-streeto' ); ?>
+				<?php esc_html_e( 'Leaving through_event out shows the full current standings, and leaving the series out too shows whichever season is current — which is what a standing "latest league" page wants:', 'mvoc-streeto' ); ?>
 			</p>
 			<p>
 				<code>[mvoc_streeto_league]</code>

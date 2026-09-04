@@ -2,9 +2,13 @@
 /**
  * Public shortcodes for the event and league tables.
  *
- * Each event page carries that event's results followed by the updated league,
- * so the league renders eight times across the season. That is why it is cached
- * in a transient keyed on the series' latest publish.
+ * Each event page carries that event's results followed by the league as it
+ * stood at that point (`through_event`), so the league renders eight times
+ * across the season, each showing a shorter run of events than the last. A
+ * page with no `through_event` always shows the full current standings. Both
+ * are cached in a transient keyed on League_Cache's generation counter, which
+ * is bumped by any write that could change what the table shows — not just a
+ * publish.
  *
  * @package MVOC_StreetO
  */
@@ -15,6 +19,7 @@ use MVOC\StreetO\Domain\Event_Presenter;
 use MVOC\StreetO\Domain\League_Builder;
 use MVOC\StreetO\Domain\League_Presenter;
 use MVOC\StreetO\Domain\Scoring_Engine;
+use MVOC\StreetO\League_Cache;
 use MVOC\StreetO\Plugin;
 use MVOC\StreetO\Repo\Competitors_Repo;
 use MVOC\StreetO\Repo\Events_Repo;
@@ -132,13 +137,19 @@ class Shortcodes {
 	/**
 	 * `[mvoc_streeto_league series="2026-27" category="ladies"]`
 	 *
+	 * `through_event="3"` caps the standings at that event number, for a
+	 * page recording how the league stood at the time — still computed
+	 * live, so a later correction to event 3 still shows up here. Leave it
+	 * out for the full current standings.
+	 *
 	 * @param array<string,string>|string $atts Shortcode attributes.
 	 */
 	public function render_league( $atts ): string {
 		$atts = shortcode_atts(
 			array(
-				'series'   => '',
-				'category' => 'overall',
+				'series'        => '',
+				'category'      => 'overall',
+				'through_event' => '',
 			),
 			$atts,
 			'mvoc_streeto_league'
@@ -152,7 +163,11 @@ class Shortcodes {
 		wp_enqueue_style( 'mvoc-streeto' );
 		wp_enqueue_script( 'mvoc-streeto-league' );
 
-		$model = $this->league_model( $series, $atts['category'] );
+		$through_event = '' === trim( (string) $atts['through_event'] )
+			? null
+			: max( 1, (int) $atts['through_event'] );
+
+		$model = $this->league_model( $series, $atts['category'], $through_event );
 		if ( ! $model['rows'] ) {
 			return $this->notice( __( 'No league standings yet.', 'mvoc-streeto' ) );
 		}
@@ -184,11 +199,14 @@ class Shortcodes {
 	/**
 	 * Build (or reuse) the league table model for a category.
 	 *
-	 * @param array<string,mixed> $series   Series row.
-	 * @param string              $category Category key.
+	 * @param array<string,mixed> $series        Series row.
+	 * @param string              $category      Category key.
+	 * @param int|null            $through_event Cap standings at this event
+	 *                                            number, or null for every
+	 *                                            published event.
 	 * @return array<string,mixed>
 	 */
-	private function league_model( array $series, string $category ): array {
+	private function league_model( array $series, string $category, ?int $through_event = null ): array {
 		// An event still in draft is visible to whoever could publish it, and
 		// the league has to agree: showing a draft event's results next to a
 		// league that ignores them made the two tables contradict each other
@@ -200,8 +218,11 @@ class Shortcodes {
 				$this->events->events( $series['id'] ),
 				// A cancelled event never counts, for anyone. It is kept in the
 				// series so the numbering stays stable, not so it can score.
+				// through_event caps a page at the standings as they stood at
+				// that point in the season, not the ones since.
 				static fn( array $event ): bool => ! $event['is_cancelled']
 					&& ( $event['is_published'] || $previewing )
+					&& ( null === $through_event || $event['event_number'] <= $through_event )
 			)
 		);
 
@@ -212,14 +233,11 @@ class Shortcodes {
 		// version would be a way to leak unpublished results to visitors, and
 		// no amount of key-juggling is worth that risk for one admin page view.
 		if ( ! $previewing ) {
-			// Keyed on the latest publish so the cache clears itself the moment
-			// an event goes live, without anyone remembering to flush it.
-			$stamp = '';
-			foreach ( $events as $event ) {
-				$stamp = max( $stamp, (string) ( $event['published_at'] ?? '' ) );
-			}
-
-			$key    = self::CACHE_PREFIX . 'league_' . md5( $series['slug'] . '|' . $category . '|' . $stamp );
+			// Keyed on League_Cache's generation, which any write that could
+			// change standings bumps — a publish, but also a correction, a
+			// manual row, or a cancellation made after the fact.
+			$cap    = null === $through_event ? 'latest' : (string) $through_event;
+			$key    = self::CACHE_PREFIX . 'league_' . md5( $series['slug'] . '|' . $category . '|' . $cap . '|' . League_Cache::generation() );
 			$cached = get_transient( $key );
 
 			if ( is_array( $cached ) ) {

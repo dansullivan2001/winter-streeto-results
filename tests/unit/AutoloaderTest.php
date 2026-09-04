@@ -30,6 +30,7 @@ class AutoloaderTest extends TestCase {
 			array( \MVOC\StreetO\Plugin::class ),
 			array( \MVOC\StreetO\Activator::class ),
 			array( \MVOC\StreetO\Schema::class ),
+			array( \MVOC\StreetO\League_Cache::class ),
 			array( \MVOC\StreetO\MapRun\Client::class ),
 			array( \MVOC\StreetO\MapRun\Parser::class ),
 			array( \MVOC\StreetO\Domain\Scoring_Config::class ),

@@ -8,6 +8,7 @@
 namespace MVOC\StreetO\Repo;
 
 use MVOC\StreetO\Domain\Scoring_Config;
+use MVOC\StreetO\League_Cache;
 use MVOC\StreetO\Schema;
 
 defined( 'ABSPATH' ) || exit;
@@ -319,10 +320,14 @@ class Events_Repo {
 				array( '%d' )
 			);
 
+			League_Cache::bump();
+
 			return $existing['id'];
 		}
 
 		$wpdb->insert( Schema::table( 'events' ), $values, $formats ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+		League_Cache::bump();
 
 		return (int) $wpdb->insert_id;
 	}
@@ -363,6 +368,8 @@ class Events_Repo {
 			array( '%s', '%s' ),
 			array( '%d' )
 		);
+
+		League_Cache::bump();
 	}
 
 	/**
