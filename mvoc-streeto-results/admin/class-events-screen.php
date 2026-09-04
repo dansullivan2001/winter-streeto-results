@@ -691,6 +691,8 @@ class Events_Screen {
 	private function save_all( array $series ): string {
 		global $wpdb;
 
+		$changes = array();
+
 		if ( isset( $_POST['series_name'] ) ) {
 			$name = sanitize_text_field( wp_unslash( $_POST['series_name'] ) );
 
@@ -702,15 +704,19 @@ class Events_Screen {
 					array( '%s' ),
 					array( '%d' )
 				);
+
+				$changes[] = __( 'renamed the series', 'mvoc-streeto' );
 			}
 		}
 
 		if ( ! isset( $_POST['events'] ) || ! is_array( $_POST['events'] ) ) {
-			return __( 'Saved.', 'mvoc-streeto' );
+			return $changes ? ucfirst( implode( ', ', $changes ) ) . '.' : __( 'Nothing to change.', 'mvoc-streeto' );
 		}
 
-		$saved = 0;
-		$kept  = array();
+		$events_changed = 0;
+		$names_set      = 0;
+		$names_removed  = 0;
+		$kept           = array();
 
 		foreach ( wp_unslash( $_POST['events'] ) as $number => $fields ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$event = $this->repo->find_event( $series['id'], (int) $number );
@@ -721,22 +727,28 @@ class Events_Screen {
 
 			$title = sanitize_text_field( (string) ( $fields['title'] ?? '' ) );
 
-			$this->repo->save_event(
-				$series['id'],
-				array(
-					'event_number'            => (int) $number,
-					'title'                   => $title ?: $event['title'],
-					'venue'                   => $title ?: $event['venue'],
-					'event_date'              => sanitize_text_field( (string) ( $fields['event_date'] ?? '' ) ),
-					'organiser_competitor_id' => $this->resolve_organiser( $fields ),
-					// A published event keeps its status: taking it back to
-					// draft is done on the review screen, deliberately, rather
-					// than as a side effect of saving a date.
-					'status'                  => $event['is_published']
-						? $event['status']
-						: $this->requested_status( $fields, (string) $event['status'] ),
-				)
+			$updated = array(
+				'event_number'            => (int) $number,
+				'title'                   => $title ?: $event['title'],
+				'venue'                   => $title ?: $event['venue'],
+				'event_date'              => sanitize_text_field( (string) ( $fields['event_date'] ?? '' ) ),
+				'organiser_competitor_id' => $this->resolve_organiser( $fields ),
+				// A published event keeps its status: taking it back to draft
+				// is done on the review screen, deliberately, rather than as a
+				// side effect of saving a date.
+				'status'                  => $event['is_published']
+					? $event['status']
+					: $this->requested_status( $fields, (string) $event['status'] ),
 			);
+
+			// Compare before writing, so the message can report what actually
+			// changed. Saying "saved 8 events" after one edit is technically
+			// true and useless: it gives no way to tell a change took.
+			if ( self::event_differs( $event, $updated ) ) {
+				++$events_changed;
+			}
+
+			$this->repo->save_event( $series['id'], $updated );
 
 			// Every course is submitted, blanks included: an empty box means
 			// "remove this", which is only expressible if it is sent.
@@ -745,28 +757,70 @@ class Events_Screen {
 				$names[ $course ] = sanitize_text_field( (string) ( $fields[ 'source_' . $course ] ?? '' ) );
 			}
 
-			$result = $this->repo->save_sources( (int) $event['id'], $names );
-			$kept   = array_merge( $kept, $result['kept'] );
-			++$saved;
+			$result         = $this->repo->save_sources( (int) $event['id'], $names );
+			$names_set     += $result['saved'];
+			$names_removed += $result['removed'];
+			$kept           = array_merge( $kept, $result['kept'] );
 		}
 
-		$notice = sprintf(
-			/* translators: %d: number of events saved. */
-			_n( 'Saved %d event.', 'Saved %d events.', $saved, 'mvoc-streeto' ),
-			$saved
-		);
-
-		if ( $kept ) {
-			// Saying nothing here would look exactly like the bug this
-			// replaced: an edit apparently ignored.
-			$notice .= ' ' . sprintf(
-				/* translators: %s: course lengths, e.g. "60, 40". */
-				__( 'The MapRun name for the %s minute course was kept, because results have already been imported through it — the name is the only record of where they came from. Exclude or remove those results first if you really need to clear it.', 'mvoc-streeto' ),
-				implode( ', ', array_unique( $kept ) )
+		if ( $events_changed ) {
+			$changes[] = sprintf(
+				/* translators: %d: number of events changed. */
+				_n( 'updated %d event', 'updated %d events', $events_changed, 'mvoc-streeto' ),
+				$events_changed
 			);
 		}
 
-		return $notice;
+		if ( $names_set ) {
+			$changes[] = sprintf(
+				/* translators: %d: number of MapRun event names set. */
+				_n( 'set %d MapRun event name', 'set %d MapRun event names', $names_set, 'mvoc-streeto' ),
+				$names_set
+			);
+		}
+
+		if ( $names_removed ) {
+			// Positive confirmation, because the alternative is silence - and
+			// silence after clearing a box is exactly how the earlier bug felt.
+			$changes[] = sprintf(
+				/* translators: %d: number of MapRun event names removed. */
+				_n( 'removed %d MapRun event name', 'removed %d MapRun event names', $names_removed, 'mvoc-streeto' ),
+				$names_removed
+			);
+		}
+
+		$blocked = $kept
+			? sprintf(
+				/* translators: %s: course lengths, e.g. "60, 40". */
+				__( 'The MapRun name for the %s minute course could not be cleared, because results have already been imported through it and the name is the only record of where they came from. Remove or exclude those results first if you really need to clear it.', 'mvoc-streeto' ),
+				implode( ', ', array_unique( $kept ) )
+			)
+			: '';
+
+		if ( ! $changes ) {
+			// "Nothing to change" alongside an explanation of something that
+			// was deliberately not done reads as a contradiction. Where an edit
+			// was blocked, that is the message.
+			return $blocked ?: __( 'Nothing to change — everything was already as submitted.', 'mvoc-streeto' );
+		}
+
+		return trim( ucfirst( implode( ', ', $changes ) ) . '. ' . $blocked );
+	}
+
+	/**
+	 * Whether a submitted event actually differs from the stored one.
+	 *
+	 * @param array<string,mixed> $stored  Event as it is.
+	 * @param array<string,mixed> $updated Event as submitted.
+	 */
+	private static function event_differs( array $stored, array $updated ): bool {
+		foreach ( array( 'title', 'venue', 'event_date', 'status' ) as $field ) {
+			if ( (string) ( $stored[ $field ] ?? '' ) !== (string) ( $updated[ $field ] ?? '' ) ) {
+				return true;
+			}
+		}
+
+		return (int) ( $stored['organiser_competitor_id'] ?? 0 ) !== (int) ( $updated['organiser_competitor_id'] ?? 0 );
 	}
 
 	/**
