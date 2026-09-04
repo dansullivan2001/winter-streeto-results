@@ -109,6 +109,9 @@ class MapRun_Explorer_Screen {
 			<?php if ( is_array( $connectivity ) ) : ?>
 				<div class="notice notice-<?php echo $connectivity['ok'] ? 'success' : 'warning'; ?>">
 					<p><?php echo esc_html( $connectivity['message'] ); ?></p>
+					<?php if ( ! empty( $connectivity['detail'] ) ) : ?>
+						<p><?php echo esc_html( $connectivity['detail'] ); ?></p>
+					<?php endif; ?>
 				</div>
 			<?php endif; ?>
 

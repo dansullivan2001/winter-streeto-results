@@ -120,15 +120,49 @@ class Event_Review_Screen {
 						</span>
 					<?php endif; ?>
 				</p>
-				<details>
+				<?php $sources = $this->events->sources( $event_id ); ?>
+				<details <?php echo $sources ? 'open' : ''; ?>>
 					<summary><?php esc_html_e( 'Paste JSON instead', 'mvoc-streeto' ); ?></summary>
 					<p class="description">
-						<?php esc_html_e( 'Use this if the server cannot reach MapRun. Open the API URL in a browser and paste the response.', 'mvoc-streeto' ); ?>
+						<?php esc_html_e( 'Use this where the server cannot reach MapRun. It produces exactly the same result as fetching: the response goes through identical validation and parsing.', 'mvoc-streeto' ); ?>
 					</p>
-					<textarea name="pasted_json" rows="4" class="large-text code"></textarea>
-					<button type="submit" name="mvoc_streeto_action" value="import_paste" class="button">
-						<?php esc_html_e( 'Import pasted JSON', 'mvoc-streeto' ); ?>
-					</button>
+
+					<?php if ( $sources ) : ?>
+						<ol>
+							<?php foreach ( $sources as $source ) : ?>
+								<?php $url = \MVOC\StreetO\MapRun\Client::url_for( (string) $source['maprun_event_name'] ); ?>
+								<li style="margin-bottom:0.5em;">
+									<?php
+									printf(
+										/* translators: %s: course label such as 60. */
+										esc_html__( '%s minute course —', 'mvoc-streeto' ),
+										esc_html( (string) $source['course_label'] )
+									);
+									?>
+									<a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer">
+										<?php esc_html_e( 'open in a new tab', 'mvoc-streeto' ); ?>
+									</a>
+									<?php esc_html_e( 'then copy everything and paste it below.', 'mvoc-streeto' ); ?>
+									<br />
+									<input type="text" class="large-text code" readonly
+										onclick="this.select();"
+										value="<?php echo esc_attr( $url ); ?>" />
+								</li>
+							<?php endforeach; ?>
+						</ol>
+					<?php else : ?>
+						<p class="description">
+							<?php esc_html_e( 'No MapRun event name is set for this event yet — add one on the Series and events screen and the exact URL to open will appear here.', 'mvoc-streeto' ); ?>
+						</p>
+					<?php endif; ?>
+
+					<textarea name="pasted_json" rows="5" class="large-text code"
+						placeholder="{&quot;errorFlag&quot;:false,&quot;results&quot;:[ ... ]}"></textarea>
+					<p>
+						<button type="submit" name="mvoc_streeto_action" value="import_paste" class="button button-primary">
+							<?php esc_html_e( 'Import pasted JSON', 'mvoc-streeto' ); ?>
+						</button>
+					</p>
 				</details>
 
 				<?php if ( $duplicates ) : ?>

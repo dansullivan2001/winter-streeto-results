@@ -46,11 +46,7 @@ class Client {
 			throw new \RuntimeException( 'No MapRun event name given.' );
 		}
 
-		// rawurlencode() here is deliberate, not a double-encode: add_query_arg()
-		// runs urlencode_deep() over the URL's *existing* query string only, and
-		// merges array arguments in afterwards untouched. MapRun event names
-		// contain spaces, so without this they would go out raw.
-		$url = add_query_arg( array( 'eventName' => rawurlencode( $event_name ) ), self::API_URL );
+		$url = self::url_for( $event_name );
 
 		$response = wp_remote_get(
 			$url,
@@ -131,32 +127,77 @@ class Client {
 	 */
 	public function check_connectivity(): array {
 		$response = wp_remote_get(
-			add_query_arg( array( 'eventName' => 'mvoc-streeto-connectivity-check' ), self::API_URL ),
+			self::url_for( 'mvoc-streeto-connectivity-check' ),
 			array( 'timeout' => self::TIMEOUT )
 		);
 
-		if ( is_wp_error( $response ) ) {
+		if ( ! is_wp_error( $response ) ) {
+			// Any HTTP response at all proves the port is open. A MapRun-level
+			// error for a nonsense event name is the expected, healthy outcome.
 			return array(
-				'ok'      => false,
-				'message' => sprintf(
-					/* translators: 1: host and port, 2: error message. */
-					__( 'This site cannot reach %1$s (%2$s). Automatic fetching will not work here — use Paste JSON.', 'mvoc-streeto' ),
+				'ok'       => true,
+				'blocked'  => false,
+				'message'  => sprintf(
+					/* translators: 1: host and port, 2: HTTP status code. */
+					__( 'Reached %1$s (HTTP %2$d). Automatic fetching should work.', 'mvoc-streeto' ),
 					self::API_HOST . ':' . self::API_PORT,
-					$response->get_error_message()
+					(int) wp_remote_retrieve_response_code( $response )
 				),
+				'detail'   => '',
 			);
 		}
 
-		// Any HTTP response at all proves the port is open. A MapRun-level
-		// error for a nonsense event name is the expected, healthy outcome.
+		$error = $response->get_error_message();
+
+		// Distinguish "this host blocks the port" from "the host is unreachable
+		// altogether". Trying the same server on 443 separates the two, and
+		// that difference is the whole of what the webmaster needs to know:
+		// one is a firewall rule they can change, the other is not.
+		$control = wp_remote_get(
+			'https://' . self::API_HOST . '/',
+			array(
+				'timeout'     => self::TIMEOUT,
+				'redirection' => 0,
+			)
+		);
+
+		$port_only = ! is_wp_error( $control );
+
 		return array(
-			'ok'      => true,
+			'ok'      => false,
+			'blocked' => $port_only,
 			'message' => sprintf(
-				/* translators: 1: host and port, 2: HTTP status code. */
-				__( 'Reached %1$s (HTTP %2$d). Automatic fetching should work.', 'mvoc-streeto' ),
+				/* translators: 1: host and port, 2: error message. */
+				__( 'This site cannot reach %1$s (%2$s). Automatic fetching will not work here — use Paste JSON, which produces exactly the same result.', 'mvoc-streeto' ),
 				self::API_HOST . ':' . self::API_PORT,
-				(int) wp_remote_retrieve_response_code( $response )
+				$error
 			),
+			'detail'  => $port_only
+				? sprintf(
+					/* translators: 1: host, 2: port. */
+					__( 'The server can reach %1$s on the normal web port but not on %2$d, so this is an outbound firewall rule rather than anything wrong with MapRun. Ask the host to allow outbound TCP to %1$s on port %2$d and the automatic fetch will start working.', 'mvoc-streeto' ),
+					self::API_HOST,
+					self::API_PORT
+				)
+				: sprintf(
+					/* translators: %s: host. */
+					__( 'The server cannot reach %s on any port, so outbound connections may be blocked more broadly. Worth asking the host what outbound traffic is permitted.', 'mvoc-streeto' ),
+					self::API_HOST
+				),
 		);
 	}
+
+	/**
+	 * The URL to open in a browser when pasting the response by hand.
+	 *
+	 * @param string $event_name Full MapRun event name.
+	 */
+	public static function url_for( string $event_name ): string {
+		// Built directly rather than through add_query_arg, which needed a
+		// comment explaining why its array arguments are not encoded for you.
+		// One place builds this URL, it has no WordPress dependency, and it is
+		// covered by a test.
+		return self::API_URL . '?eventName=' . rawurlencode( trim( $event_name ) );
+	}
+
 }

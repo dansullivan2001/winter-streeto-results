@@ -55,6 +55,17 @@ class WorcesterParkTest extends TestCase {
 		$this->fail( 'No parsed row for ' . $name );
 	}
 
+	public function test_the_paste_url_is_ready_to_open(): void {
+		// On a host that blocks port 8886 this is the co-ordinator's route in,
+		// so the URL has to be correct without them assembling it. Spaces in
+		// the event name are the part that would otherwise go wrong.
+		$url = \MVOC\StreetO\MapRun\Client::url_for( 'Burpham Sep26 PXAS ScoreQ60' );
+
+		$this->assertStringContainsString( 'p.fne.com.au:8886', $url );
+		$this->assertStringContainsString( 'Burpham%20Sep26%20PXAS%20ScoreQ60', $url );
+		$this->assertStringNotContainsString( ' ', $url );
+	}
+
 	public function test_the_response_parses(): void {
 		$this->assertCount( 16, $this->parsed() );
 	}

@@ -62,8 +62,21 @@ anything but 80 and 443. This is untested on mvoc.org and cannot be tested from 
 
 - **Green:** automatic fetching works. Nothing more to do.
 - **Amber:** the host blocks it. Everything still works via **Paste JSON**, which runs through
-  exactly the same validation and parsing. Open the API URL in a browser and paste the
-  response. This was designed in from the start, not bolted on.
+  exactly the same validation and parsing — the event screen shows the exact URL to open for
+  each course, so it is open, copy, paste. This was designed in from the start, not bolted on.
+
+The check distinguishes two cases, because they need different answers. If the server can
+reach `p.fne.com.au` on the normal web port but not on 8886, it is an outbound firewall rule
+and the host can change it:
+
+> Please allow outbound TCP from the web server to `p.fne.com.au` on port 8886.
+
+If it cannot reach the host on any port, outbound traffic is restricted more broadly and it
+is worth asking the host what is permitted.
+
+**As of the first live install on mvoc.org, port 8886 is blocked** — cURL error 7, refused in
+66 ms, which is a firewall rejecting the connection rather than a timeout. Pasting is
+therefore the working route there unless the host opens the port.
 
 ## First run
 
