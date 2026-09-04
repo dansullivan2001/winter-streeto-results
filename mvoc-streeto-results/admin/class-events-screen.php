@@ -174,6 +174,7 @@ class Events_Screen {
 					<span class="description"><?php esc_html_e( 'Only fills boxes that are empty — nothing you have already entered is touched.', 'mvoc-streeto' ); ?></span>
 				</p>
 
+				<div style="overflow-x:auto;">
 				<table class="widefat striped">
 					<thead>
 						<tr>
@@ -299,6 +300,7 @@ class Events_Screen {
 						<?php endforeach; ?>
 					</tbody>
 				</table>
+				</div>
 
 				<p class="description">
 					<?php esc_html_e( 'Organisers rarely exist as competitors before the first event has been imported, so typing a name creates one. When they later appear in MapRun results, the name is already known and matches automatically.', 'mvoc-streeto' ); ?>
