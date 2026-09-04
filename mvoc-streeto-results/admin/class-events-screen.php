@@ -10,6 +10,7 @@
 
 namespace MVOC\StreetO\Admin;
 
+use MVOC\StreetO\Domain\MapRun_Name;
 use MVOC\StreetO\Domain\Season;
 use MVOC\StreetO\Plugin;
 use MVOC\StreetO\Repo\Competitors_Repo;
@@ -137,6 +138,25 @@ class Events_Screen {
 				<p class="description">
 					<?php esc_html_e( 'The 40-minute course is a separate MapRun event, normally the same name ending ScoreQ40. Leave it blank until one exists.', 'mvoc-streeto' ); ?>
 				</p>
+				<p class="description">
+					<?php esc_html_e( 'Each empty box shows a suggested name, greyed out. Use it when creating the event in MapRun and both ends match without anyone typing the same string twice — which is the only thing keeping them in step today.', 'mvoc-streeto' ); ?>
+					<br />
+					<?php esc_html_e( 'The format matches all eight of last season\'s events. The venue is free text at MapRun\'s end, though, so a suggestion can be right about the shape and wrong about the words — anything that does not match, just type over.', 'mvoc-streeto' ); ?>
+					<br />
+					<?php
+					printf(
+						/* translators: %s: an example MapRun folder name. */
+						esc_html__( 'MapRun groups a season in a folder such as %s, which is worth keeping to the same pattern.', 'mvoc-streeto' ),
+						'<code>UK/Mole Valley/StreetO 25-26 Series</code>'
+					);
+					?>
+				</p>
+				<p>
+					<button type="submit" name="mvoc_streeto_action" value="suggest_names" class="button">
+						<?php esc_html_e( 'Fill in the suggested names', 'mvoc-streeto' ); ?>
+					</button>
+					<span class="description"><?php esc_html_e( 'Only fills boxes that are empty — nothing you have already entered is touched.', 'mvoc-streeto' ); ?></span>
+				</p>
 
 				<table class="widefat striped">
 					<thead>
@@ -187,18 +207,21 @@ class Events_Screen {
 										name="<?php echo esc_attr( $field . '[organiser_name]' ); ?>"
 										placeholder="<?php esc_attr_e( 'or type a name', 'mvoc-streeto' ); ?>" />
 								</td>
-								<td>
-									<input type="text" class="regular-text"
-										name="<?php echo esc_attr( $field . '[source_60]' ); ?>"
-										value="<?php echo esc_attr( $sources['60'] ?? '' ); ?>"
-										placeholder="Burpham Sep26 PXAS ScoreQ60" />
-								</td>
-								<td>
-									<input type="text" class="regular-text"
-										name="<?php echo esc_attr( $field . '[source_40]' ); ?>"
-										value="<?php echo esc_attr( $sources['40'] ?? '' ); ?>"
-										placeholder="&hellip; ScoreQ40" />
-								</td>
+								<?php foreach ( array( '60', '40' ) as $course ) : ?>
+									<?php
+									$suggested = MapRun_Name::suggest(
+										(string) ( $event['venue'] ?: $event['title'] ),
+										(string) $event['event_date'],
+										$course
+									);
+									?>
+									<td>
+										<input type="text" class="regular-text"
+											name="<?php echo esc_attr( $field . '[source_' . $course . ']' ); ?>"
+											value="<?php echo esc_attr( $sources[ $course ] ?? '' ); ?>"
+											placeholder="<?php echo esc_attr( $suggested ); ?>" />
+									</td>
+								<?php endforeach; ?>
 								<td>
 									<?php $count = $this->repo->result_count( (int) $event['id'] ); ?>
 									<?php if ( $event['is_published'] ) : ?>
@@ -489,6 +512,10 @@ class Events_Screen {
 			);
 		}
 
+		if ( 'suggest_names' === $action ) {
+			return $this->fill_suggested_names( $series );
+		}
+
 		if ( 'add_event' === $action ) {
 			return $this->add_event( $series );
 		}
@@ -596,6 +623,68 @@ class Events_Screen {
 			/* translators: %d: the new event's number. */
 			__( 'Added event %d.', 'mvoc-streeto' ),
 			$next
+		);
+	}
+
+	/**
+	 * Fill in suggested MapRun names, without touching anything already set.
+	 *
+	 * Only ever fills a gap. A name the co-ordinator has typed is the one that
+	 * matches MapRun, and a suggestion is a guess from one example — so the
+	 * guess must never win.
+	 *
+	 * @param array<string,mixed> $series Series row.
+	 */
+	private function fill_suggested_names( array $series ): string {
+		$filled = 0;
+
+		foreach ( $this->repo->events( (int) $series['id'] ) as $event ) {
+			$existing = array();
+			foreach ( $this->repo->sources( (int) $event['id'] ) as $source ) {
+				$existing[ $source['course_label'] ] = $source['maprun_event_name'];
+			}
+
+			$sources = array();
+
+			foreach ( array( '60', '40' ) as $course ) {
+				if ( ! empty( $existing[ $course ] ) ) {
+					$sources[] = array(
+						'maprun_event_name' => $existing[ $course ],
+						'course_label'      => $course,
+					);
+					continue;
+				}
+
+				$suggested = MapRun_Name::suggest(
+					(string) ( $event['venue'] ?: $event['title'] ),
+					(string) $event['event_date'],
+					$course
+				);
+
+				// The 40-minute event often does not exist yet, so only the
+				// 60 is filled by default; the short course is left for the
+				// co-ordinator once MapRun has one.
+				if ( '' !== $suggested && '60' === $course ) {
+					$sources[] = array(
+						'maprun_event_name' => $suggested,
+						'course_label'      => $course,
+					);
+					++$filled;
+				}
+			}
+
+			$this->repo->save_sources( (int) $event['id'], $sources );
+		}
+
+		return sprintf(
+			/* translators: %d: number of names filled in. */
+			_n(
+				'Filled in %d suggested name. Check it against MapRun before importing.',
+				'Filled in %d suggested names. Check them against MapRun before importing.',
+				$filled,
+				'mvoc-streeto'
+			),
+			$filled
 		);
 	}
 
