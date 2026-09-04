@@ -33,12 +33,15 @@ class Update_Checker {
 			'mvoc-streeto-results'
 		);
 
+		// setBranch() belongs to the update checker, not to the VCS API object -
+		// the API has no such method, so calling it there is a fatal on every
+		// page load rather than a mis-set branch. GitHub renamed the default
+		// branch to "main"; without this the fallback strategy still probes the
+		// now-nonexistent "master" on every check.
+		$update_checker->setBranch( 'main' );
+
 		$vcs_api = $update_checker->getVcsApi();
 		if ( null !== $vcs_api ) {
-			// GitHub renamed the default branch to "main"; without this the
-			// checker's fallback strategy still probes the now-nonexistent
-			// "master" on every check.
-			$vcs_api->setBranch( 'main' );
 
 			// The plugin lives in a subdirectory of the repo (mvoc-streeto-results/),
 			// alongside tests and docs that must not ship. Releases attach the

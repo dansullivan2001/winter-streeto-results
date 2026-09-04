@@ -85,7 +85,14 @@ class Events_Screen {
 			$competitors = $this->competitors->all();
 			?>
 
-			<form method="post">
+			<?php
+			// autocomplete="off": these fields have stable names and repeated
+			// values, so a browser will happily restore a previous entry into
+			// an emptied box on reload or back-navigation. That looks exactly
+			// like a save being ignored, and it is not something the server can
+			// see or correct.
+			?>
+			<form method="post" autocomplete="off">
 				<?php wp_nonce_field( self::NONCE ); ?>
 				<input type="hidden" name="series_slug" value="<?php echo esc_attr( $series['slug'] ); ?>" />
 
@@ -224,6 +231,7 @@ class Events_Screen {
 									?>
 									<td>
 										<input type="text" class="regular-text"
+											autocomplete="off" data-lpignore="true"
 											name="<?php echo esc_attr( $field . '[source_' . $course . ']' ); ?>"
 											value="<?php echo esc_attr( $sources[ $course ] ?? '' ); ?>"
 											<?php if ( '' !== $suggested ) : ?>
