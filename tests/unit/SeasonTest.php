@@ -48,6 +48,42 @@ class SeasonTest extends TestCase {
 		);
 	}
 
+	public function test_the_published_venues_come_through_for_2025(): void {
+		// The other season with venues on record, taken from the same MapRun
+		// events browser that MapRunNameTest reproduces names against - so a
+		// 2025/26 season created from this can be imported straight from
+		// MapRun without retyping any of the eight names.
+		$this->assertSame(
+			array(
+				'Epsom',
+				'Leatherhead',
+				'Carshalton',
+				'Ashtead',
+				'Esher',
+				'Dork v2',
+				'Cobham',
+				'Worcester Park',
+			),
+			array_column( Season::fixtures( 2025 ), 'title' )
+		);
+	}
+
+	public function test_the_2025_fixture_dates_match_the_published_calendar(): void {
+		$this->assertSame(
+			array(
+				'2025-09-16',
+				'2025-10-21',
+				'2025-11-18',
+				'2025-12-16',
+				'2026-01-20',
+				'2026-02-17',
+				'2026-03-17',
+				'2026-04-21',
+			),
+			array_column( Season::fixtures( 2025 ), 'event_date' )
+		);
+	}
+
 	public function test_a_future_season_falls_back_to_month_names(): void {
 		// Venues are not known years ahead, and a month name reads acceptably
 		// as a league column heading until one is set.

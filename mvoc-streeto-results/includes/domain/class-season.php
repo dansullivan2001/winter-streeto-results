@@ -8,9 +8,9 @@
  * Tuesday of each month from September to April.
  *
  * That last one is an inference, not a rule the club has stated — but it holds
- * for all eight published 2026/27 fixtures, and a test asserts as much. Dates
- * stay editable regardless, because a clash or a half-term will eventually
- * move one.
+ * for all eight published fixtures in both 2025/26 and 2026/27, and a test
+ * asserts as much for each. Dates stay editable regardless, because a clash
+ * or a half-term will eventually move one.
  *
  * Deliberately free of WordPress dependencies so it can be unit-tested with
  * plain PHPUnit.
@@ -46,12 +46,23 @@ class Season {
 	/**
 	 * Venues for seasons the club has already published.
 	 *
-	 * Only 2026/27 is known. A future season gets month names as placeholders,
-	 * which read acceptably as league column headings until the venues are set.
+	 * 2025/26 and 2026/27 are known. A future season gets month names as
+	 * placeholders, which read acceptably as league column headings until
+	 * the venues are set.
 	 *
 	 * @var array<int,string[]>
 	 */
 	private const KNOWN_VENUES = array(
+		2025 => array(
+			'Epsom',
+			'Leatherhead',
+			'Carshalton',
+			'Ashtead',
+			'Esher',
+			'Dork v2',
+			'Cobham',
+			'Worcester Park',
+		),
 		2026 => array(
 			'Burpham & Merrow',
 			'Tattenham Corner',
