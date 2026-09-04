@@ -205,7 +205,7 @@ class Events_Screen {
 										value="<?php echo esc_attr( (string) $event['event_date'] ); ?>" />
 								</td>
 								<td>
-									<input type="text" style="width:16em"
+									<input type="text" style="width:12em"
 										name="<?php echo esc_attr( $field . '[title]' ); ?>"
 										value="<?php echo esc_attr( (string) $event['title'] ); ?>" />
 								</td>
