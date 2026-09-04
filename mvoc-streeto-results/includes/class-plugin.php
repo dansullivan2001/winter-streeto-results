@@ -46,6 +46,7 @@ class Plugin {
 	 */
 	private function boot(): void {
 		Schema::maybe_upgrade();
+		Update_Checker::init();
 
 		( new Front\Shortcodes() )->register();
 

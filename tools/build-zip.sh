@@ -17,6 +17,11 @@ BUILD="$ROOT/build"
 VERSION="$(grep -m1 "^ \* Version:" "$ROOT/$PLUGIN/$PLUGIN.php" | awk '{print $3}')"
 ZIP="$BUILD/$PLUGIN-$VERSION.zip"
 
+if git -C "$ROOT" rev-parse "v$VERSION" >/dev/null 2>&1; then
+  echo "error: v$VERSION is already tagged — bump the Version header in $PLUGIN.php first" >&2
+  exit 1
+fi
+
 rm -rf "$BUILD"
 mkdir -p "$BUILD"
 

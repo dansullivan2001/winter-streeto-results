@@ -8,9 +8,14 @@
 
 Produces `build/mvoc-streeto-results-<version>.zip`, ready for WordPress's plugin
 uploader. It contains only the plugin directory — the tests, the fixtures and Composer's dev
-dependencies are left out. That is deliberate on two counts: the plugin has no runtime
-dependencies at all, and the fixtures hold real competitors' names and birth years, which
-have no business on a web server.
+dependencies are left out. That is deliberate on two counts: the plugin has no Composer-managed
+runtime dependencies (the update checker, see below, is vendored source, not a Composer
+package), and the fixtures hold real competitors' names and birth years, which have no
+business on a web server.
+
+The build refuses to run if the current `Version:` header is already tagged — see
+"Releasing an update" below — so it is hard to ship a zip that silently matches what is
+already live.
 
 ## Check the host first
 
@@ -51,6 +56,32 @@ are invisible to the public anyway, so even that is guarded.
 
 1. **Plugins → Add New → Upload Plugin**, choose the zip, **Install Now**, **Activate**.
 2. Activation creates the tables and the role. Nothing else happens.
+
+After the first install, updates show up the normal WordPress way: the Plugins screen flags
+"a new version is available" and offers **Update now**, sourced from this repo's GitHub
+releases rather than WordPress.org. See "Releasing an update" below for how a release gets
+picked up.
+
+## Releasing an update
+
+1. Bump `Version:` in `mvoc-streeto-results/mvoc-streeto-results.php` (both the header comment
+   and the `MVOC_STREETO_VERSION` constant) — every change that reaches the live site needs a
+   new version, even a small fix, or WordPress has nothing to compare against and the update
+   never appears.
+2. Build the zip: `./tools/build-zip.sh`. It refuses to run if the version is already tagged,
+   which catches a forgotten bump before it ships.
+3. Commit, then tag and push:
+   ```sh
+   git tag vX.Y.Z
+   git push origin main --tags
+   ```
+4. On GitHub, **Releases → Draft a new release**, pick the tag just pushed, and attach the zip
+   from step 2 as a release asset. This step matters: the update checker is configured to fetch
+   the attached zip rather than GitHub's auto-generated source archive, because the source
+   archive contains the whole repo — tests, fixtures, docs — not just the installable plugin
+   folder. A tag with no release, or a release with no zip attached, is invisible to it.
+5. Sites running an older version will now see the update in wp-admin within a few hours (the
+   checker caches for 12 hours), or immediately via **Dashboard → Updates → Check Again**.
 
 ## The one question only the club's server can answer
 
