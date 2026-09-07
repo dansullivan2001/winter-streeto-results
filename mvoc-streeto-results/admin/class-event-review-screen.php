@@ -105,7 +105,7 @@ class Event_Review_Screen {
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE ); ?>
 
-				<h2><?php esc_html_e( 'Results page', 'mvoc-streeto' ); ?></h2>
+				<h2><?php esc_html_e( 'Results post', 'mvoc-streeto' ); ?></h2>
 				<?php $this->render_page_section( $event ); ?>
 
 				<h2><?php esc_html_e( '1. Import', 'mvoc-streeto' ); ?></h2>
@@ -283,14 +283,14 @@ class Event_Review_Screen {
 			<p>
 				<?php
 				printf(
-					/* translators: %s: page status, e.g. "draft". */
+					/* translators: %s: post status, e.g. "draft". */
 					esc_html__( 'Status: %s', 'mvoc-streeto' ),
 					esc_html( $page->post_status )
 				);
 				?>
 				&mdash;
 				<a href="<?php echo esc_url( (string) get_edit_post_link( $page->ID ) ); ?>">
-					<?php esc_html_e( 'Edit page', 'mvoc-streeto' ); ?>
+					<?php esc_html_e( 'Edit post', 'mvoc-streeto' ); ?>
 				</a>
 				<?php if ( 'publish' === $page->post_status ) : ?>
 					&mdash;
@@ -303,14 +303,14 @@ class Event_Review_Screen {
 			return;
 		}
 
-		if ( current_user_can( 'edit_pages' ) ) {
+		if ( current_user_can( 'edit_posts' ) ) {
 			?>
 			<p>
 				<button type="submit" name="mvoc_streeto_action" value="create_page" class="button">
-					<?php esc_html_e( 'Create draft page', 'mvoc-streeto' ); ?>
+					<?php esc_html_e( 'Create draft post', 'mvoc-streeto' ); ?>
 				</button>
 				<span class="description">
-					<?php esc_html_e( 'A draft WordPress page with the event title, date, a placeholder for the report, and the results and league shortcodes already filled in.', 'mvoc-streeto' ); ?>
+					<?php esc_html_e( 'A draft post, categorised News and Results and tagged StreetO, with the title, a placeholder for the report, and the results and league shortcodes already filled in.', 'mvoc-streeto' ); ?>
 				</span>
 			</p>
 			<?php
@@ -319,7 +319,7 @@ class Event_Review_Screen {
 
 		?>
 		<p class="description">
-			<?php esc_html_e( 'You do not have permission to create WordPress pages — ask an administrator to create this event\'s results page.', 'mvoc-streeto' ); ?>
+			<?php esc_html_e( 'You do not have permission to create posts — ask an administrator to create this event\'s results post.', 'mvoc-streeto' ); ?>
 		</p>
 		<?php
 	}
@@ -740,30 +740,30 @@ class Event_Review_Screen {
 	}
 
 	/**
-	 * Create a draft WP page pre-filled with this event's shortcodes.
+	 * Create a draft results post pre-filled with this event's shortcodes.
+	 *
+	 * Called "page_id" in the schema from when this created a WP Page rather
+	 * than a Post — renaming it would need its own migration for what is
+	 * otherwise a cosmetic mismatch, so it stays.
 	 *
 	 * @param array<string,mixed> $event Event row.
 	 * @return array<string,mixed>
 	 */
 	private function create_results_page( array $event ): array {
-		if ( ! current_user_can( 'edit_pages' ) ) {
-			return array( 'errors' => array( __( 'You do not have permission to create pages.', 'mvoc-streeto' ) ) );
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			return array( 'errors' => array( __( 'You do not have permission to create posts.', 'mvoc-streeto' ) ) );
 		}
 
 		if ( ! empty( $event['page_id'] ) && get_post( (int) $event['page_id'] ) ) {
-			return array( 'errors' => array( __( 'A page already exists for this event.', 'mvoc-streeto' ) ) );
+			return array( 'errors' => array( __( 'A post already exists for this event.', 'mvoc-streeto' ) ) );
 		}
 
 		$series = $this->series_for( $event );
 		$slug   = (string) ( $series['slug'] ?? '' );
 		$number = (int) $event['event_number'];
 
-		$title = sprintf(
-			/* translators: 1: event number, 2: event title. */
-			__( 'Event %1$d — %2$s', 'mvoc-streeto' ),
-			$number,
-			$event['label']
-		);
+		$title = $this->results_post_title( $event, $number );
+		$notes = array();
 
 		$lines = array();
 
@@ -775,13 +775,26 @@ class Event_Review_Screen {
 		$lines[] = sprintf( '[mvoc_streeto_event series="%s" number="%d"]', $slug, $number );
 		$lines[] = sprintf( '[mvoc_streeto_league series="%s" through_event="%d"]', $slug, $number );
 
+		$categories = array();
+		foreach ( array( 'News', 'Results' ) as $name ) {
+			$term = get_term_by( 'name', $name, 'category' );
+			if ( $term instanceof \WP_Term ) {
+				$categories[] = $term->term_id;
+			} else {
+				/* translators: %s: category name, e.g. "News". */
+				$notes[] = sprintf( __( 'no "%s" category exists, so the post was created without it', 'mvoc-streeto' ), $name );
+			}
+		}
+
 		$post_id = wp_insert_post(
 			array(
-				'post_type'    => 'page',
-				'post_status'  => 'draft',
-				'post_title'   => $title,
-				'post_content' => implode( "\n\n", $lines ),
-				'post_author'  => get_current_user_id(),
+				'post_type'     => 'post',
+				'post_status'   => 'draft',
+				'post_title'    => $title,
+				'post_content'  => implode( "\n\n", $lines ),
+				'post_author'   => get_current_user_id(),
+				'post_category' => $categories,
+				'tags_input'    => array( 'StreetO' ),
 			),
 			true
 		);
@@ -792,7 +805,35 @@ class Event_Review_Screen {
 
 		$this->events->set_page_id( (int) $event['id'], (int) $post_id );
 
-		return array( 'notice' => __( 'Draft page created.', 'mvoc-streeto' ) );
+		$notice = __( 'Draft post created.', 'mvoc-streeto' );
+		if ( $notes ) {
+			$notice .= ' ' . ucfirst( implode( '; ', $notes ) ) . '.';
+		}
+
+		return array( 'notice' => $notice );
+	}
+
+	/**
+	 * "StreetO Results - Venue, Month Year", falling back to the on-screen
+	 * heading format when there is no date to build a month/year from.
+	 *
+	 * @param array<string,mixed> $event  Event row.
+	 * @param int                 $number Event number.
+	 */
+	private function results_post_title( array $event, int $number ): string {
+		$venue = '' !== trim( (string) ( $event['venue'] ?? '' ) ) ? (string) $event['venue'] : (string) $event['label'];
+
+		if ( empty( $event['event_date'] ) ) {
+			/* translators: 1: event number, 2: event title. */
+			return sprintf( __( 'Event %1$d — %2$s', 'mvoc-streeto' ), $number, $event['label'] );
+		}
+
+		/* translators: 1: venue, 2: month and year, e.g. "October 2026". */
+		return sprintf(
+			__( 'StreetO Results - %1$s, %2$s', 'mvoc-streeto' ),
+			$venue,
+			mysql2date( 'F Y', (string) $event['event_date'] )
+		);
 	}
 
 	/**
