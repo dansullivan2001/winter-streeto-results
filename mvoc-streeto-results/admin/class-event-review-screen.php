@@ -105,6 +105,9 @@ class Event_Review_Screen {
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE ); ?>
 
+				<h2><?php esc_html_e( 'Results page', 'mvoc-streeto' ); ?></h2>
+				<?php $this->render_page_section( $event ); ?>
+
 				<h2><?php esc_html_e( '1. Import', 'mvoc-streeto' ); ?></h2>
 				<p>
 					<button type="submit" name="mvoc_streeto_action" value="import" class="button button-primary">
@@ -264,6 +267,60 @@ class Event_Review_Screen {
 			<h2><?php esc_html_e( 'Preview', 'mvoc-streeto' ); ?></h2>
 			<?php $this->render_preview( $scored, $config, $event ); ?>
 		</div>
+		<?php
+	}
+
+	/**
+	 * The "create page" / "edit page" control at the top of the screen.
+	 *
+	 * @param array<string,mixed> $event Event row.
+	 */
+	private function render_page_section( array $event ): void {
+		$page = $event['page_id'] ? get_post( (int) $event['page_id'] ) : null;
+
+		if ( $page ) {
+			?>
+			<p>
+				<?php
+				printf(
+					/* translators: %s: page status, e.g. "draft". */
+					esc_html__( 'Status: %s', 'mvoc-streeto' ),
+					esc_html( $page->post_status )
+				);
+				?>
+				&mdash;
+				<a href="<?php echo esc_url( (string) get_edit_post_link( $page->ID ) ); ?>">
+					<?php esc_html_e( 'Edit page', 'mvoc-streeto' ); ?>
+				</a>
+				<?php if ( 'publish' === $page->post_status ) : ?>
+					&mdash;
+					<a href="<?php echo esc_url( (string) get_permalink( $page ) ); ?>" target="_blank" rel="noopener noreferrer">
+						<?php esc_html_e( 'View', 'mvoc-streeto' ); ?>
+					</a>
+				<?php endif; ?>
+			</p>
+			<?php
+			return;
+		}
+
+		if ( current_user_can( 'edit_pages' ) ) {
+			?>
+			<p>
+				<button type="submit" name="mvoc_streeto_action" value="create_page" class="button">
+					<?php esc_html_e( 'Create draft page', 'mvoc-streeto' ); ?>
+				</button>
+				<span class="description">
+					<?php esc_html_e( 'A draft WordPress page with the event title, date, a placeholder for the report, and the results and league shortcodes already filled in.', 'mvoc-streeto' ); ?>
+				</span>
+			</p>
+			<?php
+			return;
+		}
+
+		?>
+		<p class="description">
+			<?php esc_html_e( 'You do not have permission to create WordPress pages — ask an administrator to create this event\'s results page.', 'mvoc-streeto' ); ?>
+		</p>
 		<?php
 	}
 
@@ -564,6 +621,10 @@ class Event_Review_Screen {
 			return $this->add_manual_rows( $event_id );
 		}
 
+		if ( 'create_page' === $action ) {
+			return $this->create_results_page( $event );
+		}
+
 		$saved = $this->save_corrections();
 		$this->save_organisers( $event_id );
 
@@ -676,6 +737,62 @@ class Event_Review_Screen {
 		$this->results->delete_manual( $result_id );
 
 		return __( 'Removed.', 'mvoc-streeto' );
+	}
+
+	/**
+	 * Create a draft WP page pre-filled with this event's shortcodes.
+	 *
+	 * @param array<string,mixed> $event Event row.
+	 * @return array<string,mixed>
+	 */
+	private function create_results_page( array $event ): array {
+		if ( ! current_user_can( 'edit_pages' ) ) {
+			return array( 'errors' => array( __( 'You do not have permission to create pages.', 'mvoc-streeto' ) ) );
+		}
+
+		if ( ! empty( $event['page_id'] ) && get_post( (int) $event['page_id'] ) ) {
+			return array( 'errors' => array( __( 'A page already exists for this event.', 'mvoc-streeto' ) ) );
+		}
+
+		$series = $this->series_for( $event );
+		$slug   = (string) ( $series['slug'] ?? '' );
+		$number = (int) $event['event_number'];
+
+		$title = sprintf(
+			/* translators: 1: event number, 2: event title. */
+			__( 'Event %1$d — %2$s', 'mvoc-streeto' ),
+			$number,
+			$event['label']
+		);
+
+		$lines = array();
+
+		if ( ! empty( $event['event_date'] ) ) {
+			$lines[] = '<p>' . esc_html( mysql2date( get_option( 'date_format' ), (string) $event['event_date'] ) ) . '</p>';
+		}
+
+		$lines[] = '<p>' . esc_html__( '[Add the event report here.]', 'mvoc-streeto' ) . '</p>';
+		$lines[] = sprintf( '[mvoc_streeto_event series="%s" number="%d"]', $slug, $number );
+		$lines[] = sprintf( '[mvoc_streeto_league series="%s" through_event="%d"]', $slug, $number );
+
+		$post_id = wp_insert_post(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'draft',
+				'post_title'   => $title,
+				'post_content' => implode( "\n\n", $lines ),
+				'post_author'  => get_current_user_id(),
+			),
+			true
+		);
+
+		if ( is_wp_error( $post_id ) ) {
+			return array( 'errors' => array( $post_id->get_error_message() ) );
+		}
+
+		$this->events->set_page_id( (int) $event['id'], (int) $post_id );
+
+		return array( 'notice' => __( 'Draft page created.', 'mvoc-streeto' ) );
 	}
 
 	/**

@@ -50,8 +50,9 @@ class Schema {
 	 *    so the rare event run jointly by two or more people can list them all
 	 *    rather than forcing one name into a single column. Existing values
 	 *    are migrated in before the column is dropped.
+	 * 9: events.page_id — the WP page created for an event's results, if any.
 	 */
-	public const DB_VERSION = 8;
+	public const DB_VERSION = 9;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -259,6 +260,7 @@ class Schema {
 			last_fetched_at datetime NULL,
 			published_at datetime NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			page_id bigint(20) unsigned NULL,
 			PRIMARY KEY  (id),
 			KEY series_id (series_id),
 			UNIQUE KEY series_event (series_id,event_number)

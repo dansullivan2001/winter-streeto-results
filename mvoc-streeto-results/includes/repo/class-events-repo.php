@@ -279,6 +279,7 @@ class Events_Repo {
 				(int) $row['event_number']
 			);
 		$row['is_cancelled'] = self::STATUS_CANCELLED === $row['status'];
+		$row['page_id']      = $row['page_id'] ? (int) $row['page_id'] : null;
 
 		return $row;
 	}
@@ -343,6 +344,24 @@ class Events_Repo {
 	 */
 	public function unpublish( int $event_id ): void {
 		$this->set_status( $event_id, self::STATUS_DRAFT, null );
+	}
+
+	/**
+	 * Record the WP page created for an event's results.
+	 *
+	 * @param int $event_id Event id.
+	 * @param int $page_id  WP post id of the created page.
+	 */
+	public function set_page_id( int $event_id, int $page_id ): void {
+		global $wpdb;
+
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			Schema::table( 'events' ),
+			array( 'page_id' => $page_id ),
+			array( 'id' => $event_id ),
+			array( '%d' ),
+			array( '%d' )
+		);
 	}
 
 	/**
