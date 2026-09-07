@@ -5,10 +5,13 @@
  * Each event page carries that event's results followed by the league as it
  * stood at that point (`through_event`), so the league renders eight times
  * across the season, each showing a shorter run of events than the last. A
- * page with no `through_event` always shows the full current standings. Both
- * are cached in a transient keyed on League_Cache's generation counter, which
- * is bumped by any write that could change what the table shows — not just a
- * publish.
+ * `through_event` page stays hidden until that specific event is published —
+ * "the league as it stood after event 3" is not a thing until event 3 is
+ * public. A page with no `through_event` always shows the full current
+ * standings, built from published events only, for every viewer including an
+ * editor previewing a draft. Both are cached in a transient keyed on
+ * League_Cache's generation counter, which is bumped by any write that could
+ * change what the table shows — not just a publish.
  *
  * @package MVOC_StreetO
  */
@@ -137,8 +140,11 @@ class Shortcodes {
 	 *
 	 * `through_event="3"` caps the standings at that event number, for a
 	 * page recording how the league stood at the time — still computed
-	 * live, so a later correction to event 3 still shows up here. Leave it
-	 * out for the full current standings.
+	 * live, so a later correction to event 3 still shows up here. If event 3
+	 * is still a draft, it stays hidden from visitors but previews for
+	 * whoever could publish it, the same as the event table above it on
+	 * that page. Leave it out for the full current standings, built from
+	 * published events only, for every viewer.
 	 *
 	 * @param array<string,string>|string $atts Shortcode attributes.
 	 */
@@ -165,7 +171,25 @@ class Shortcodes {
 			? null
 			: max( 1, (int) $atts['through_event'] );
 
-		$model = $this->league_model( $series, $atts['category'], $through_event );
+		// "As it stood through event N" does not exist publicly until event N
+		// itself is public. An editor previewing that event still gets to see
+		// it here too, exactly as they would on the event table above it.
+		$can_preview = false;
+		if ( null !== $through_event ) {
+			$target = $this->events->find_event( (int) $series['id'], $through_event );
+			if ( ! $target ) {
+				return $this->notice( __( 'The league is not available yet.', 'mvoc-streeto' ) );
+			}
+
+			if ( ! $target['is_published'] ) {
+				if ( ! current_user_can( Plugin::CAPABILITY ) ) {
+					return $this->notice( __( 'The league is not available yet.', 'mvoc-streeto' ) );
+				}
+				$can_preview = true;
+			}
+		}
+
+		$model = $this->league_model( $series, $atts['category'], $through_event, $can_preview );
 		if ( ! $model['rows'] ) {
 			return $this->notice( __( 'No league standings yet.', 'mvoc-streeto' ) );
 		}
@@ -202,15 +226,16 @@ class Shortcodes {
 	 * @param int|null            $through_event Cap standings at this event
 	 *                                            number, or null for every
 	 *                                            published event.
+	 * @param bool                $can_preview   Whether to also include the
+	 *                                            draft event this page is
+	 *                                            pinned to. Only ever true
+	 *                                            for a through_event page an
+	 *                                            editor is allowed to preview
+	 *                                            — the current standings
+	 *                                            never include a draft.
 	 * @return array<string,mixed>
 	 */
-	private function league_model( array $series, string $category, ?int $through_event = null ): array {
-		// An event still in draft is visible to whoever could publish it, and
-		// the league has to agree: showing a draft event's results next to a
-		// league that ignores them made the two tables contradict each other
-		// on the same page.
-		$previewing = current_user_can( Plugin::CAPABILITY );
-
+	private function league_model( array $series, string $category, ?int $through_event, bool $can_preview ): array {
 		$events = array_values(
 			array_filter(
 				$this->events->events( $series['id'] ),
@@ -219,18 +244,17 @@ class Shortcodes {
 				// through_event caps a page at the standings as they stood at
 				// that point in the season, not the ones since.
 				static fn( array $event ): bool => ! $event['is_cancelled']
-					&& ( $event['is_published'] || $previewing )
+					&& ( $event['is_published'] || $can_preview )
 					&& ( null === $through_event || $event['event_number'] <= $through_event )
 			)
 		);
 
-		$model = null;
-		$key   = '';
+		$key = '';
 
 		// A preview is never cached. Sharing a cache entry with the public
 		// version would be a way to leak unpublished results to visitors, and
-		// no amount of key-juggling is worth that risk for one admin page view.
-		if ( ! $previewing ) {
+		// no amount of key-juggling is worth that risk for one editor's page view.
+		if ( ! $can_preview ) {
 			// Keyed on League_Cache's generation, which any write that could
 			// change standings bumps — a publish, but also a correction, a
 			// manual row, or a cancellation made after the fact.
@@ -249,12 +273,12 @@ class Shortcodes {
 			$category
 		);
 
-		$model['includes_drafts'] = $previewing && (bool) array_filter(
+		$model['includes_drafts'] = $can_preview && (bool) array_filter(
 			$events,
 			static fn( array $event ): bool => ! $event['is_published']
 		);
 
-		if ( ! $previewing ) {
+		if ( ! $can_preview ) {
 			set_transient( $key, $model, DAY_IN_SECONDS );
 		}
 

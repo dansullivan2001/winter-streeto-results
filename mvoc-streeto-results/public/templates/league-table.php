@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 
 	<?php if ( ! empty( $model['includes_drafts'] ) ) : ?>
 		<p class="mvoc-streeto-draft">
-			<?php esc_html_e( 'Includes unpublished events — visible only to you. Visitors see the published events only.', 'mvoc-streeto' ); ?>
+			<?php esc_html_e( 'Includes unpublished results — visible only to you. Visitors see this once you publish.', 'mvoc-streeto' ); ?>
 		</p>
 	<?php endif; ?>
 
