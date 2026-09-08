@@ -75,7 +75,11 @@ class Events_Screen {
 
 			<?php $this->render_diagnostics( $series ); ?>
 
-			<?php $this->render_series_bar( $all_series, $series ); ?>
+			<?php if ( ! $all_series ) : ?>
+				<p><?php esc_html_e( 'No series yet. Pick the year a season starts in and everything else follows from it.', 'mvoc-streeto' ); ?></p>
+			<?php endif; ?>
+
+			<?php $this->render_new_season_form( $all_series, $series ); ?>
 
 			<?php if ( ! $series ) : ?>
 				</div>
@@ -87,6 +91,10 @@ class Events_Screen {
 			$competitors      = $this->competitors->all();
 			$competitor_names = array_column( $competitors, 'display_name', 'id' );
 			?>
+
+			<h2><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></h2>
+
+			<?php $this->render_series_switcher( $all_series, $series ); ?>
 
 			<?php
 			// autocomplete="off": these fields have stable names and repeated
@@ -113,22 +121,21 @@ class Events_Screen {
 					<?php esc_html_e( 'Save changes', 'mvoc-streeto' ); ?>
 				</button>
 
-				<h2><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></h2>
 				<table class="form-table" role="presentation">
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Current season', 'mvoc-streeto' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Active season', 'mvoc-streeto' ); ?></th>
 						<td>
 							<?php if ( ! empty( $series['is_active'] ) ) : ?>
-								<strong><?php esc_html_e( 'This is the current season.', 'mvoc-streeto' ); ?></strong>
+								<strong><?php esc_html_e( 'This is the active season.', 'mvoc-streeto' ); ?></strong>
 								<p class="description">
 									<?php esc_html_e( 'A shortcode with no series attribute shows this one, so a standing league page never needs editing when the season rolls over.', 'mvoc-streeto' ); ?>
 								</p>
 							<?php else : ?>
 								<button type="submit" name="mvoc_streeto_action" value="make_active" class="button">
-									<?php esc_html_e( 'Make this the current season', 'mvoc-streeto' ); ?>
+									<?php esc_html_e( 'Make this the active season', 'mvoc-streeto' ); ?>
 								</button>
 								<p class="description">
-									<?php esc_html_e( 'Only one season is current at a time. Promote a new one when it actually starts — until then the public site keeps showing the season being run.', 'mvoc-streeto' ); ?>
+									<?php esc_html_e( 'Only one season is active at a time. Promote a new one when it actually starts — until then the public site keeps showing the season being run.', 'mvoc-streeto' ); ?>
 								</p>
 							<?php endif; ?>
 						</td>
@@ -352,7 +359,7 @@ class Events_Screen {
 				<code>[mvoc_streeto_league series="<?php echo esc_html( $series['slug'] ); ?>" through_event="1" category="ladies"]</code>
 			</p>
 			<p class="description">
-				<?php esc_html_e( 'Leaving through_event out shows the full current standings, and leaving the series out too shows whichever season is current — which is what a standing "latest league" page wants:', 'mvoc-streeto' ); ?>
+				<?php esc_html_e( 'Leaving through_event out shows the full current standings, and leaving the series out too shows whichever season is active — which is what a standing "latest league" page wants:', 'mvoc-streeto' ); ?>
 			</p>
 			<p>
 				<code>[mvoc_streeto_league]</code>
@@ -492,42 +499,68 @@ class Events_Screen {
 	}
 
 	/**
-	 * The series switcher, and the forms for creating one.
+	 * The season being edited, as the first row of the Series section.
+	 *
+	 * Its own GET form, because it cannot be nested inside the save form that
+	 * follows it. Both use a form-table, so the label column lines up with the
+	 * fields below and the row reads as part of the same block. Choosing a
+	 * season submits on its own; the button is only there for a browser running
+	 * without JavaScript, which has no other way to send the choice.
 	 *
 	 * @param array<int,array<string,mixed>> $all_series Every series.
 	 * @param array<string,mixed>|null       $current    The one being edited.
 	 */
-	private function render_series_bar( array $all_series, ?array $current ): void {
+	private function render_series_switcher( array $all_series, ?array $current ): void {
+		if ( ! $all_series ) {
+			return;
+		}
+		?>
+		<form method="get">
+			<input type="hidden" name="page" value="<?php echo esc_attr( Admin_Menu::SLUG ); ?>" />
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="mvoc-series"><?php esc_html_e( 'Season', 'mvoc-streeto' ); ?></label></th>
+					<td>
+						<select id="mvoc-series" name="series" onchange="this.form.submit()">
+							<?php foreach ( $all_series as $series ) : ?>
+								<option value="<?php echo esc_attr( $series['slug'] ); ?>"
+									<?php selected( $current['slug'] ?? '', $series['slug'] ); ?>>
+									<?php
+									echo esc_html(
+										empty( $series['is_active'] )
+											? $series['name']
+											: sprintf(
+												/* translators: %s: series name. */
+												__( '%s (active)', 'mvoc-streeto' ),
+												$series['name']
+											)
+									);
+									?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+						<noscript>
+							<button type="submit" class="button"><?php esc_html_e( 'Switch', 'mvoc-streeto' ); ?></button>
+						</noscript>
+						<p class="description">
+							<?php esc_html_e( 'Everything below belongs to the season chosen here.', 'mvoc-streeto' ); ?>
+						</p>
+					</td>
+				</tr>
+			</table>
+		</form>
+		<?php
+	}
+
+	/**
+	 * The form for creating a season.
+	 *
+	 * @param array<int,array<string,mixed>> $all_series Every series.
+	 * @param array<string,mixed>|null       $current    The one being edited.
+	 */
+	private function render_new_season_form( array $all_series, ?array $current ): void {
 		$existing = array_column( $all_series, 'slug' );
 		?>
-		<?php if ( $all_series ) : ?>
-			<form method="get" style="margin:1em 0;">
-				<input type="hidden" name="page" value="<?php echo esc_attr( Admin_Menu::SLUG ); ?>" />
-				<label for="mvoc-series"><strong><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></strong></label>
-				<select id="mvoc-series" name="series" onchange="this.form.submit()">
-					<?php foreach ( $all_series as $series ) : ?>
-						<option value="<?php echo esc_attr( $series['slug'] ); ?>"
-							<?php selected( $current['slug'] ?? '', $series['slug'] ); ?>>
-							<?php
-							echo esc_html(
-								empty( $series['is_active'] )
-									? $series['name']
-									: sprintf(
-										/* translators: %s: series name. */
-										__( '%s (current)', 'mvoc-streeto' ),
-										$series['name']
-									)
-							);
-							?>
-						</option>
-					<?php endforeach; ?>
-				</select>
-				<button type="submit" class="button"><?php esc_html_e( 'Switch', 'mvoc-streeto' ); ?></button>
-			</form>
-		<?php else : ?>
-			<p><?php esc_html_e( 'No series yet. Pick the year a season starts in and everything else follows from it.', 'mvoc-streeto' ); ?></p>
-		<?php endif; ?>
-
 		<details <?php echo $current ? '' : 'open'; ?> style="margin-bottom:1.5em;">
 			<summary><?php esc_html_e( 'Start a new season', 'mvoc-streeto' ); ?></summary>
 			<form method="post" style="margin-top:0.75em;">
@@ -644,7 +677,7 @@ class Events_Screen {
 
 			return sprintf(
 				/* translators: %s: series name. */
-				__( '%s is now the current season.', 'mvoc-streeto' ),
+				__( '%s is now the active season.', 'mvoc-streeto' ),
 				$series['name']
 			);
 		}
