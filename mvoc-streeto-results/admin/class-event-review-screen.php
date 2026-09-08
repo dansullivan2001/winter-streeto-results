@@ -68,9 +68,13 @@ class Event_Review_Screen {
 		$event    = $event_id ? $this->events->find_event_by_id( $event_id ) : null;
 
 		if ( ! $event ) {
-			echo '<div class="wrap"><h1>' . esc_html__( 'Event results', 'mvoc-streeto' ) . '</h1><p>'
-				. esc_html__( 'Choose an event from the Series and events screen.', 'mvoc-streeto' )
-				. '</p></div>';
+			?>
+			<div class="wrap">
+				<h1><?php esc_html_e( 'Event results', 'mvoc-streeto' ); ?></h1>
+				<p><?php esc_html_e( 'Choose an event to import, correct and publish its results.', 'mvoc-streeto' ); ?></p>
+				<?php $this->render_event_picker( 0 ); ?>
+			</div>
+			<?php
 
 			return;
 		}
@@ -101,6 +105,8 @@ class Event_Review_Screen {
 			</h1>
 
 			<?php $this->render_feedback( $feedback ); ?>
+
+			<?php $this->render_event_picker( $event_id ); ?>
 
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE ); ?>
@@ -322,6 +328,97 @@ class Event_Review_Screen {
 			<?php esc_html_e( 'You do not have permission to create posts — ask an administrator to create this event\'s results post.', 'mvoc-streeto' ); ?>
 		</p>
 		<?php
+	}
+
+	/**
+	 * The picker for choosing which event to work on.
+	 *
+	 * This screen is in the menu, so it is opened with no event at least as
+	 * often as it is clicked through to from the events table - and what met
+	 * you there was a sentence naming another screen. It is also above a chosen
+	 * event, because the next event to look at is otherwise two screens away.
+	 *
+	 * Every season is listed, newest first, grouped so an event number means
+	 * something: they restart at 1 each season.
+	 *
+	 * @param int $event_id The event being reviewed, or 0 if none.
+	 */
+	private function render_event_picker( int $event_id ): void {
+		$seasons = array();
+
+		foreach ( $this->events->all_series() as $series ) {
+			$events = $this->events->events( (int) $series['id'] );
+
+			if ( $events ) {
+				$seasons[] = array(
+					'name'   => (string) $series['name'],
+					'events' => $events,
+				);
+			}
+		}
+
+		if ( ! $seasons ) {
+			?>
+			<p><?php esc_html_e( 'No events yet. They are created with a season, on the Series and events screen.', 'mvoc-streeto' ); ?></p>
+			<?php
+			return;
+		}
+		?>
+		<form method="get" style="margin:1em 0;">
+			<input type="hidden" name="page" value="<?php echo esc_attr( Admin_Menu::SLUG . '-review' ); ?>" />
+			<label for="mvoc-review-event"><strong><?php esc_html_e( 'Event', 'mvoc-streeto' ); ?></strong></label>
+			<select id="mvoc-review-event" name="event" onchange="this.form.submit()">
+				<?php if ( ! $event_id ) : ?>
+					<option value=""><?php esc_html_e( '— choose an event —', 'mvoc-streeto' ); ?></option>
+				<?php endif; ?>
+				<?php foreach ( $seasons as $season ) : ?>
+					<optgroup label="<?php echo esc_attr( $season['name'] ); ?>">
+						<?php foreach ( $season['events'] as $option ) : ?>
+							<option value="<?php echo esc_attr( (string) $option['id'] ); ?>"
+								<?php selected( $event_id, (int) $option['id'] ); ?>>
+								<?php echo esc_html( self::event_option_label( $option ) ); ?>
+							</option>
+						<?php endforeach; ?>
+					</optgroup>
+				<?php endforeach; ?>
+			</select>
+			<noscript>
+				<button type="submit" class="button"><?php esc_html_e( 'Go', 'mvoc-streeto' ); ?></button>
+			</noscript>
+		</form>
+		<?php
+	}
+
+	/**
+	 * One event as it reads in the picker: number, name and date.
+	 *
+	 * The date is there because the event being looked for is usually "the one
+	 * run last night", and a venue on its own does not answer that.
+	 *
+	 * @param array<string,mixed> $event Event row.
+	 */
+	private static function event_option_label( array $event ): string {
+		$label = sprintf(
+			/* translators: 1: event number, 2: event title. */
+			__( '%1$d — %2$s', 'mvoc-streeto' ),
+			(int) $event['event_number'],
+			(string) $event['label']
+		);
+
+		$date = $event['event_date']
+			? mysql2date( get_option( 'date_format' ), (string) $event['event_date'] )
+			: '';
+
+		if ( '' === $date ) {
+			return $label;
+		}
+
+		return sprintf(
+			/* translators: 1: event number and title, 2: the date it is run. */
+			__( '%1$s (%2$s)', 'mvoc-streeto' ),
+			$label,
+			$date
+		);
 	}
 
 	/**
