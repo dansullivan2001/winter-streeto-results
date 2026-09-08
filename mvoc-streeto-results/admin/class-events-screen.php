@@ -160,13 +160,60 @@ class Events_Screen {
 
 				<h2><?php esc_html_e( 'Events', 'mvoc-streeto' ); ?></h2>
 				<p class="description">
-					<?php esc_html_e( 'The 40-minute course is a separate MapRun event, normally the same name ending ScoreQ40. Leave it blank until one exists.', 'mvoc-streeto' ); ?>
+					<?php esc_html_e( 'The season\'s fixtures, and the MapRun names the results are fetched from. Everything stays editable, because fixtures move. What each column is for:', 'mvoc-streeto' ); ?>
 				</p>
+
+				<?php
+				// One block, before the table it describes. These notes used to
+				// sit either side of it, so whichever half you had not scrolled
+				// past was the half that answered the question.
+				?>
+				<ul style="list-style:disc;margin:0 0 1.5em 1.5em;max-width:55em;">
+					<li>
+						<strong><?php esc_html_e( '#', 'mvoc-streeto' ); ?></strong>
+						—
+						<?php
+						printf(
+							/* translators: %s: an example shortcode attribute. */
+							esc_html__( 'the event number, which shortcodes refer to an event by (%s). Mark an event that will not run as Cancelled rather than deleting it, and the numbering stays intact.', 'mvoc-streeto' ),
+							'<code>number="3"</code>'
+						);
+						?>
+					</li>
+					<li>
+						<strong><?php esc_html_e( 'Date', 'mvoc-streeto' ); ?></strong>
+						— <?php esc_html_e( 'the day it is run. The suggested MapRun names below are built from it, so they follow a date that moves.', 'mvoc-streeto' ); ?>
+					</li>
+					<li>
+						<strong><?php esc_html_e( 'Title / venue', 'mvoc-streeto' ); ?></strong>
+						— <?php esc_html_e( 'the venue. It titles the event everywhere it is shown, and starts the suggested MapRun names.', 'mvoc-streeto' ); ?>
+					</li>
+					<li>
+						<strong><?php esc_html_e( 'Organiser', 'mvoc-streeto' ); ?></strong>
+						— <?php esc_html_e( 'type a name to add one, untick to remove. A name that matches no competitor creates one, because organisers rarely exist as competitors before the first import — when they later appear in MapRun results, the name is already known and matches automatically.', 'mvoc-streeto' ); ?>
+					</li>
+					<li>
+						<strong><?php esc_html_e( 'MapRun — 60 min', 'mvoc-streeto' ); ?></strong>
+						—
+						<?php
+						printf(
+							/* translators: %s: an example MapRun event name. */
+							esc_html__( 'the MapRun event to import from, which has to match MapRun exactly. An empty box shows a greyed-out suggestion in the club\'s format (%s): create the MapRun event with that name and both ends match without anyone typing the same string twice. The venue is free text at MapRun\'s end, so type over a suggestion that does not match.', 'mvoc-streeto' ),
+							'<code>Worcester Park Apr26 PXAS ScoreQ60</code>'
+						);
+						?>
+					</li>
+					<li>
+						<strong><?php esc_html_e( 'MapRun — 40 min', 'mvoc-streeto' ); ?></strong>
+						— <?php esc_html_e( 'the same for the 40-minute course, which is a separate MapRun event, normally the same name ending ScoreQ40. Leave it blank until one exists.', 'mvoc-streeto' ); ?>
+					</li>
+					<li>
+						<strong><?php esc_html_e( 'Status', 'mvoc-streeto' ); ?></strong>
+						— <?php esc_html_e( 'Draft until its results are published, or Cancelled for a fixture that will not run. Results opens the screen where an event is imported, checked and published — and the only place a published one can be taken back to draft. Delete appears only while nothing has been imported, because deleting an event with results would take the MapRun snapshots and your corrections with it.', 'mvoc-streeto' ); ?>
+					</li>
+				</ul>
+
 				<p class="description">
-					<?php esc_html_e( 'Each empty box shows a suggested name, greyed out. Use it when creating the event in MapRun and both ends match without anyone typing the same string twice — which is the only thing keeping them in step today.', 'mvoc-streeto' ); ?>
-					<br />
-					<?php esc_html_e( 'The format matches all eight of last season\'s events. The venue is free text at MapRun\'s end, though, so a suggestion can be right about the shape and wrong about the words — anything that does not match, just type over.', 'mvoc-streeto' ); ?>
-					<br />
 					<?php
 					printf(
 						/* translators: %s: an example MapRun folder name. */
@@ -325,26 +372,27 @@ class Events_Screen {
 				</table>
 				</div>
 
-				<p class="description">
-					<?php esc_html_e( 'Organisers rarely exist as competitors before the first event has been imported, so typing a name creates one. When they later appear in MapRun results, the name is already known and matches automatically.', 'mvoc-streeto' ); ?>
-				</p>
-				<p class="description">
-					<?php esc_html_e( 'An event can only be deleted while nothing has been imported for it — deleting one with results would take the MapRun snapshots and your corrections with it. Mark an event that will not run as Cancelled instead, which keeps the numbering intact.', 'mvoc-streeto' ); ?>
+				<?php
+				// Directly under the table it saves, and above "Add an event":
+				// adding is a separate submit, so a save button below it read as
+				// the button for the two boxes it sat under.
+				?>
+				<p>
+					<button type="submit" name="mvoc_streeto_action" value="save" class="button button-primary">
+						<?php esc_html_e( 'Save changes', 'mvoc-streeto' ); ?>
+					</button>
 				</p>
 
 				<h2><?php esc_html_e( 'Add an event', 'mvoc-streeto' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'For a fixture the season was not created with. A title is needed; it is added at the end, takes the next number, and everything else about it is then edited in the table above.', 'mvoc-streeto' ); ?>
+				</p>
 				<p>
 					<input type="date" name="new_event[event_date]" />
 					<input type="text" name="new_event[title]" class="regular-text"
 						placeholder="<?php esc_attr_e( 'Title / venue', 'mvoc-streeto' ); ?>" />
 					<button type="submit" name="mvoc_streeto_action" value="add_event" class="button">
 						<?php esc_html_e( 'Add', 'mvoc-streeto' ); ?>
-					</button>
-				</p>
-
-				<p>
-					<button type="submit" name="mvoc_streeto_action" value="save" class="button button-primary">
-						<?php esc_html_e( 'Save changes', 'mvoc-streeto' ); ?>
 					</button>
 				</p>
 			</form>
