@@ -79,9 +79,19 @@ class Unmatched_Screen {
 			$notice = $this->confirm_choices();
 		}
 
-		$events   = $this->all_events();
-		$event_id = $this->selected_event_id( $events );
-		$event    = $event_id ? $this->events->find_event_by_id( $event_id ) : null;
+		$active_series = $this->events->active_series();
+		$events        = $this->all_events( $active_series ? (int) $active_series['id'] : null );
+		$event_id      = $this->selected_event_id( $events );
+		$event         = $event_id ? $this->events->find_event_by_id( $event_id ) : null;
+
+		// A direct link (e.g. from an unmatched-names warning on Event review)
+		// can point at an event from a season other than the current one; keep
+		// it selectable even though the list otherwise only shows the active
+		// season, so the page doesn't silently jump to a different event.
+		if ( $event && ! in_array( $event_id, array_column( $events, 'id' ), true ) ) {
+			$event['imported'] = (bool) $this->results->for_event( $event_id );
+			$events[]          = $event;
+		}
 
 		$unmatched = array();
 		$resolved  = 0;
@@ -195,14 +205,23 @@ class Unmatched_Screen {
 	}
 
 	/**
-	 * Every event, flagged with whether anything has been imported for it.
+	 * Every event in a season, flagged with whether anything has been imported.
 	 *
+	 * Scoped to one season by default: unrecognised names are always about the
+	 * season currently being run, and a flat list spanning every season past
+	 * and present just makes the right event harder to find.
+	 *
+	 * @param int|null $series_id Season to list, or null for every season.
 	 * @return array<int,array<string,mixed>>
 	 */
-	private function all_events(): array {
+	private function all_events( ?int $series_id = null ): array {
 		$events = array();
 
 		foreach ( $this->events->all_series() as $series ) {
+			if ( null !== $series_id && (int) $series['id'] !== $series_id ) {
+				continue;
+			}
+
 			foreach ( $this->events->events( (int) $series['id'] ) as $event ) {
 				$event['imported'] = (bool) $this->results->for_event( (int) $event['id'] );
 				$events[]          = $event;
