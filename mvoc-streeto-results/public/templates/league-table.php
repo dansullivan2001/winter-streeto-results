@@ -16,8 +16,22 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <div class="mvoc-streeto mvoc-streeto-league"
 	data-expand-label="<?php esc_attr_e( 'Show all scores', 'mvoc-streeto' ); ?>"
-	data-collapse-label="<?php esc_attr_e( 'Hide scores', 'mvoc-streeto' ); ?>">
-	<h3 class="mvoc-streeto-league-heading"><?php echo esc_html( $model['label'] ); ?></h3>
+	data-collapse-label="<?php esc_attr_e( 'Hide scores', 'mvoc-streeto' ); ?>"
+	data-all-label="<?php esc_attr_e( 'All', 'mvoc-streeto' ); ?>"
+	data-filter-label="<?php esc_attr_e( 'Filter by category', 'mvoc-streeto' ); ?>">
+	<h3 class="mvoc-streeto-league-heading">
+		<?php
+		$event_count = count( $model['events'] );
+		printf(
+			/* translators: 1: category label (e.g. "Overall", "Ladies"), 2: number of events scored so far. */
+			esc_html(
+				_n( '%1$s after %2$d event', '%1$s after %2$d events', $event_count, 'mvoc-streeto' )
+			),
+			esc_html( $model['label'] ),
+			(int) $event_count
+		);
+		?>
+	</h3>
 
 	<?php if ( ! empty( $model['includes_drafts'] ) ) : ?>
 		<p class="mvoc-streeto-draft">
@@ -31,7 +45,7 @@ defined( 'ABSPATH' ) || exit;
 			<tr>
 				<th scope="col"><?php esc_html_e( 'Pos', 'mvoc-streeto' ); ?></th>
 				<?php foreach ( \MVOC\StreetO\Domain\League_Presenter::category_columns() as $key => $label ) : ?>
-					<th scope="col" class="mvoc-streeto-category-col"><?php echo esc_html( $label ); ?></th>
+					<th scope="col" class="mvoc-streeto-category-col" data-category="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></th>
 				<?php endforeach; ?>
 				<th scope="col"><?php esc_html_e( 'Name', 'mvoc-streeto' ); ?></th>
 				<th scope="col"><?php esc_html_e( 'Events', 'mvoc-streeto' ); ?></th>
@@ -40,7 +54,16 @@ defined( 'ABSPATH' ) || exit;
 		</thead>
 		<tbody>
 			<?php foreach ( $model['rows'] as $row ) : ?>
-				<tr>
+				<?php
+				// Which category columns this competitor holds a position in, so the
+				// filter buttons can show or hide the row client-side without a second,
+				// category-scoped table to keep in sync.
+				$row_categories = implode(
+					' ',
+					array_keys( array_filter( $row['positions'], static fn( $position ) => null !== $position ) )
+				);
+				?>
+				<tr data-categories="<?php echo esc_attr( $row_categories ); ?>">
 					<td data-label="<?php esc_attr_e( 'Pos', 'mvoc-streeto' ); ?>"><?php echo esc_html( (string) $row['position'] ); ?></td>
 					<?php foreach ( \MVOC\StreetO\Domain\League_Presenter::category_columns() as $key => $label ) : ?>
 						<td class="mvoc-streeto-category-col" data-label="<?php echo esc_attr( $label ); ?>">
