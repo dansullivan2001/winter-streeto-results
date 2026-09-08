@@ -876,12 +876,7 @@ class Event_Review_Screen {
 		$title = $this->results_post_title( $event, $number );
 		$notes = array();
 
-		$lines = array();
-
-		if ( ! empty( $event['event_date'] ) ) {
-			$lines[] = '<p>' . esc_html( mysql2date( get_option( 'date_format' ), (string) $event['event_date'] ) ) . '</p>';
-		}
-
+		$lines   = array();
 		$lines[] = '<p>' . esc_html__( '[Add the event report here.]', 'mvoc-streeto' ) . '</p>';
 		$lines[] = sprintf( '[mvoc_streeto_event series="%s" number="%d"]', $slug, $number );
 		$lines[] = sprintf( '[mvoc_streeto_league series="%s" through_event="%d"]', $slug, $number );
@@ -897,6 +892,21 @@ class Event_Review_Screen {
 			}
 		}
 
+		// Hard-coded to this site's own theme and its "Results" ACF field
+		// group, not something a plugin distributed elsewhere could rely on
+		// — but this plugin only ever runs on mvoc.org. The full-width
+		// template is inert if the active theme lacks it; the ACF keys are
+		// inert if ACF isn't active. Either way nothing breaks, it just does
+		// less. The "Results" category assigned above is what makes the ACF
+		// field group's own location rule (post_category == results) show
+		// the box at all.
+		$meta = array( '_wp_page_template' => 'page-templates/full-width.php' );
+
+		if ( ! empty( $event['event_date'] ) ) {
+			$meta['result_date']  = str_replace( '-', '', (string) $event['event_date'] );
+			$meta['_result_date'] = 'field_6620d0ee5e8e9';
+		}
+
 		$post_id = wp_insert_post(
 			array(
 				'post_type'     => 'post',
@@ -906,6 +916,7 @@ class Event_Review_Screen {
 				'post_author'   => get_current_user_id(),
 				'post_category' => $categories,
 				'tags_input'    => array( 'StreetO' ),
+				'meta_input'    => $meta,
 			),
 			true
 		);
