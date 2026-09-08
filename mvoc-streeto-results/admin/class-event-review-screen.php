@@ -72,7 +72,7 @@ class Event_Review_Screen {
 			<div class="wrap">
 				<h1><?php esc_html_e( 'Event results', 'mvoc-streeto' ); ?></h1>
 				<p><?php esc_html_e( 'Choose an event to import, correct and publish its results.', 'mvoc-streeto' ); ?></p>
-				<?php $this->render_event_picker( 0 ); ?>
+				<?php $this->render_event_picker( null ); ?>
 			</div>
 			<?php
 
@@ -106,7 +106,7 @@ class Event_Review_Screen {
 
 			<?php $this->render_feedback( $feedback ); ?>
 
-			<?php $this->render_event_picker( $event_id ); ?>
+			<?php $this->render_event_picker( $event ); ?>
 
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE ); ?>
@@ -338,18 +338,32 @@ class Event_Review_Screen {
 	 * you there was a sentence naming another screen. It is also above a chosen
 	 * event, because the next event to look at is otherwise two screens away.
 	 *
-	 * Every season is listed, newest first, grouped so an event number means
-	 * something: they restart at 1 each season.
+	 * The active season only - that is the season being run, and the one whose
+	 * events are being imported. An event from an earlier season, reached from
+	 * that season's own screen, adds its season to the list rather than being
+	 * missing from a picker that claims to show what is on screen.
 	 *
-	 * @param int $event_id The event being reviewed, or 0 if none.
+	 * @param array<string,mixed>|null $current The event being reviewed, if any.
 	 */
-	private function render_event_picker( int $event_id ): void {
-		$seasons = array();
+	private function render_event_picker( ?array $current ): void {
+		$seasons  = array();
+		$shown    = array();
+		$event_id = (int) ( $current['id'] ?? 0 );
 
-		foreach ( $this->events->all_series() as $series ) {
+		// Nothing marked active is a half-set-up site, not an error: fall back
+		// to the newest season, which all_series() returns first.
+		$active = $this->events->active_series() ?? ( $this->events->all_series()[0] ?? null );
+		$viewed = $current ? ( $this->series_for( $current ) ?: null ) : null;
+
+		foreach ( array( $active, $viewed ) as $series ) {
+			if ( ! $series || in_array( (int) $series['id'], $shown, true ) ) {
+				continue;
+			}
+
 			$events = $this->events->events( (int) $series['id'] );
 
 			if ( $events ) {
+				$shown[]   = (int) $series['id'];
 				$seasons[] = array(
 					'name'   => (string) $series['name'],
 					'events' => $events,
