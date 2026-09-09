@@ -85,7 +85,8 @@ class Admin_Menu {
 			array( $competitors, 'render' )
 		);
 
-		// Last in the menu: a setup and diagnostic tool rather than daily work.
+		// After the daily-work screens above: a setup and diagnostic tool
+		// rather than daily work.
 		add_submenu_page(
 			self::SLUG,
 			__( 'MapRun Explorer', 'mvoc-streeto' ),
@@ -93,6 +94,17 @@ class Admin_Menu {
 			Plugin::CAPABILITY,
 			self::SLUG . '-explorer',
 			array( new MapRun_Explorer_Screen(), 'render' )
+		);
+
+		// After the working screens and the setup tool, before the
+		// administrator-only Tools below: a reference page, not daily work.
+		add_submenu_page(
+			self::SLUG,
+			__( 'Help & FAQ', 'mvoc-streeto' ),
+			__( 'Help & FAQ', 'mvoc-streeto' ),
+			Plugin::CAPABILITY,
+			self::SLUG . '-help',
+			array( new Help_Screen(), 'render' )
 		);
 
 		// Capability is 'manage_options' rather than Plugin::CAPABILITY: a

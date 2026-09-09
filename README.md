@@ -19,8 +19,9 @@ person and one file on their laptop.
 
 ## Status
 
-Working and in testing. Import, correction, publishing and both shortcodes are complete;
-the co-ordinator's guide and a live-site trial are outstanding.
+Working and in testing. Import, correction, publishing, both shortcodes and the
+co-ordinator's guide (**StreetO Results → Help & FAQ**) are complete; a live-site trial is
+outstanding.
 
 ## Installing
 
