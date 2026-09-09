@@ -156,15 +156,15 @@ class Competitors_Screen {
 						<?php foreach ( $competitors as $competitor ) : ?>
 							<?php $id = (int) $competitor['id']; ?>
 							<tr data-search="<?php echo esc_attr( strtolower( $competitor['display_name'] . ' ' . $competitor['club'] ) ); ?>">
-								<td>
+								<td style="white-space:nowrap;">
 									<input type="text" name="first_name[<?php echo esc_attr( (string) $id ); ?>]"
 										value="<?php echo esc_attr( $competitor['first_name'] ); ?>"
 										placeholder="<?php esc_attr_e( 'First name', 'mvoc-streeto' ); ?>"
-										style="width:8em;" />
+										style="width:8em;display:inline-block;" />
 									<input type="text" name="surname[<?php echo esc_attr( (string) $id ); ?>]"
 										value="<?php echo esc_attr( $competitor['surname'] ); ?>"
 										placeholder="<?php esc_attr_e( 'Surname', 'mvoc-streeto' ); ?>"
-										style="width:10em;" />
+										style="width:10em;display:inline-block;" />
 								</td>
 								<td><?php echo esc_html( $competitor['club'] ); ?></td>
 								<td>
