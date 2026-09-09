@@ -176,12 +176,14 @@ class Event_Review_Screen {
 					</p>
 				</details>
 
+				<h2><?php esc_html_e( '2. Duplicates', 'mvoc-streeto' ); ?></h2>
 				<?php if ( $duplicates ) : ?>
-					<h2><?php esc_html_e( '2. Duplicates', 'mvoc-streeto' ); ?></h2>
 					<p class="description">
 						<?php esc_html_e( 'The same run recorded more than once — usually scored against two course revisions. Keep one; the other is excluded.', 'mvoc-streeto' ); ?>
 					</p>
 					<?php $this->render_duplicates( $duplicates ); ?>
+				<?php else : ?>
+					<p class="description"><?php esc_html_e( 'None found.', 'mvoc-streeto' ); ?></p>
 				<?php endif; ?>
 
 				<h2><?php esc_html_e( '3. Results', 'mvoc-streeto' ); ?></h2>
@@ -876,7 +878,13 @@ class Event_Review_Screen {
 		$title = $this->results_post_title( $event, $number );
 		$notes = array();
 
-		$lines   = array();
+		$lines = array();
+
+		if ( ! empty( $event['event_date'] ) ) {
+			$lines[] = '<p><strong>' . esc_html__( 'Event date:', 'mvoc-streeto' ) . '</strong> '
+				. esc_html( mysql2date( 'l, j F Y', (string) $event['event_date'] ) ) . '</p>';
+		}
+
 		$lines[] = '<p>' . esc_html__( '[Add the event report here.]', 'mvoc-streeto' ) . '</p>';
 		$lines[] = sprintf( '[mvoc_streeto_event series="%s" number="%d"]', $slug, $number );
 		$lines[] = sprintf( '[mvoc_streeto_league series="%s" through_event="%d"]', $slug, $number );

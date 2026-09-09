@@ -294,6 +294,36 @@ class Competitors_Repo {
 	}
 
 	/**
+	 * Rename a competitor without touching their other columns.
+	 *
+	 * Used when a co-ordinator confirms a match but decides the name that just
+	 * came from MapRun should replace what was typed earlier — an organiser's
+	 * shorthand entry, for example, once the runner's own full spelling has
+	 * been seen. A plain update() would need every column re-supplied to avoid
+	 * blanking club and is_female; this only ever touches the name.
+	 *
+	 * @param int    $id           Competitor id.
+	 * @param string $first_name   New first name.
+	 * @param string $surname      New surname.
+	 * @param string $display_name New display name.
+	 */
+	public function update_name( int $id, string $first_name, string $surname, string $display_name ): void {
+		global $wpdb;
+
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			Schema::table( 'competitors' ),
+			array(
+				'first_name'   => $first_name,
+				'surname'      => $surname,
+				'display_name' => $display_name,
+			),
+			array( 'id' => $id ),
+			array( '%s', '%s', '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
 	 * Merge one competitor into another, moving aliases and results across.
 	 *
 	 * Used when the co-ordinator spots that two records are the same person —

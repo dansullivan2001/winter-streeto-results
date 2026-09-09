@@ -47,8 +47,10 @@ See [docs/deploying.md](docs/deploying.md) for where to test and what to check f
 2. Enter each event's MapRun event name against its course.
 3. **Results** on an event → **Fetch from MapRun**, or paste the response.
 4. **Confirm names** for anyone new. Ladies and Over-55 are pre-filled from MapRun's own
-   data, so this is confirming rather than classifying. Both are correctable afterwards on
-   the **Competitors** screen — Ladies against the person, Over-55 against the season.
+   data, so this is confirming rather than classifying. If a suggested match's stored name
+   differs from the one just synced, there's an option to update it to the synced spelling.
+   Names, Ladies and Over-55 are all correctable afterwards on the **Competitors** screen —
+   Ladies against the person, Over-55 against the season.
 5. Resolve any duplicates, correct rows, add anyone by hand, name the organiser.
 6. **Save and publish.** Nothing is public until then.
 

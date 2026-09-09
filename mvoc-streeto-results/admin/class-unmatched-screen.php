@@ -408,9 +408,43 @@ class Unmatched_Screen {
 						</label>
 					</p>
 				<?php endforeach; ?>
+
+				<?php if ( $this->has_renameable_suggestion( $entry ) ) : ?>
+					<p style="margin-left:1.5em;">
+						<label>
+							<input type="checkbox" name="<?php echo esc_attr( 'update_name[' . $key . ']' ); ?>" value="1" />
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: name as it appears in the synced result. */
+									__( 'If matched above, also update their stored name to "%s" — the spelling just synced from MapRun.', 'mvoc-streeto' ),
+									$entry['display_name']
+								)
+							);
+							?>
+						</label>
+					</p>
+				<?php endif; ?>
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Whether an entry has any suggestion whose stored name differs from the
+	 * name that just came in from the sync.
+	 *
+	 * @param array<string,mixed> $entry Queue entry.
+	 */
+	private function has_renameable_suggestion( array $entry ): bool {
+		foreach ( $entry['suggestions'] as $suggestion ) {
+			$stored = (string) ( $suggestion['competitor']['display_name'] ?? '' );
+			if ( $stored !== $entry['display_name'] ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -421,9 +455,11 @@ class Unmatched_Screen {
 			return '';
 		}
 
-		$proposals = $this->proposals_from_post();
-		$linked    = 0;
-		$created   = 0;
+		$proposals    = $this->proposals_from_post();
+		$update_names = $this->update_name_keys();
+		$linked       = 0;
+		$created      = 0;
+		$renamed      = 0;
 
 		foreach ( wp_unslash( $_POST['choice'] ) as $raw_key => $raw_choice ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$alias_key = Name_Matcher::normalise( (string) $raw_key );
@@ -445,6 +481,17 @@ class Unmatched_Screen {
 			if ( $competitor_id > 0 ) {
 				$this->repo->link_alias( $alias_key, $competitor_id );
 				++$linked;
+
+				if ( isset( $update_names[ $alias_key ], $proposals[ $alias_key ] ) ) {
+					$proposal = $proposals[ $alias_key ];
+					$this->repo->update_name(
+						$competitor_id,
+						$proposal['first_name'],
+						$proposal['surname'],
+						$proposal['display_name']
+					);
+					++$renamed;
+				}
 			}
 		}
 
@@ -457,6 +504,17 @@ class Unmatched_Screen {
 		// they have just confirmed take effect.
 		$attached = ( new Importer() )->link_all_events();
 
+		if ( $renamed > 0 ) {
+			return sprintf(
+				/* translators: 1: competitors created, 2: names linked, 3: names updated to the synced spelling, 4: existing result rows updated. */
+				__( 'Created %1$d competitor(s), linked %2$d name(s) (updating %3$d to the synced spelling), and attached %4$d existing result row(s).', 'mvoc-streeto' ),
+				$created,
+				$linked,
+				$renamed,
+				$attached
+			);
+		}
+
 		return sprintf(
 			/* translators: 1: competitors created, 2: names linked, 3: existing result rows updated. */
 			__( 'Created %1$d competitor(s), linked %2$d name(s), and attached %3$d existing result row(s).', 'mvoc-streeto' ),
@@ -464,6 +522,27 @@ class Unmatched_Screen {
 			$linked,
 			$attached
 		);
+	}
+
+	/**
+	 * Alias keys whose "update stored name" checkbox was ticked.
+	 *
+	 * @return array<string,bool>
+	 */
+	private function update_name_keys(): array {
+		if ( ! isset( $_POST['update_name'] ) || ! is_array( $_POST['update_name'] ) ) {
+			return array();
+		}
+
+		$keys = array();
+		foreach ( array_keys( wp_unslash( $_POST['update_name'] ) ) as $raw_key ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$alias_key = Name_Matcher::normalise( (string) $raw_key );
+			if ( '' !== $alias_key ) {
+				$keys[ $alias_key ] = true;
+			}
+		}
+
+		return $keys;
 	}
 
 	/**

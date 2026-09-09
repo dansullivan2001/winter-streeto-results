@@ -121,6 +121,12 @@ class Competitors_Screen {
 			endif;
 			?>
 
+			<p>
+				<input type="search" id="mvoc-comp-filter"
+					placeholder="<?php esc_attr_e( 'Search competitors&hellip;', 'mvoc-streeto' ); ?>"
+					style="width:20em;" />
+			</p>
+
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE ); ?>
 				<input type="hidden" name="series_slug" value="<?php echo esc_attr( $series['slug'] ?? '' ); ?>" />
@@ -146,12 +152,19 @@ class Competitors_Screen {
 							<th><?php esc_html_e( 'Merge into', 'mvoc-streeto' ); ?></th>
 						</tr>
 					</thead>
-					<tbody>
+					<tbody id="mvoc-comp-rows">
 						<?php foreach ( $competitors as $competitor ) : ?>
 							<?php $id = (int) $competitor['id']; ?>
-							<tr>
+							<tr data-search="<?php echo esc_attr( strtolower( $competitor['display_name'] . ' ' . $competitor['club'] ) ); ?>">
 								<td>
-									<strong><?php echo esc_html( $competitor['display_name'] ); ?></strong>
+									<input type="text" name="first_name[<?php echo esc_attr( (string) $id ); ?>]"
+										value="<?php echo esc_attr( $competitor['first_name'] ); ?>"
+										placeholder="<?php esc_attr_e( 'First name', 'mvoc-streeto' ); ?>"
+										style="width:8em;" />
+									<input type="text" name="surname[<?php echo esc_attr( (string) $id ); ?>]"
+										value="<?php echo esc_attr( $competitor['surname'] ); ?>"
+										placeholder="<?php esc_attr_e( 'Surname', 'mvoc-streeto' ); ?>"
+										style="width:10em;" />
 								</td>
 								<td><?php echo esc_html( $competitor['club'] ); ?></td>
 								<td>
@@ -191,6 +204,21 @@ class Competitors_Screen {
 					</button>
 				</p>
 			</form>
+
+			<script>
+			( function () {
+				var filter = document.getElementById( 'mvoc-comp-filter' );
+				var rows   = document.querySelectorAll( '#mvoc-comp-rows tr' );
+
+				filter.addEventListener( 'input', function () {
+					var term = filter.value.trim().toLowerCase();
+
+					rows.forEach( function ( row ) {
+						row.style.display = ! term || row.dataset.search.indexOf( term ) !== -1 ? '' : 'none';
+					} );
+				} );
+			}() );
+			</script>
 		</div>
 		<?php
 	}
@@ -227,9 +255,11 @@ class Competitors_Screen {
 			);
 		}
 
-		$female = $this->checkbox_ids( 'is_female' );
-		$over55 = $this->checkbox_ids( 'is_over55' );
-		$merges = $this->merge_map();
+		$female      = $this->checkbox_ids( 'is_female' );
+		$over55      = $this->checkbox_ids( 'is_over55' );
+		$merges      = $this->merge_map();
+		$first_names = $this->text_map( 'first_name' );
+		$surnames    = $this->text_map( 'surname' );
 
 		// Merges run first: flags submitted for a competitor about to be
 		// absorbed would otherwise be written to a row that is then deleted.
@@ -240,12 +270,15 @@ class Competitors_Screen {
 		foreach ( $this->repo->all() as $competitor ) {
 			$id = (int) $competitor['id'];
 
+			$first_name = $first_names[ $id ] ?? $competitor['first_name'];
+			$surname    = $surnames[ $id ] ?? $competitor['surname'];
+
 			$this->repo->update(
 				$id,
 				array(
-					'first_name'   => $competitor['first_name'],
-					'surname'      => $competitor['surname'],
-					'display_name' => $competitor['display_name'],
+					'first_name'   => $first_name,
+					'surname'      => $surname,
+					'display_name' => trim( $first_name . ' ' . $surname ),
 					'club'         => $competitor['club'],
 					'is_female'    => in_array( $id, $female, true ),
 				)
@@ -321,6 +354,25 @@ class Competitors_Screen {
 		}
 
 		return array_map( 'intval', array_keys( wp_unslash( $_POST[ $field ] ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	}
+
+	/**
+	 * Submitted text values for a field, keyed by competitor id.
+	 *
+	 * @param string $field Field name.
+	 * @return array<int,string>
+	 */
+	private function text_map( string $field ): array {
+		if ( ! isset( $_POST[ $field ] ) || ! is_array( $_POST[ $field ] ) ) {
+			return array();
+		}
+
+		$map = array();
+		foreach ( wp_unslash( $_POST[ $field ] ) as $id => $value ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$map[ (int) $id ] = sanitize_text_field( (string) $value );
+		}
+
+		return $map;
 	}
 
 	/**
