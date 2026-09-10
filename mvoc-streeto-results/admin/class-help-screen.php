@@ -108,7 +108,13 @@ class Help_Screen {
 				<?php esc_html_e( 'Save and publish. Nothing is public until then.', 'mvoc-streeto' ); ?>
 			</li>
 			<li>
-				<?php esc_html_e( 'Put the shortcodes on the event page — see Shortcodes below.', 'mvoc-streeto' ); ?>
+				<?php
+				printf(
+					/* translators: %s: "Create draft post", the button name on the Event results screen. */
+					esc_html__( 'Click %s at the top of Event results for a post with this event\'s shortcodes already in it, or write the post yourself and put the shortcodes on it by hand — see Shortcodes below.', 'mvoc-streeto' ),
+					'<strong>' . esc_html__( 'Create draft post', 'mvoc-streeto' ) . '</strong>'
+				);
+				?>
 			</li>
 		</ol>
 		<p class="description">
