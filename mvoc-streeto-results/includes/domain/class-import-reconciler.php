@@ -143,20 +143,30 @@ class Import_Reconciler {
 	 */
 	public static function raw_columns( array $row ): array {
 		return array(
-			'maprun_id'      => (string) ( $row['maprun_id'] ?? '' ),
-			'raw_first_name' => (string) ( $row['first_name'] ?? '' ),
-			'raw_surname'    => (string) ( $row['surname'] ?? '' ),
-			'raw_club'       => (string) ( $row['club'] ?? '' ),
-			'raw_gender'     => (string) ( $row['gender'] ?? '' ),
+			'maprun_id'           => (string) ( $row['maprun_id'] ?? '' ),
+			'raw_first_name'      => (string) ( $row['first_name'] ?? '' ),
+			'raw_surname'         => (string) ( $row['surname'] ?? '' ),
+			'raw_club'            => (string) ( $row['club'] ?? '' ),
+			'raw_gender'          => (string) ( $row['gender'] ?? '' ),
 			// The flag MapRun's year implied, not the year itself, so a
 			// competitor created weeks after the import still lands in the
 			// right category without a date of birth being kept.
-			'raw_is_over55'  => array_key_exists( 'is_over55', $row ) ? ( $row['is_over55'] ? 1 : 0 ) : null,
-			'classifier'     => (string) ( $row['classifier'] ?? '' ),
-			'course_label'   => (string) ( $row['course_label'] ?? '' ),
-			'raw_score'      => isset( $row['score'] ) ? (int) $row['score'] : null,
-			'raw_penalty'    => (int) ( $row['penalty'] ?? 0 ),
-			'raw_time_secs'  => isset( $row['time_secs'] ) ? (int) $row['time_secs'] : null,
+			'raw_is_over55'       => array_key_exists( 'is_over55', $row ) ? ( $row['is_over55'] ? 1 : 0 ) : null,
+			'classifier'          => (string) ( $row['classifier'] ?? '' ),
+			'course_label'        => (string) ( $row['course_label'] ?? '' ),
+			'raw_score'           => isset( $row['score'] ) ? (int) $row['score'] : null,
+			'raw_penalty'         => (int) ( $row['penalty'] ?? 0 ),
+			'raw_time_secs'       => isset( $row['time_secs'] ) ? (int) $row['time_secs'] : null,
+			// What identifies one run: the duplicate detector recognises the
+			// same run recorded twice by its start, finish and elapsed time,
+			// and cannot do it from the elapsed time alone. The revision goes
+			// with them because it is what distinguishes two scorings of one
+			// run once they have been found.
+			'raw_start_local'     => (string) ( $row['start_local'] ?? '' ),
+			'raw_finish_local'    => (string) ( $row['finish_local'] ?? '' ),
+			'raw_course_revision' => isset( $row['course_revision'] ) && null !== $row['course_revision']
+				? (int) $row['course_revision']
+				: null,
 		);
 	}
 }

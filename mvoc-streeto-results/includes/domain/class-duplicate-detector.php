@@ -114,6 +114,10 @@ class Duplicate_Detector {
 	/**
 	 * Describe a cluster for the review screen.
 	 *
+	 * `options` is what the screen renders, so it carries the result id the
+	 * co-ordinator's choice is submitted as. Rendering the cluster directly
+	 * instead would silently drop the ordering below.
+	 *
 	 * @param array<int,array<string,mixed>> $cluster One duplicate cluster.
 	 * @return array{name:string,time_display:string,options:array<int,array<string,mixed>>}
 	 */
@@ -123,11 +127,14 @@ class Duplicate_Detector {
 		$options = array();
 		foreach ( $cluster as $row ) {
 			$options[] = array(
+				'result_id' => $row['result_id'] ?? null,
 				'maprun_id' => $row['maprun_id'] ?? '',
 				'revision'  => $row['course_revision'] ?? null,
 				'score'     => $row['score'] ?? null,
 				'penalty'   => $row['penalty'] ?? 0,
-				'net_score' => $row['net_score'] ?? null,
+				// MapRun's own net score where a parsed row carries one;
+				// otherwise the same subtraction the event table publishes.
+				'net_score' => $row['net_score'] ?? self::net_of( $row ),
 			);
 		}
 
@@ -143,5 +150,18 @@ class Duplicate_Detector {
 			'time_display' => (string) ( $first['time_display'] ?? '' ),
 			'options'      => $options,
 		);
+	}
+
+	/**
+	 * Score less penalty, or null where there is no score to work from.
+	 *
+	 * @param array<string,mixed> $row Result row.
+	 */
+	private static function net_of( array $row ): ?int {
+		if ( ! isset( $row['score'] ) || ! is_numeric( $row['score'] ) ) {
+			return null;
+		}
+
+		return (int) $row['score'] - (int) ( $row['penalty'] ?? 0 );
 	}
 }

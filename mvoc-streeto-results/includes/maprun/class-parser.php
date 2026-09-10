@@ -291,6 +291,48 @@ class Parser {
 	}
 
 	/**
+	 * Map each result id in a stored payload to what identifies its run.
+	 *
+	 * The duplicate detector recognises one run recorded twice by its start,
+	 * finish and elapsed time; the course revision then tells the co-ordinator
+	 * which of two scorings is which. Elapsed time was always stored, the other
+	 * three were not, so this reads them back out of the snapshot the import
+	 * kept — which is what lets an already-imported season be repaired without
+	 * fetching it again.
+	 *
+	 * A payload that no longer parses yields nothing rather than throwing: a
+	 * bad snapshot should leave the columns empty, not stop an upgrade.
+	 *
+	 * @param string $payload Stored MapRun response.
+	 * @return array<string,array{start_local:string,finish_local:string,course_revision:int|null}>
+	 */
+	public static function identities( string $payload ): array {
+		try {
+			$rows = self::unwrap( json_decode( $payload, true ) );
+		} catch ( \RuntimeException $e ) {
+			return array();
+		}
+
+		$identities = array();
+
+		foreach ( ( new self() )->parse( $rows ) as $row ) {
+			$id = (string) $row['maprun_id'];
+
+			if ( '' === $id ) {
+				continue;
+			}
+
+			$identities[ $id ] = array(
+				'start_local'     => (string) $row['start_local'],
+				'finish_local'    => (string) $row['finish_local'],
+				'course_revision' => $row['course_revision'],
+			);
+		}
+
+		return $identities;
+	}
+
+	/**
 	 * Render seconds back as MapRun writes them: "mm:ss", or "h:mm:ss" past the hour.
 	 *
 	 * The inverse of parse_hhmmss(), and kept beside it so the two cannot drift.

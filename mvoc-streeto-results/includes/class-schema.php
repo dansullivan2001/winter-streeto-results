@@ -51,8 +51,15 @@ class Schema {
 	 *    rather than forcing one name into a single column. Existing values
 	 *    are migrated in before the column is dropped.
 	 * 9: events.page_id — the WP page created for an event's results, if any.
+	 * 10: results.raw_start_local, raw_finish_local and raw_course_revision.
+	 *    The duplicate detector identifies a run by name, start, finish and
+	 *    elapsed time, and MapRun supplied all four — but only the elapsed time
+	 *    was ever stored, so on a stored row the detector found nothing to
+	 *    compare and every event reported no duplicates. The revision goes with
+	 *    them because it is the thing that tells the co-ordinator which of two
+	 *    scorings is which.
 	 */
-	public const DB_VERSION = 9;
+	public const DB_VERSION = 10;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -101,6 +108,7 @@ class Schema {
 
 		self::migrate_organisers();
 		self::drop_retired_columns();
+		self::backfill_run_identity();
 
 		update_option( self::OPTION_DB_VERSION, self::DB_VERSION );
 	}
@@ -164,6 +172,68 @@ class Schema {
 			 SELECT id, organiser_competitor_id FROM `{$events_table}`
 			 WHERE organiser_competitor_id IS NOT NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);
+	}
+
+	/**
+	 * Fill in the run-identity columns added in v10 from the stored snapshots.
+	 *
+	 * Every MapRun response is kept verbatim in `fetches`, and each result row
+	 * records the fetch it was written from — so the start, finish and course
+	 * revision that v10 adds can be recovered without asking the co-ordinator
+	 * to re-import a season. Without this the duplicate detector would stay
+	 * blind until every event had been fetched again, which is a step nobody
+	 * would know they had to take.
+	 *
+	 * Touches only the three new columns. No resolved value, exclusion or
+	 * competitor link is written, so corrections already made are untouched.
+	 *
+	 * Rows are matched on (fetch_id, maprun_id), which is exact: MapRun ids are
+	 * unique within a response, and the fetch id records which response this
+	 * row came from.
+	 */
+	private static function backfill_run_identity(): void {
+		global $wpdb;
+
+		$results = self::table( 'results' );
+		$fetches = self::table( 'fetches' );
+
+		// Only rows not yet filled in, so a later upgrade normally costs one
+		// query and nothing else. A row whose response carried no start time
+		// stays selected and is retried, which is a bounded cost on an upgrade
+		// and cheaper than a marker column to record that it was tried.
+		$fetch_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"SELECT DISTINCT fetch_id FROM `{$results}`
+			 WHERE fetch_id > 0 AND maprun_id <> '' AND raw_start_local = ''" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		foreach ( $fetch_ids ?: array() as $fetch_id ) {
+			$payload = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$wpdb->prepare( "SELECT payload FROM `{$fetches}` WHERE id = %d", (int) $fetch_id ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			);
+
+			if ( ! is_string( $payload ) ) {
+				continue;
+			}
+
+			// A snapshot that no longer parses is skipped rather than fatal:
+			// the columns simply stay empty, which is where they started.
+			foreach ( MapRun\Parser::identities( $payload ) as $maprun_id => $identity ) {
+				$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+					$results,
+					array(
+						'raw_start_local'     => $identity['start_local'],
+						'raw_finish_local'    => $identity['finish_local'],
+						'raw_course_revision' => $identity['course_revision'],
+					),
+					array(
+						'fetch_id'  => (int) $fetch_id,
+						'maprun_id' => (string) $maprun_id,
+					),
+					array( '%s', '%s', '%d' ),
+					array( '%d', '%s' )
+				);
+			}
+		}
 	}
 
 	/**
@@ -367,6 +437,9 @@ class Schema {
 			raw_club varchar(100) NOT NULL DEFAULT '',
 			raw_gender varchar(10) NOT NULL DEFAULT '',
 			raw_is_over55 tinyint(1) NULL,
+			raw_start_local varchar(32) NOT NULL DEFAULT '',
+			raw_finish_local varchar(32) NOT NULL DEFAULT '',
+			raw_course_revision smallint(5) unsigned NULL,
 			classifier varchar(20) NOT NULL DEFAULT '',
 			course_label varchar(20) NOT NULL DEFAULT '',
 			raw_score int(11) NULL,

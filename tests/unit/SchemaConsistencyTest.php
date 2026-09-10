@@ -15,6 +15,7 @@
  * @package MVOC_StreetO
  */
 
+use MVOC\StreetO\Domain\Import_Reconciler;
 use MVOC\StreetO\Repo\Competitors_Repo;
 use PHPUnit\Framework\TestCase;
 
@@ -126,6 +127,25 @@ class SchemaConsistencyTest extends TestCase {
 		return array(
 			'competitors' => array( 'competitors', Competitors_Repo::COLUMNS ),
 		);
+	}
+
+	public function test_every_raw_column_an_import_writes_exists_in_the_schema(): void {
+		// Import_Reconciler::raw_columns() is the whole of what an import
+		// persists, and it is a method rather than a declared list, so the
+		// provider above cannot reach it. A key added there without the
+		// matching DDL fails the insert on a live install and nowhere else.
+		$columns = array_keys( Import_Reconciler::raw_columns( array() ) );
+		$schema  = $this->schema_columns();
+
+		$this->assertNotEmpty( $columns );
+
+		foreach ( $columns as $column ) {
+			$this->assertContains(
+				$column,
+				$schema['results'],
+				sprintf( 'Column "%s" is written by an import but missing from the results table.', $column )
+			);
+		}
 	}
 
 	public function test_no_table_stores_a_date_of_birth(): void {

@@ -15,6 +15,7 @@ namespace MVOC\StreetO\Repo;
 use MVOC\StreetO\Domain\Import_Reconciler;
 use MVOC\StreetO\Domain\Scoring_Config;
 use MVOC\StreetO\League_Cache;
+use MVOC\StreetO\MapRun\Parser;
 use MVOC\StreetO\Schema;
 
 defined( 'ABSPATH' ) || exit;
@@ -96,6 +97,7 @@ class Results_Repo {
 			'raw_is_over55',
 			'raw_time_secs',
 			'resolved_time_secs',
+			'raw_course_revision',
 		);
 
 		foreach ( $nullables as $nullable ) {
@@ -336,23 +338,39 @@ class Results_Repo {
 			? $config->late_penalty( null === $time_secs ? null : (int) $time_secs, (string) $course )
 			: null;
 
+		$first_name = (string) ( $row['raw_first_name'] ?? '' );
+		$surname    = (string) ( $row['raw_surname'] ?? '' );
+
 		return array(
-			'result_id'      => $row['id'],
-			'competitor_id'  => $row['competitor_id'],
-			'maprun_id'      => $row['maprun_id'],
-			'display_name'   => trim( $row['raw_first_name'] . ' ' . $row['raw_surname'] ),
-			'club'           => $row['raw_club'] ?? '',
-			'classifier'     => $row['classifier'],
-			'course_label'   => $course,
-			'score'          => $row['resolved_score'] ?? $row['raw_score'],
+			'result_id'       => $row['id'],
+			'competitor_id'   => $row['competitor_id'],
+			'maprun_id'       => $row['maprun_id'],
+			// Both the joined name and its parts. Duplicate_Detector matches on
+			// the parts, and rebuilding them by splitting a display name on a
+			// space would get every double-barrelled surname wrong.
+			'first_name'      => $first_name,
+			'surname'         => $surname,
+			'display_name'    => trim( $first_name . ' ' . $surname ),
+			'club'            => $row['raw_club'] ?? '',
+			'classifier'      => $row['classifier'],
+			'course_label'    => $course,
+			'score'           => $row['resolved_score'] ?? $row['raw_score'],
 			// ?? not ?: - a penalty corrected to zero is a real correction, and
 			// must not fall through to the recomputed or raw value.
-			'penalty'        => $row['resolved_penalty'] ?? $recomputed ?? $maprun,
-			'maprun_penalty' => $maprun,
-			'time_secs'      => $time_secs,
-			'is_excluded'    => (bool) $row['is_excluded'],
-			'is_withdrawn'   => (bool) $row['is_withdrawn'],
-			'is_manual'      => (bool) $row['is_manual'],
+			'penalty'         => $row['resolved_penalty'] ?? $recomputed ?? $maprun,
+			'maprun_penalty'  => $maprun,
+			'time_secs'       => $time_secs,
+			'time_display'    => Parser::format_hhmmss( null === $time_secs ? null : (int) $time_secs ),
+			// What identifies one run, for the duplicate detector. Raw, never
+			// resolved: these are evidence about what MapRun recorded, not
+			// figures the co-ordinator publishes or corrects.
+			'start_local'     => (string) ( $row['raw_start_local'] ?? '' ),
+			'finish_local'    => (string) ( $row['raw_finish_local'] ?? '' ),
+			'course_revision' => $row['raw_course_revision'] ?? null,
+			'is_failed'       => Parser::CLASSIFIER_FAILED === (string) $row['classifier'] && ! $time_secs,
+			'is_excluded'     => (bool) $row['is_excluded'],
+			'is_withdrawn'    => (bool) $row['is_withdrawn'],
+			'is_manual'       => (bool) $row['is_manual'],
 		);
 	}
 

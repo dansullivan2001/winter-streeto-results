@@ -532,16 +532,19 @@ class Event_Review_Screen {
 				. esc_html( $described['name'] ) . ' <span class="description">'
 				. esc_html( $described['time_display'] ) . '</span></h3>';
 
-			foreach ( $cluster as $row ) {
-				$label = null === $row['course_revision']
+			// describe()'s options, not the cluster: it puts the likelier
+			// candidate — the later course revision — first, and iterating the
+			// cluster would throw that ordering away.
+			foreach ( $described['options'] as $option ) {
+				$label = null === $option['revision']
 					? __( 'no revision', 'mvoc-streeto' )
-					: sprintf( 'Rev%d', (int) $row['course_revision'] );
+					: sprintf( 'Rev%d', (int) $option['revision'] );
 
 				printf(
 					'<p><label><input type="radio" name="%s" value="%s" /> %s — %s</label></p>',
 					esc_attr( $field ),
-					esc_attr( (string) $row['result_id'] ),
-					esc_html( sprintf( '%s pts', (string) $row['score'] ) ),
+					esc_attr( (string) $option['result_id'] ),
+					esc_html( sprintf( '%s pts', null === $option['score'] ? '—' : (string) $option['score'] ) ),
 					esc_html( $label )
 				);
 			}

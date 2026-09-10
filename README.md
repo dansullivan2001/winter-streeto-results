@@ -212,6 +212,18 @@ Duplicates are clustered on identical start, finish and elapsed time rather than
 suffix — far stronger evidence of one run scored twice. The runner's name is part of that
 signature, so pairs who set off together are never merged.
 
+Those four fields are therefore stored raw, alongside the course revision. They were not
+until v10, and the cost was exact: the detector was handed stored rows, found no start or
+finish on any of them, and reported no duplicates on every event for the whole of the
+plugin's life — while its own tests, which fed it parser output, passed. The upgrade
+backfills the columns from the response snapshots in `fetches`, so an already-imported
+season is repaired without re-fetching it.
+
+The lesson is in `tests/unit/StoredRowSeamTest.php`: a domain class proven against parser
+output is not proven against what the database gives back. That test drives the whole
+round trip — parse, through the columns an import writes, through the resolver the screens
+call, into the domain class.
+
 ### Port 8886
 
 The API is on a non-standard port, and shared hosting often blocks outbound traffic to
