@@ -85,6 +85,18 @@ class Admin_Menu {
 			array( $competitors, 'render' )
 		);
 
+		// Last of the daily-work screens, and deliberately after Competitors:
+		// the standings are only worth checking once the names behind them are
+		// confirmed, which is the screen above.
+		add_submenu_page(
+			self::SLUG,
+			__( 'League table', 'mvoc-streeto' ),
+			__( 'League table', 'mvoc-streeto' ),
+			Plugin::CAPABILITY,
+			self::SLUG . '-league',
+			array( new League_Screen(), 'render' )
+		);
+
 		// After the daily-work screens above: a setup and diagnostic tool
 		// rather than daily work.
 		add_submenu_page(

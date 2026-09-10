@@ -162,8 +162,11 @@ therefore the working route there unless the host opens the port.
    pre-filled from MapRun's own data, so this is confirming rather than classifying.
 5. Back on the event: resolve any duplicates, correct rows, add anyone by hand, name the
    organiser.
-6. **Save and publish.** Nothing is public until then.
-7. Put the shortcodes on the event page:
+6. **League table** to check the standings before anyone else sees them. It counts the
+   unpublished event, so this is the league exactly as publishing would leave it, and it
+   warns where a result scored but has no name confirmed against it.
+7. **Save and publish.** Nothing is public until then.
+8. Put the shortcodes on the event page:
 
 ```
 [mvoc_streeto_event series="2026-27" number="1"]
@@ -182,7 +185,7 @@ league page wants — it then never needs editing when the season rolls over:
 Three checks, all runnable without a full WordPress test harness:
 
 ```sh
-composer install && ./vendor/bin/phpunit     # 236 unit tests, no database needed
+composer install && ./vendor/bin/phpunit     # 311 unit tests, no database needed
 php tools/check-references.php               # every self:: and $this-> resolves
 php tools/integration-test.php /path/to/wp   # 42 checks against a real database
 ```

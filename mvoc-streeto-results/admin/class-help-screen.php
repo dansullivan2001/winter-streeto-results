@@ -105,6 +105,15 @@ class Help_Screen {
 				<?php esc_html_e( 'Back on Event results: resolve any duplicates, correct rows, add anyone by hand, and name the organiser.', 'mvoc-streeto' ); ?>
 			</li>
 			<li>
+				<?php
+				printf(
+					/* translators: %s: "League table", the menu item name. */
+					esc_html__( '%s to check the standings the event produces, before anyone else sees them. It counts unpublished events, so this is the league exactly as publishing would leave it.', 'mvoc-streeto' ),
+					'<strong>' . esc_html__( 'League table', 'mvoc-streeto' ) . '</strong>'
+				);
+				?>
+			</li>
+			<li>
 				<?php esc_html_e( 'Save and publish. Nothing is public until then.', 'mvoc-streeto' ); ?>
 			</li>
 			<li>
@@ -118,7 +127,7 @@ class Help_Screen {
 			</li>
 		</ol>
 		<p class="description">
-			<?php esc_html_e( 'That order matters once, not every time: from event 2 onward you are mostly repeating steps 2-6 for the next fixture, on a plugin that already knows the season.', 'mvoc-streeto' ); ?>
+			<?php esc_html_e( 'That order matters once, not every time: from event 2 onward you are mostly repeating steps 2-7 for the next fixture, on a plugin that already knows the season.', 'mvoc-streeto' ); ?>
 		</p>
 		<?php
 	}
@@ -309,6 +318,16 @@ class Help_Screen {
 			</li>
 		</ul>
 
+		<h3><?php esc_html_e( 'League table', 'mvoc-streeto' ); ?></h3>
+		<p><?php esc_html_e( 'The standings as they stand, for checking before you publish. It shows nothing to the public and changes no data — the whole screen is a look, not an action.', 'mvoc-streeto' ); ?></p>
+		<ul style="list-style:disc;margin:0 0 1.5em 1.5em;max-width:55em;">
+			<li><?php esc_html_e( 'Unpublished events are counted by default, which is the point: this is the league as publishing the event would leave it. Untick the box to see what the website is showing right now instead.', 'mvoc-streeto' ); ?></li>
+			<li><?php esc_html_e( 'Through event caps the table the way the shortcode\'s through_event attribute does, so you can check the table that will appear on a particular event\'s page rather than only the current standings.', 'mvoc-streeto' ); ?></li>
+			<li><?php esc_html_e( 'Every event has a column, and scores in bold are the ones making up the total — the rest are the results the best-5 rule drops. Org is the organiser bonus, and hovering it names the event it was earned for.', 'mvoc-streeto' ); ?></li>
+			<li><?php esc_html_e( 'A warning appears if any result scored but has no name confirmed against it. Those results are on the event table and missing from the league, which is the usual reason a total looks wrong — confirm the names and they drop into place.', 'mvoc-streeto' ); ?></li>
+			<li><?php esc_html_e( 'The figures come from the same code the website runs, so anything checked here is what visitors will see once the event is published.', 'mvoc-streeto' ); ?></li>
+		</ul>
+
 		<h3><?php esc_html_e( 'MapRun Explorer', 'mvoc-streeto' ); ?></h3>
 		<p><?php esc_html_e( 'A setup and diagnostic tool, not part of the weekly workflow — use it once per site to confirm the server can reach MapRun, or any time a MapRun response looks unexpected.', 'mvoc-streeto' ); ?></p>
 		<ul style="list-style:disc;margin:0 0 1.5em 1.5em;max-width:55em;">
@@ -470,6 +489,18 @@ class Help_Screen {
 
 		<h3><?php esc_html_e( 'What happens if I mark an event Cancelled?', 'mvoc-streeto' ); ?></h3>
 		<p><?php esc_html_e( 'It is skipped by scoring everywhere, for everyone, but its event number is not reused — the fixture list and every shortcode\'s numbering stay stable around it.', 'mvoc-streeto' ); ?></p>
+
+		<h3><?php esc_html_e( 'Someone is on the event table but missing from the league — why?', 'mvoc-streeto' ); ?></h3>
+		<p>
+			<?php
+			printf(
+				/* translators: 1: "League table", 2: "Confirm names", both menu item names. */
+				esc_html__( 'Almost always because their name has not been confirmed against a competitor yet. The event table lists results; the league ranks people, and a result nobody is attached to belongs to nobody. %1$s warns you when an event has any, and links straight to %2$s to fix it.', 'mvoc-streeto' ),
+				'<strong>' . esc_html__( 'League table', 'mvoc-streeto' ) . '</strong>',
+				'<strong>' . esc_html__( 'Confirm names', 'mvoc-streeto' ) . '</strong>'
+			);
+			?>
+		</p>
 
 		<h3><?php esc_html_e( 'I saved a correction — why does the public page still show the old figures?', 'mvoc-streeto' ); ?></h3>
 		<p><?php esc_html_e( 'League tables are cached briefly for speed, but any write that could change what one shows — a publish, a correction, a manual row, a cancellation — invalidates that cache immediately, so a change should appear on the next page load. If it genuinely does not, check the event itself is Published and not still a Draft; a draft event\'s results and the league rows they would contribute are only ever visible to someone who could publish it.', 'mvoc-streeto' ); ?></p>

@@ -229,6 +229,78 @@ class LeagueBuilderTest extends TestCase {
 		$this->assertSame( 'high', $standings[0]['name'] );
 	}
 
+	public function test_the_counting_scores_are_named_and_indexed_by_event(): void {
+		// The league preview marks these, so they have to point at the event a
+		// score came from, not at its place in a sorted list.
+		$standings = ( new League_Builder() )->build(
+			array(
+				array( 'name' => 'x', 'event_points' => array( 44, 50, null, 45, 47, 49, 48, null ) ),
+			)
+		);
+
+		// The 44 at index 0 is the one the best-5 rule drops.
+		$this->assertSame( array( 1, 5, 6, 4, 3 ), $standings[0]['counting'] );
+		$this->assertSame( 239, $standings[0]['total'] );
+	}
+
+	public function test_the_total_is_the_sum_of_exactly_the_counting_scores(): void {
+		$standings = ( new League_Builder() )->build(
+			array( array( 'name' => 'x', 'event_points' => array( 44, 50, null, 45, 47, 49, 48, null ) ) )
+		);
+
+		$row = $standings[0];
+		$sum = 0;
+		foreach ( $row['counting'] as $slot ) {
+			$sum += $row['event_points'][ $slot ];
+		}
+
+		$this->assertSame( $row['total'], $sum );
+	}
+
+	public function test_everything_counts_when_there_is_less_than_a_full_set(): void {
+		$standings = ( new League_Builder() )->build(
+			array( array( 'name' => 'x', 'event_points' => array( 40, null, 30 ) ) )
+		);
+
+		$this->assertSame( array( 0, 2 ), $standings[0]['counting'] );
+	}
+
+	public function test_the_organiser_bonus_is_marked_where_it_takes_a_counting_slot(): void {
+		$standings = ( new League_Builder() )->build(
+			array(
+				array(
+					'name'         => 'x',
+					'event_points' => array( 10, 20, 30, 40, 50, 45, null, null ),
+					'organised'    => 'Epsom',
+				),
+			)
+		);
+
+		$this->assertContains( League_Builder::ORGANISER_SLOT, $standings[0]['counting'] );
+
+		// Seven candidates, five slots: the 20 and the 10 lose out.
+		$this->assertNotContains( 0, $standings[0]['counting'] );
+		$this->assertNotContains( 1, $standings[0]['counting'] );
+	}
+
+	public function test_a_bonus_added_on_top_never_takes_a_counting_slot(): void {
+		// It is not competing, so marking it as one of the five would misreport
+		// which results are carrying the total.
+		$config    = new Scoring_Config( array( 'organiser_bonus_mode' => Scoring_Config::BONUS_ADDED ) );
+		$standings = ( new League_Builder( $config ) )->build(
+			array(
+				array(
+					'name'         => 'x',
+					'event_points' => array( 10, 20, 30, 40, 50, 45, null, null ),
+					'organised'    => 'Epsom',
+				),
+			)
+		);
+
+		$this->assertNotContains( League_Builder::ORGANISER_SLOT, $standings[0]['counting'] );
+		$this->assertCount( 5, $standings[0]['counting'] );
+	}
+
 	public function test_a_different_counting_limit_is_honoured(): void {
 		$config    = new Scoring_Config( array( 'counting_events' => 3 ) );
 		$standings = ( new League_Builder( $config ) )->build(

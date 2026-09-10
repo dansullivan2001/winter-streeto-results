@@ -101,6 +101,9 @@ class League_Presenter {
 				'events_entered'   => (int) ( $row['events_entered'] ?? 0 ),
 				'organiser_points' => $row['organiser_points'] ?? null,
 				'organised'        => $row['organised'] ?? null,
+				// Whether the organiser bonus is one of the scores the total is
+				// actually made of, rather than a candidate that lost out.
+				'organiser_counts' => in_array( League_Builder::ORGANISER_SLOT, (array) ( $row['counting'] ?? array() ), true ),
 				'event_points'     => self::event_detail( $row, $events ),
 				// Every ranking on every row, so one table can show them all
 				// side by side the way the club's spreadsheet did.
@@ -160,13 +163,19 @@ class League_Presenter {
 	 * detail lines up column-for-column with the series regardless of who ran
 	 * what.
 	 *
+	 * `counts` says whether that score is one of the best N making up the
+	 * total. The published table ignores it; the league preview marks it, so
+	 * the co-ordinator can see which results are carrying a total before an
+	 * event goes public.
+	 *
 	 * @param array<string,mixed> $row    Standings row.
 	 * @param array<int,string>   $events Event labels.
-	 * @return array<int,array{label:string,points:int|null}>
+	 * @return array<int,array{label:string,points:int|null,counts:bool}>
 	 */
 	private static function event_detail( array $row, array $events ): array {
-		$points = is_array( $row['event_points'] ?? null ) ? array_values( $row['event_points'] ) : array();
-		$detail = array();
+		$points   = is_array( $row['event_points'] ?? null ) ? array_values( $row['event_points'] ) : array();
+		$counting = (array) ( $row['counting'] ?? array() );
+		$detail   = array();
 
 		foreach ( array_values( $events ) as $index => $label ) {
 			$value = $points[ $index ] ?? null;
@@ -174,6 +183,7 @@ class League_Presenter {
 			$detail[] = array(
 				'label'  => $label,
 				'points' => is_numeric( $value ) ? (int) $value : null,
+				'counts' => in_array( $index, $counting, true ),
 			);
 		}
 

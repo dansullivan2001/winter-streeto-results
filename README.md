@@ -19,7 +19,7 @@ person and one file on their laptop.
 
 ## Status
 
-Working and in testing. Import, correction, publishing, both shortcodes and the
+Working and in testing. Import, correction, checking, publishing, both shortcodes and the
 co-ordinator's guide (**StreetO Results → Help & FAQ**) are complete; a live-site trial is
 outstanding.
 
@@ -53,7 +53,11 @@ See [docs/deploying.md](docs/deploying.md) for where to test and what to check f
    Names, Ladies and Over-55 are all correctable afterwards on the **Competitors** screen —
    Ladies against the person, Over-55 against the season.
 5. Resolve any duplicates, correct rows, add anyone by hand, name the organiser.
-6. **Save and publish.** Nothing is public until then.
+6. **League table** to check the standings the event produces. It counts unpublished
+   events, so this is the league exactly as publishing would leave it — and it warns
+   where a result scored but has no name confirmed against it, which is the usual
+   reason someone is on the event table and missing from the league.
+7. **Save and publish.** Nothing is public until then.
 
 Then put the shortcodes on the event page:
 
@@ -79,6 +83,27 @@ rolls over:
 ```
 [mvoc_streeto_league]
 ```
+
+## Checking before publishing
+
+**StreetO Results → League table** shows those same standings, computed by the same code,
+before anything is public. It counts unpublished events by default — that is the point: the
+question it answers is "if I publish this, what does the league look like?", which
+previously could only be answered by publishing and looking at the website.
+
+It is wider than the published table, because it is read at a desk rather than on a phone in
+the dark: every ranking, a column per event, the organiser bonus and the total — the shape
+the club's spreadsheet had. Scores in bold are the ones making up the total, so whether a
+new result moves anyone or is simply dropped by the best-5 rule is visible at a glance.
+`Through event` caps it the way the shortcode attribute does, for checking the table that
+will appear on one event's page.
+
+It also warns where a result scored but is attached to nobody. Those results are on the
+event table and absent from the league, and the standings themselves cannot show it — a row
+no competitor is linked to simply is not there. The warning links to **Confirm names**.
+
+The screen is read-only, and publishing is still done from the event's own results screen:
+checking and acting are deliberately separate.
 
 ## Scoring
 

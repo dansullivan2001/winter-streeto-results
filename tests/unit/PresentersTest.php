@@ -245,6 +245,63 @@ class PresentersTest extends TestCase {
 		$this->assertSame( 2, $model['rows'][0]['positions']['overall'] );
 	}
 
+	public function test_the_detail_marks_which_scores_make_up_the_total(): void {
+		// The league preview marks these so the co-ordinator can see, before
+		// publishing, which results are actually carrying a total.
+		$standings = ( new League_Builder() )->build(
+			array(
+				array( 'display_name' => 'Six Events', 'event_points' => array( 44, 50, 45, 47, 49, 48 ) ),
+			)
+		);
+
+		$model  = ( new League_Presenter() )->present(
+			$standings,
+			array( 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb' )
+		);
+		$detail = $model['rows'][0]['event_points'];
+
+		// The 44 in September is the score the best-5 rule drops.
+		$this->assertSame(
+			array( false, true, true, true, true, true ),
+			array_column( $detail, 'counts' )
+		);
+	}
+
+	public function test_an_event_nobody_ran_never_counts(): void {
+		$model  = ( new League_Presenter() )->present( $this->standings(), array( 'Sep', 'Oct', 'Nov' ) );
+		$vet    = array_column( $model['rows'], null, 'name' )['Vet Man'];
+		$detail = $vet['event_points'];
+
+		$this->assertSame( array( true, false, false ), array_column( $detail, 'counts' ) );
+	}
+
+	public function test_the_organiser_bonus_says_whether_it_counts(): void {
+		$standings = ( new League_Builder() )->build(
+			array(
+				// Five scores plus the bonus is six candidates for five slots,
+				// so the bonus counts and the weakest score drops out.
+				array(
+					'display_name' => 'Organiser',
+					'event_points' => array( 10, 20, 30, 40, 50 ),
+					'organised'    => 'Epsom',
+				),
+				array( 'display_name' => 'Runner', 'event_points' => array( 45, null, null, null, null ) ),
+			)
+		);
+
+		$model   = ( new League_Presenter() )->present( $standings, array( 'Sep', 'Oct', 'Nov', 'Dec', 'Jan' ) );
+		$by_name = array_column( $model['rows'], null, 'name' );
+
+		$this->assertTrue( $by_name['Organiser']['organiser_counts'] );
+		$this->assertFalse( $by_name['Runner']['organiser_counts'] );
+
+		// The 10 is the candidate the bonus displaced.
+		$this->assertSame(
+			array( false, true, true, true, true ),
+			array_column( $by_name['Organiser']['event_points'], 'counts' )
+		);
+	}
+
 	public function test_all_four_categories_are_offered(): void {
 		$this->assertSame(
 			array( 'overall', 'ladies', 'o55_men', 'o55_women' ),

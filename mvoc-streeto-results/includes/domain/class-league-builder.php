@@ -21,6 +21,15 @@ defined( 'ABSPATH' ) || exit;
 class League_Builder {
 
 	/**
+	 * Key marking the organiser bonus in a counting-slot list.
+	 *
+	 * A string rather than an integer so it can never collide with an event
+	 * index, and so a caller reading the list can tell the two apart without
+	 * knowing how many events the series has.
+	 */
+	public const ORGANISER_SLOT = 'organiser';
+
+	/**
 	 * The categories the league is ranked in.
 	 *
 	 * Every one is the same competition ranking over a different subset, so
@@ -60,9 +69,10 @@ class League_Builder {
 	 *   organised     mixed  truthy if they organised an event this series
 	 *
 	 * Returned rows keep every input key and gain `organiser_points`,
-	 * `events_entered`, `total`, `position`, `ladies_position`,
+	 * `events_entered`, `counting`, `total`, `position`, `ladies_position`,
 	 * `o55_men_position` and `o55_women_position`. Category positions are null
-	 * for competitors outside that category.
+	 * for competitors outside that category, and `counting` lists which scores
+	 * the total is made of.
 	 *
 	 * @param array<int,array<string,mixed>> $competitors League entrants.
 	 * @return array<int,array<string,mixed>> Standings, best first.
@@ -71,12 +81,17 @@ class League_Builder {
 		$rows = array();
 
 		foreach ( $competitors as $competitor ) {
-			$points = $this->numeric_points( $competitor['event_points'] ?? array() );
+			// Re-keyed to 0..n so a counting slot below is an index into the
+			// event list as it is displayed, whatever the caller handed in.
+			$competitor['event_points'] = array_values( $competitor['event_points'] ?? array() );
+
+			$points = $this->numeric_points( $competitor['event_points'] );
 
 			$competitor['organiser_points'] = empty( $competitor['organised'] )
 				? null
 				: $this->organiser_bonus( $points );
 			$competitor['events_entered']   = count( array_filter( $points, static fn( $p ) => $p > 0 ) );
+			$competitor['counting']         = $this->counting_slots( $points, $competitor['organiser_points'] );
 			$competitor['total']            = $this->total( $points, $competitor['organiser_points'] );
 
 			$rows[] = $competitor;
@@ -95,15 +110,18 @@ class League_Builder {
 	 * Event cells are null where a competitor did not run, and the organiser's
 	 * own event shows a dash rather than a score.
 	 *
+	 * Keys are preserved, so a score can be traced back to the event it came
+	 * from once the list has been sorted by value.
+	 *
 	 * @param array<int,mixed> $event_points Raw per-event values.
 	 * @return array<int,int>
 	 */
 	private function numeric_points( array $event_points ): array {
 		$points = array();
 
-		foreach ( $event_points as $value ) {
+		foreach ( $event_points as $index => $value ) {
 			if ( is_numeric( $value ) ) {
-				$points[] = (int) $value;
+				$points[ $index ] = (int) $value;
 			}
 		}
 
@@ -120,29 +138,69 @@ class League_Builder {
 	}
 
 	/**
-	 * League total: the best N of the available scores.
+	 * Everything competing for a counting slot, keyed by where it came from.
 	 *
-	 * By default the organiser bonus competes for one of those counting slots
-	 * rather than being added on top, which is what the workbook does — so an
+	 * By default the organiser bonus competes for one of those slots rather
+	 * than being added on top, which is what the workbook does — so an
 	 * organiser has nine candidate values, not eight.
 	 *
-	 * @param array<int,int> $points           Event scores.
+	 * @param array<int,int> $points           Event scores, keyed by event index.
+	 * @param int|null       $organiser_points Organiser bonus, if any.
+	 * @return array<int|string,int>
+	 */
+	private function candidates( array $points, ?int $organiser_points ): array {
+		if ( null !== $organiser_points && Scoring_Config::BONUS_COMPETES === $this->config->organiser_bonus_mode ) {
+			$points[ self::ORGANISER_SLOT ] = $organiser_points;
+		}
+
+		return $points;
+	}
+
+	/**
+	 * Which scores make up the total: event indexes, plus ORGANISER_SLOT where
+	 * the bonus takes one of the counting places.
+	 *
+	 * The total is computed from this same list, so "which five count" can
+	 * never drift from the arithmetic that produced the figure. The league
+	 * preview marks them, which is what turns a wall of numbers into an
+	 * answer to "would publishing this event change anything?" — a score
+	 * below someone's counting five moves them not at all.
+	 *
+	 * Equal scores at the cut are interchangeable by definition: the total is
+	 * the same whichever is marked.
+	 *
+	 * @param array<int,int> $points           Event scores, keyed by event index.
+	 * @param int|null       $organiser_points Organiser bonus, if any.
+	 * @return array<int,int|string> Slot keys, best first.
+	 */
+	public function counting_slots( array $points, ?int $organiser_points ): array {
+		$candidates = $this->candidates( $points, $organiser_points );
+
+		arsort( $candidates );
+
+		return array_slice( array_keys( $candidates ), 0, $this->config->counting_events );
+	}
+
+	/**
+	 * League total: the best N of the available scores.
+	 *
+	 * @param array<int,int> $points           Event scores, keyed by event index.
 	 * @param int|null       $organiser_points Organiser bonus, if any.
 	 */
 	private function total( array $points, ?int $organiser_points ): int {
-		$added = 0;
+		$candidates = $this->candidates( $points, $organiser_points );
+		$total      = 0;
 
-		if ( null !== $organiser_points ) {
-			if ( Scoring_Config::BONUS_ADDED === $this->config->organiser_bonus_mode ) {
-				$added = $organiser_points;
-			} else {
-				$points[] = $organiser_points;
-			}
+		foreach ( $this->counting_slots( $points, $organiser_points ) as $slot ) {
+			$total += $candidates[ $slot ];
 		}
 
-		rsort( $points );
+		// The other mode: the bonus never competed above, so it is added on top.
+		if ( null !== $organiser_points && Scoring_Config::BONUS_ADDED === $this->config->organiser_bonus_mode ) {
+			$total += $organiser_points;
+		}
 
-		return array_sum( array_slice( $points, 0, $this->config->counting_events ) ) + $added;
+		return $total;
 	}
 
 	/**

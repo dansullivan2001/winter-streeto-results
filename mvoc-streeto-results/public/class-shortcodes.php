@@ -19,10 +19,9 @@
 namespace MVOC\StreetO\Front;
 
 use MVOC\StreetO\Domain\Event_Presenter;
-use MVOC\StreetO\Domain\League_Builder;
-use MVOC\StreetO\Domain\League_Presenter;
 use MVOC\StreetO\Domain\Scoring_Engine;
 use MVOC\StreetO\League_Cache;
+use MVOC\StreetO\League_Service;
 use MVOC\StreetO\Plugin;
 use MVOC\StreetO\Repo\Competitors_Repo;
 use MVOC\StreetO\Repo\Events_Repo;
@@ -43,6 +42,8 @@ class Shortcodes {
 
 	private Competitors_Repo $competitors;
 
+	private League_Service $league;
+
 	/**
 	 * @param Events_Repo|null      $events      Events persistence.
 	 * @param Results_Repo|null     $results     Results persistence.
@@ -56,6 +57,7 @@ class Shortcodes {
 		$this->events      = $events ?? new Events_Repo();
 		$this->results     = $results ?? new Results_Repo();
 		$this->competitors = $competitors ?? new Competitors_Repo();
+		$this->league      = new League_Service( $this->events, $this->results, $this->competitors );
 	}
 
 	/**
@@ -233,18 +235,9 @@ class Shortcodes {
 	 * @return array<string,mixed>
 	 */
 	private function league_model( array $series, string $category, ?int $through_event, bool $can_preview ): array {
-		$events = array_values(
-			array_filter(
-				$this->events->events( $series['id'] ),
-				// A cancelled event never counts, for anyone. It is kept in the
-				// series so the numbering stays stable, not so it can score.
-				// through_event caps a page at the standings as they stood at
-				// that point in the season, not the ones since.
-				static fn( array $event ): bool => ! $event['is_cancelled']
-					&& ( $event['is_published'] || $can_preview )
-					&& ( null === $through_event || $event['event_number'] <= $through_event )
-			)
-		);
+		// through_event caps a page at the standings as they stood at that point
+		// in the season, not the ones since.
+		$events = $this->league->events( $series, $through_event, $can_preview );
 
 		$key = '';
 
@@ -264,11 +257,7 @@ class Shortcodes {
 			}
 		}
 
-		$model = ( new League_Presenter() )->present(
-			$this->standings( $series, $events ),
-			array_map( static fn( array $event ): string => (string) $event['label'], $events ),
-			$category
-		);
+		$model = $this->league->present( $series, $events, $category );
 
 		$model['includes_drafts'] = $can_preview && (bool) array_filter(
 			$events,
@@ -280,62 +269,6 @@ class Shortcodes {
 		}
 
 		return $model;
-	}
-
-	/**
-	 * Score every published event and build the standings.
-	 *
-	 * @param array<string,mixed>            $series    Series row.
-	 * @param array<int,array<string,mixed>> $published Published events, in order.
-	 * @return array<int,array<string,mixed>>
-	 */
-	private function standings( array $series, array $published ): array {
-		$config = $this->events->scoring_config( $series );
-		$engine = new Scoring_Engine( $config );
-
-		$competitors = array();
-		// Per season: Over-55 belongs to the season a runner competed in, so a
-		// published league never reclassifies anyone as they age.
-		foreach ( $this->competitors->all_for_series( (int) $series['id'] ) as $competitor ) {
-			$competitor['event_points'] = array_fill( 0, count( $published ), null );
-			$competitors[ $competitor['id'] ] = $competitor;
-		}
-
-		foreach ( $published as $index => $event ) {
-			$scored = $engine->score_event(
-				Results_Repo::effective_rows( $this->results->for_event( $event['id'] ), $config )
-			);
-
-			foreach ( $scored as $row ) {
-				$id = $row['competitor_id'] ?? null;
-
-				if ( null === $id || null === $row['league_points'] || ! isset( $competitors[ $id ] ) ) {
-					continue;
-				}
-
-				// A runner with two counted rows at one event keeps the better,
-				// which is the safe reading of an unresolved duplicate.
-				$existing = $competitors[ $id ]['event_points'][ $index ];
-				$competitors[ $id ]['event_points'][ $index ] = null === $existing
-					? $row['league_points']
-					: max( $existing, $row['league_points'] );
-			}
-
-			foreach ( $this->events->organisers( (int) $event['id'] ) as $organiser_id ) {
-				if ( isset( $competitors[ $organiser_id ] ) ) {
-					$competitors[ $organiser_id ]['organised'] = $event['label'];
-				}
-			}
-		}
-
-		// Only people who actually scored belong in the league table.
-		$entrants = array_filter(
-			$competitors,
-			static fn( array $c ): bool => ! empty( $c['organised'] )
-				|| array_filter( $c['event_points'], static fn( $p ): bool => null !== $p )
-		);
-
-		return ( new League_Builder( $config ) )->build( array_values( $entrants ) );
 	}
 
 	/**
