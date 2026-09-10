@@ -244,6 +244,14 @@ plugin's life — while its own tests, which fed it parser output, passed. The u
 backfills the columns from the response snapshots in `fetches`, so an already-imported
 season is repaired without re-fetching it.
 
+Once a cluster has been answered it stays on the screen but folds into an "already decided"
+block, with the kept scoring still selected. It cannot simply vanish — that card is the only
+place the course revisions are shown, so revisiting the choice anywhere else would mean
+picking between two bare scores — and it must not look untouched either, which is what
+invites the same decision to be made twice. A choice settles every row in its cluster rather
+than only adding exclusions: picking the other scoring has to *clear* the first one, or both
+rows end up excluded and the runner disappears from the event.
+
 The lesson is in `tests/unit/StoredRowSeamTest.php`: a domain class proven against parser
 output is not proven against what the database gives back. That test drives the whole
 round trip — parse, through the columns an import writes, through the resolver the screens

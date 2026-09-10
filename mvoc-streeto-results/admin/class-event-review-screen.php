@@ -179,14 +179,7 @@ class Event_Review_Screen {
 				</details>
 
 				<h2><?php esc_html_e( '2. Duplicates', 'mvoc-streeto' ); ?></h2>
-				<?php if ( $duplicates ) : ?>
-					<p class="description">
-						<?php esc_html_e( 'The same run recorded more than once — usually scored against two course revisions. Keep one; the other is excluded.', 'mvoc-streeto' ); ?>
-					</p>
-					<?php $this->render_duplicates( $duplicates ); ?>
-				<?php else : ?>
-					<p class="description"><?php esc_html_e( 'None found.', 'mvoc-streeto' ); ?></p>
-				<?php endif; ?>
+				<?php $this->render_duplicates( $duplicates ); ?>
 
 				<h2><?php esc_html_e( '3. Results', 'mvoc-streeto' ); ?></h2>
 				<?php $this->render_rows( $scored, $rows, $competitors, $config ); ?>
@@ -517,42 +510,126 @@ class Event_Review_Screen {
 	}
 
 	/**
-	 * Render each duplicate cluster as one choice.
+	 * Render the duplicates section: what still needs deciding, then what does not.
+	 *
+	 * A cluster the co-ordinator has already answered stays on the screen but
+	 * folds away. It cannot simply disappear: this card is the only place the
+	 * course revisions are shown, so revisiting the choice anywhere else would
+	 * mean picking between two bare scores. Nor can it sit here looking
+	 * untouched, which is what it did before the decision was rendered — the
+	 * screen invited the same decision to be made over and over.
 	 *
 	 * @param array<int,array<int,array<string,mixed>>> $clusters Duplicate clusters.
 	 */
 	private function render_duplicates( array $clusters ): void {
 		$detector = new Duplicate_Detector();
 
+		$outstanding = array();
+		$decided     = array();
+
 		foreach ( $clusters as $cluster ) {
 			$described = $detector->describe( $cluster );
-			$field     = 'keep[' . rawurlencode( $described['name'] ) . ']';
 
-			echo '<div class="card" style="max-width:none;"><h3 style="margin-top:0;">'
-				. esc_html( $described['name'] ) . ' <span class="description">'
-				. esc_html( $described['time_display'] ) . '</span></h3>';
-
-			// describe()'s options, not the cluster: it puts the likelier
-			// candidate — the later course revision — first, and iterating the
-			// cluster would throw that ordering away.
-			foreach ( $described['options'] as $option ) {
-				$label = null === $option['revision']
-					? __( 'no revision', 'mvoc-streeto' )
-					: sprintf( 'Rev%d', (int) $option['revision'] );
-
-				printf(
-					'<p><label><input type="radio" name="%s" value="%s" /> %s — %s</label></p>',
-					esc_attr( $field ),
-					esc_attr( (string) $option['result_id'] ),
-					esc_html( sprintf( '%s pts', null === $option['score'] ? '—' : (string) $option['score'] ) ),
-					esc_html( $label )
-				);
+			if ( $described['is_decided'] ) {
+				$decided[] = $described;
+			} else {
+				$outstanding[] = $described;
 			}
+		}
 
+		if ( ! $outstanding && ! $decided ) {
+			echo '<p class="description">' . esc_html__( 'None found.', 'mvoc-streeto' ) . '</p>';
+
+			return;
+		}
+
+		if ( $outstanding ) {
+			echo '<p class="description">'
+				. esc_html__( 'The same run recorded more than once — usually scored against two course revisions. Keep one; the other is excluded.', 'mvoc-streeto' )
+				. '</p>';
+
+			foreach ( $outstanding as $described ) {
+				$this->render_duplicate_card( $described );
+			}
+		} elseif ( $decided ) {
+			echo '<p class="description">'
+				. esc_html__( 'All decided — nothing here needs your attention.', 'mvoc-streeto' )
+				. '</p>';
+		}
+
+		if ( ! $decided ) {
+			return;
+		}
+
+		echo '<details><summary>'
+			. esc_html(
+				sprintf(
+					/* translators: %d: number of duplicate clusters already resolved. */
+					_n( '%d already decided', '%d already decided', count( $decided ), 'mvoc-streeto' ),
+					count( $decided )
+				)
+			)
+			. '</summary>';
+
+		echo '<p class="description">'
+			. esc_html__( 'Kept for the record, and still changeable: pick the other scoring and save.', 'mvoc-streeto' )
+			. '</p>';
+
+		foreach ( $decided as $described ) {
+			$this->render_duplicate_card( $described );
+		}
+
+		echo '</details>';
+	}
+
+	/**
+	 * One duplicate cluster as a set of radio buttons.
+	 *
+	 * @param array<string,mixed> $described A cluster from Duplicate_Detector::describe().
+	 */
+	private function render_duplicate_card( array $described ): void {
+		// Keyed by result id, not by name: two runners can share a name, and
+		// two clusters sharing a field name would share a radio group, so
+		// answering one would silently unanswer the other. Only the submitted
+		// values are read, so the key just has to be unique.
+		$first = (string) ( $described['options'][0]['result_id'] ?? 0 );
+		$field = 'keep[' . rawurlencode( $first ) . ']';
+
+		echo '<div class="card" style="max-width:none;"><h3 style="margin-top:0;">'
+			. esc_html( $described['name'] ) . ' <span class="description">'
+			. esc_html( $described['time_display'] ) . '</span></h3>';
+
+		// describe()'s options, not the cluster: it puts the likelier
+		// candidate — the later course revision — first, and iterating the
+		// cluster would throw that ordering away.
+		foreach ( $described['options'] as $option ) {
+			$label = null === $option['revision']
+				? __( 'no revision', 'mvoc-streeto' )
+				: sprintf( 'Rev%d', (int) $option['revision'] );
+
+			printf(
+				'<p><label><input type="radio" name="%s" value="%s"%s /> %s — %s%s</label></p>',
+				esc_attr( $field ),
+				esc_attr( (string) $option['result_id'] ),
+				// The kept option is the one still counting, so the decision is
+				// visible rather than having to be remembered — and re-saving
+				// the screen re-states it instead of silently unmaking it.
+				$described['is_decided'] && empty( $option['is_excluded'] ) ? ' checked="checked"' : '',
+				esc_html( sprintf( '%s pts', null === $option['score'] ? '—' : (string) $option['score'] ) ),
+				esc_html( $label ),
+				! empty( $option['is_excluded'] )
+					? ' <span class="description">' . esc_html__( '— excluded', 'mvoc-streeto' ) . '</span>'
+					: ''
+			);
+		}
+
+		if ( ! $described['is_decided'] ) {
 			echo '<p class="description">'
 				. esc_html__( 'Nothing is chosen for you: which scoring is right is your call.', 'mvoc-streeto' )
-				. '</p></div>';
+				. '</p>';
 		}
+
+		echo '</div>';
 	}
 
 	/**
@@ -1052,7 +1129,8 @@ class Event_Review_Screen {
 
 			$was = $current[ $id ];
 
-			$excluded = ! empty( $fields['excluded'] ) || in_array( $id, $keep['excluded'], true );
+			$excluded = Duplicate_Detector::is_excluded( $id, ! empty( $fields['excluded'] ), $keep );
+
 			$updates  = array(
 				'score'      => '' === ( $fields['score'] ?? '' ) ? null : (int) $fields['score'],
 				'penalty'    => (int) ( $fields['penalty'] ?? 0 ),
@@ -1086,33 +1164,26 @@ class Event_Review_Screen {
 	 * @return array{kept:int[],excluded:int[]}
 	 */
 	private function kept_duplicates(): array {
-		$kept     = array();
-		$excluded = array();
+		$chosen = array();
 
 		if ( isset( $_POST['keep'] ) && is_array( $_POST['keep'] ) ) {
 			foreach ( wp_unslash( $_POST['keep'] ) as $choice ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-				$kept[] = (int) $choice;
+				$chosen[] = (int) $choice;
 			}
 		}
 
-		if ( $kept ) {
-			$effective = Results_Repo::effective_rows( $this->results->for_event( $this->event_id() ), $this->config() );
-
-			foreach ( ( new Duplicate_Detector() )->find( $effective ) as $cluster ) {
-				$ids = array_map( 'intval', array_column( $cluster, 'result_id' ) );
-
-				// Only act on a cluster the co-ordinator actually answered.
-				if ( ! array_intersect( $ids, $kept ) ) {
-					continue;
-				}
-
-				$excluded = array_merge( $excluded, array_diff( $ids, $kept ) );
-			}
+		if ( ! $chosen ) {
+			return array(
+				'kept'     => array(),
+				'excluded' => array(),
+			);
 		}
 
-		return array(
-			'kept'     => $kept,
-			'excluded' => $excluded,
+		$effective = Results_Repo::effective_rows( $this->results->for_event( $this->event_id() ), $this->config() );
+
+		return Duplicate_Detector::resolve(
+			( new Duplicate_Detector() )->find( $effective ),
+			$chosen
 		);
 	}
 
