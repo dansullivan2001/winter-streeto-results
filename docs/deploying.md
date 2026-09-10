@@ -75,14 +75,21 @@ picked up.
    and the `MVOC_STREETO_VERSION` constant) — every change that reaches the live site needs a
    new version, even a small fix, or WordPress has nothing to compare against and the update
    never appears.
-2. Commit, then tag and push:
+2. Commit and push, then either tag it:
    ```sh
    git tag vX.Y.Z
    git push origin main --tags
    ```
-3. That's it. `.github/workflows/release.yml` picks up the tag, checks it matches the version
-   header, builds the zip via `tools/build-zip.sh`, and publishes a GitHub Release with the zip
-   attached as a release asset — watch it under the repo's **Actions** tab. This step matters:
+   or, if you would rather not tag from a working copy, go to the repo's **Actions** tab,
+   pick **Release**, and hit **Run workflow** on `main`. There is nothing to fill in: the
+   version is read from the plugin header and the tag is created for you. It refuses to run
+   if that version is already tagged, so it cannot quietly re-release what is already out.
+
+   Either route needs the version bumped first — the tag route checks the tag against the
+   header, the manual route checks the header against the existing tags.
+3. That's it. `.github/workflows/release.yml` builds the zip via `tools/build-zip.sh` and
+   publishes a GitHub Release with the zip attached as a release asset — watch it under the
+   repo's **Actions** tab. This step matters:
    the update checker is configured to fetch the attached zip rather than GitHub's
    auto-generated source archive, because the source archive contains the whole repo — tests,
    fixtures, docs — not just the installable plugin folder. A tag whose workflow run failed (a

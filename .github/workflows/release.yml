@@ -1,13 +1,21 @@
 name: Release
 
-# Pushing a version tag (vX.Y.Z) builds the installable zip via
-# tools/build-zip.sh and publishes it as a GitHub Release asset. That asset
+# Two ways to cut a release, both ending in the same place: the installable
+# zip from tools/build-zip.sh, attached as a GitHub Release asset. That asset
 # is what the plugin's own update checker (class-update-checker.php) polls
 # for — see docs/deploying.md "Releasing an update" for the full flow.
+#
+#   push a vX.Y.Z tag  — the original route, from a working copy.
+#   Run workflow       — the Actions tab, no tag needed: the version is read
+#                        from the plugin header and the tag is created here.
+#
+# The manual route exists because pushing a tag needs write access to
+# refs/tags, which not every environment that can push a branch has.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -17,15 +25,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Tags, so build-zip.sh can tell a re-run of this release from a
+          # version that was never bumped.
+          fetch-depth: 0
 
-      - name: Check tag matches the plugin's Version header
+      - name: Work out the version being released
+        id: version
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
           VERSION="$(grep -m1 '^ \* Version:' mvoc-streeto-results/mvoc-streeto-results.php | awk '{print $3}')"
-          if [ "$TAG" != "$VERSION" ]; then
-            echo "error: tag v$TAG does not match Version header ($VERSION)" >&2
+          if [ -z "$VERSION" ]; then
+            echo "error: no Version header found in the plugin file" >&2
             exit 1
           fi
+
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            # Tagged by hand: the tag is the claim, so check it is honest.
+            TAG="${GITHUB_REF_NAME#v}"
+            if [ "$TAG" != "$VERSION" ]; then
+              echo "error: tag v$TAG does not match Version header ($VERSION)" >&2
+              exit 1
+            fi
+          elif git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            # Run by hand: the header is the claim, and it has to be new, or
+            # this would silently re-release what is already out.
+            echo "error: v$VERSION is already tagged — bump the Version header first" >&2
+            exit 1
+          fi
+
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build the plugin zip
         run: ./tools/build-zip.sh
@@ -33,5 +61,8 @@ jobs:
       - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
+          # Named explicitly rather than left to the ref: on a manual run there
+          # is no tag yet, and this creates it at the commit being released.
+          tag_name: ${{ steps.version.outputs.tag }}
           files: build/*.zip
           generate_release_notes: true
