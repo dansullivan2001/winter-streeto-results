@@ -14,8 +14,10 @@ namespace MVOC\StreetO\Admin;
 use MVOC\StreetO\Domain\Duplicate_Detector;
 use MVOC\StreetO\Domain\Event_Presenter;
 use MVOC\StreetO\Domain\Manual_Entry_Parser;
+use MVOC\StreetO\Domain\Scoring_Config;
 use MVOC\StreetO\Domain\Scoring_Engine;
 use MVOC\StreetO\Importer;
+use MVOC\StreetO\MapRun\Parser;
 use MVOC\StreetO\Plugin;
 use MVOC\StreetO\Repo\Competitors_Repo;
 use MVOC\StreetO\Repo\Events_Repo;
@@ -83,8 +85,8 @@ class Event_Review_Screen {
 		$event    = $this->events->find_event_by_id( $event_id ) ?? $event;
 
 		$rows               = $this->results->for_event( $event_id );
-		$effective          = array_map( array( Results_Repo::class, 'effective' ), $rows );
 		$config             = $this->events->scoring_config( $this->series_for( $event ) );
+		$effective          = Results_Repo::effective_rows( $rows, $config );
 		$scored             = ( new Scoring_Engine( $config ) )->score_event( $effective );
 		$competitors        = $this->competitors->all();
 		$competitor_names   = array_column( $competitors, 'display_name', 'id' );
@@ -187,7 +189,7 @@ class Event_Review_Screen {
 				<?php endif; ?>
 
 				<h2><?php esc_html_e( '3. Results', 'mvoc-streeto' ); ?></h2>
-				<?php $this->render_rows( $scored, $rows, $competitors ); ?>
+				<?php $this->render_rows( $scored, $rows, $competitors, $config ); ?>
 
 				<h2><?php esc_html_e( '4. Add runners by hand', 'mvoc-streeto' ); ?></h2>
 				<p class="description">
@@ -202,7 +204,7 @@ class Event_Review_Screen {
 								placeholder="<?php esc_attr_e( 'Name', 'mvoc-streeto' ); ?>" />
 							<input type="number" name="manual[score]" style="width:7em" step="10"
 								placeholder="<?php esc_attr_e( 'Score', 'mvoc-streeto' ); ?>" />
-							<input type="number" name="manual[penalty]" style="width:7em" step="10" min="0"
+							<input type="number" name="manual[penalty]" style="width:7em" step="1" min="0"
 								placeholder="<?php esc_attr_e( 'Penalty', 'mvoc-streeto' ); ?>" />
 							<select name="manual[course]">
 								<option value="60">60</option>
@@ -454,6 +456,20 @@ class Event_Review_Screen {
 	}
 
 	/**
+	 * Scoring rules for the event being viewed.
+	 *
+	 * The POST handlers work from the event id in the query string rather than
+	 * a row they were handed, and they need the same rules the table was
+	 * rendered with — a penalty compared against a differently-configured one
+	 * would look like a change and be recorded as a correction nobody made.
+	 */
+	private function config(): Scoring_Config {
+		$event = $this->events->find_event_by_id( $this->event_id() );
+
+		return $this->events->scoring_config( $event ? $this->series_for( $event ) : array() );
+	}
+
+	/**
 	 * Show what an import did.
 	 *
 	 * @param array<string,mixed> $feedback Result of handle_post().
@@ -539,11 +555,18 @@ class Event_Review_Screen {
 	/**
 	 * The editable results table.
 	 *
+	 * Elapsed time appears here and nowhere else. The published table
+	 * deliberately omits it — the tie-break does not look at time, so printing
+	 * it would only invite "why am I below someone slower?" — but the
+	 * co-ordinator needs it, because it is what the late penalty is now
+	 * computed from and the only way to check that penalty by eye.
+	 *
 	 * @param array<int,array<string,mixed>> $scored      Scored rows.
 	 * @param array<int,array<string,mixed>> $stored      Stored rows, for flags.
 	 * @param array<int,array<string,mixed>> $competitors Known competitors.
+	 * @param Scoring_Config                 $config      Scoring rules.
 	 */
-	private function render_rows( array $scored, array $stored, array $competitors ): void {
+	private function render_rows( array $scored, array $stored, array $competitors, Scoring_Config $config ): void {
 		$flags = array_column( $stored, null, 'id' );
 
 		?>
@@ -554,6 +577,7 @@ class Event_Review_Screen {
 					<th><?php esc_html_e( 'Name', 'mvoc-streeto' ); ?></th>
 					<th><?php esc_html_e( 'Competitor', 'mvoc-streeto' ); ?></th>
 					<th><?php esc_html_e( 'Course', 'mvoc-streeto' ); ?></th>
+					<th><?php esc_html_e( 'Time', 'mvoc-streeto' ); ?></th>
 					<th><?php esc_html_e( 'Score', 'mvoc-streeto' ); ?></th>
 					<th><?php esc_html_e( 'Penalty', 'mvoc-streeto' ); ?></th>
 					<th><?php esc_html_e( 'Total', 'mvoc-streeto' ); ?></th>
@@ -579,6 +603,10 @@ class Event_Review_Screen {
 					if ( empty( $row['competitor_id'] ) ) {
 						$notes[] = __( 'name not confirmed', 'mvoc-streeto' );
 					}
+
+					$time_secs = $row['time_secs'] ?? null;
+					$limit     = $config->time_limit_for_course( (string) ( $row['course_label'] ?? '' ) );
+					$over      = ( null !== $time_secs && null !== $limit ) ? $time_secs - $limit : null;
 					?>
 					<tr>
 						<td><?php echo esc_html( $row['position_label'] ?: '—' ); ?></td>
@@ -610,14 +638,39 @@ class Event_Review_Screen {
 							</select>
 						</td>
 						<td>
+							<?php echo esc_html( Parser::format_hhmmss( $time_secs ) ?: '—' ); ?>
+							<?php if ( null !== $over && $over > 0 ) : ?>
+								<br /><span class="description">
+									<?php
+									printf(
+										/* translators: %s: how far over the time limit, e.g. 00:47. */
+										esc_html__( '%s over', 'mvoc-streeto' ),
+										esc_html( Parser::format_hhmmss( $over ) )
+									);
+									?>
+								</span>
+							<?php endif; ?>
+						</td>
+						<td>
 							<input type="number" style="width:6em" step="10"
 								name="rows[<?php echo esc_attr( (string) $id ); ?>][score]"
 								value="<?php echo esc_attr( null === $row['score'] ? '' : (string) $row['score'] ); ?>" />
 						</td>
 						<td>
-							<input type="number" style="width:6em" step="10" min="0"
+							<input type="number" style="width:6em" step="1" min="0"
 								name="rows[<?php echo esc_attr( (string) $id ); ?>][penalty]"
 								value="<?php echo esc_attr( (string) ( $row['penalty'] ?? 0 ) ); ?>" />
+							<?php if ( isset( $row['maprun_penalty'] ) && (int) $row['maprun_penalty'] !== (int) ( $row['penalty'] ?? 0 ) ) : ?>
+								<br /><span class="description">
+									<?php
+									printf(
+										/* translators: %d: the penalty MapRun charged. */
+										esc_html__( 'MapRun charged %d', 'mvoc-streeto' ),
+										(int) $row['maprun_penalty']
+									);
+									?>
+								</span>
+							<?php endif; ?>
 						</td>
 						<td><?php echo esc_html( null === $row['total'] ? '—' : (string) $row['total'] ); ?></td>
 						<td>
@@ -654,10 +707,10 @@ class Event_Review_Screen {
 	 * Show the table as it will be published.
 	 *
 	 * @param array<int,array<string,mixed>>          $scored Scored rows.
-	 * @param \MVOC\StreetO\Domain\Scoring_Config     $config Scoring rules.
+	 * @param Scoring_Config                          $config Scoring rules.
 	 * @param array<string,mixed>                     $event  Event row.
 	 */
-	private function render_preview( array $scored, $config, array $event ): void {
+	private function render_preview( array $scored, Scoring_Config $config, array $event ): void {
 		$organiser_ids = $this->events->organisers( (int) $event['id'] );
 		$organisers    = array_values(
 			array_filter(
@@ -982,7 +1035,7 @@ class Event_Review_Screen {
 		}
 
 		$current = array_column(
-			array_map( array( Results_Repo::class, 'effective' ), $this->results->for_event( $this->event_id() ) ),
+			Results_Repo::effective_rows( $this->results->for_event( $this->event_id() ), $this->config() ),
 			null,
 			'result_id'
 		);
@@ -1040,7 +1093,7 @@ class Event_Review_Screen {
 		}
 
 		if ( $kept ) {
-			$effective = array_map( array( Results_Repo::class, 'effective' ), $this->results->for_event( $this->event_id() ) );
+			$effective = Results_Repo::effective_rows( $this->results->for_event( $this->event_id() ), $this->config() );
 
 			foreach ( ( new Duplicate_Detector() )->find( $effective ) as $cluster ) {
 				$ids = array_map( 'intval', array_column( $cluster, 'result_id' ) );

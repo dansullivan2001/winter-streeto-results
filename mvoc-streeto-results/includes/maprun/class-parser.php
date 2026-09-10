@@ -291,6 +291,29 @@ class Parser {
 	}
 
 	/**
+	 * Render seconds back as MapRun writes them: "mm:ss", or "h:mm:ss" past the hour.
+	 *
+	 * The inverse of parse_hhmmss(), and kept beside it so the two cannot drift.
+	 * MapRun's own TotalTimehhmmss drops the leading hour rather than padding to
+	 * "00:59:53", and matching that keeps a time read off the review screen
+	 * comparable with the same time read off MapRun.
+	 *
+	 * @param int|null $seconds Elapsed time.
+	 */
+	public static function format_hhmmss( ?int $seconds ): string {
+		if ( null === $seconds || $seconds < 0 ) {
+			return '';
+		}
+
+		$hours   = intdiv( $seconds, 3600 );
+		$minutes = intdiv( $seconds % 3600, 60 );
+
+		return $hours > 0
+			? sprintf( '%d:%02d:%02d', $hours, $minutes, $seconds % 60 )
+			: sprintf( '%02d:%02d', $minutes, $seconds % 60 );
+	}
+
+	/**
 	 * Control punches, re-sorted into true chronological order.
 	 *
 	 * MapRun appends repeat ("Extra") punches to the end of punchControlIds

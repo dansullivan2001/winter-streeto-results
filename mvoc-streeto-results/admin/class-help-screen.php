@@ -409,6 +409,15 @@ class Help_Screen {
 				);
 				?>
 			</li>
+			<li>
+				<?php
+				printf(
+					/* translators: %s: the late penalty rate. */
+					esc_html__( 'Time penalty: %s, worked out from the finishing time rather than taken from MapRun. MapRun charges 30 points for every minute you start, so 47 seconds over the hour costs a full 30 there and 24 here. Correct the Penalty box on the results screen and your figure wins over both.', 'mvoc-streeto' ),
+					'<code>1 point per 2 seconds late</code>'
+				);
+				?>
+			</li>
 			<li><?php esc_html_e( 'Position: count how many totals beat yours, add one, then add anyone tied with you on total but with a smaller time penalty. Equal totals finish equal and are separated only by penalty, never by finishing time — a deliberately coarse tie-break, matching the club\'s own rule.', 'mvoc-streeto' ); ?></li>
 			<li><?php esc_html_e( 'League points run 50 for first place down to 1 for fiftieth, and 1 for anything below.', 'mvoc-streeto' ); ?></li>
 			<li><?php esc_html_e( 'League total: the best 5 event results count. An organiser\'s bonus (their best result, scored again) competes for one of those five slots rather than being added on top.', 'mvoc-streeto' ); ?></li>

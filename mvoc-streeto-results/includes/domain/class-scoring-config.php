@@ -66,6 +66,47 @@ class Scoring_Config {
 	public array $course_factors;
 
 	/**
+	 * Course label => the course's time limit in seconds.
+	 *
+	 * MapRun reports a lateness penalty of its own but charges it by the
+	 * started minute, so the elapsed time is the only place a finer rule can be
+	 * measured from. The labels are the limit in minutes, which is also where
+	 * the pro-rata factors above come from — 60/40 is 150%.
+	 *
+	 * @var array<string,int>
+	 */
+	public array $course_time_limits;
+
+	/**
+	 * Whether the late penalty is recomputed from the elapsed time.
+	 *
+	 * When false, whatever MapRun charged (GrossScore − NetScore) stands. That
+	 * is not the club's rule, but it is the honest fallback wherever the
+	 * elapsed time or the course's limit is unknown, and the switch keeps a
+	 * season that was published on MapRun's figures reproducible.
+	 */
+	public bool $recompute_late_penalty = true;
+
+	/**
+	 * Points charged for each started block of `late_penalty_seconds`.
+	 *
+	 * The club's rule is 1 point per 2 seconds. That is the same rate as
+	 * MapRun's 30 points per minute — the difference is entirely granularity:
+	 * MapRun rounds a 47-second overrun up to a whole minute and charges 30,
+	 * where the club charges 24.
+	 */
+	public int $late_penalty_points = 1;
+
+	/**
+	 * Length of the block the late penalty is charged in, in seconds.
+	 *
+	 * Held with the points above rather than as a rate, because the rule is
+	 * "per block started" and a bare points-per-second would lose that.
+	 * Setting 30 points per 60 seconds reproduces MapRun exactly.
+	 */
+	public int $late_penalty_seconds = 2;
+
+	/**
 	 * Calendar year used to decide age categories.
 	 *
 	 * British Orienteering sets age class by the age reached on 31 December of
@@ -119,6 +160,10 @@ class Scoring_Config {
 			'60' => 1.0,
 			'40' => 1.5,
 		);
+		$this->course_time_limits = array(
+			'60' => 3600,
+			'40' => 2400,
+		);
 
 		foreach ( $overrides as $key => $value ) {
 			if ( property_exists( $this, $key ) && null !== $value ) {
@@ -164,6 +209,53 @@ class Scoring_Config {
 	 */
 	public function factor_for_course( string $course_label ): float {
 		return $this->course_factors[ $course_label ] ?? 1.0;
+	}
+
+	/**
+	 * A course's time limit in seconds, or null if it cannot be established.
+	 *
+	 * Falls back to reading the label as a number of minutes, which is what
+	 * every label the club uses actually is. Null rather than a guess for
+	 * anything else: without a limit there is no lateness to charge for, and
+	 * inventing one would silently penalise a course nobody configured.
+	 *
+	 * @param string $course_label Course label, e.g. '60'.
+	 */
+	public function time_limit_for_course( string $course_label ): ?int {
+		if ( isset( $this->course_time_limits[ $course_label ] ) ) {
+			return (int) $this->course_time_limits[ $course_label ];
+		}
+
+		return preg_match( '/^\d+$/', $course_label ) ? ( (int) $course_label ) * 60 : null;
+	}
+
+	/**
+	 * The late penalty for an elapsed time, under the club's rule.
+	 *
+	 * Charged per *started* block, so a single second over the limit costs a
+	 * whole point — the same shape as MapRun's own rule, an order of magnitude
+	 * finer. Returns null where the penalty cannot be recomputed, which the
+	 * caller must read as "leave MapRun's figure alone" rather than as zero:
+	 * a missing elapsed time is not evidence that nobody was late.
+	 *
+	 * @param int|null $time_secs    Elapsed time in seconds.
+	 * @param string   $course_label Course label, e.g. '60'.
+	 */
+	public function late_penalty( ?int $time_secs, string $course_label ): ?int {
+		if ( ! $this->recompute_late_penalty || null === $time_secs || $time_secs <= 0 ) {
+			return null;
+		}
+
+		$limit = $this->time_limit_for_course( $course_label );
+		if ( null === $limit || $this->late_penalty_seconds < 1 ) {
+			return null;
+		}
+
+		$late = $time_secs - $limit;
+
+		return $late > 0
+			? (int) ceil( $late / $this->late_penalty_seconds ) * $this->late_penalty_points
+			: 0;
 	}
 
 	/**

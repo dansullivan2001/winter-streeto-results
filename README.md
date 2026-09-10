@@ -91,6 +91,20 @@ reproduced exactly.
 directly: the *net* score is multiplied by 150%, which is exactly 60/40 — and "net" is what
 settles that the penalty comes off before the scaling.
 
+**The time penalty is the club's, not MapRun's.** The club charges 1 point per 2 seconds
+late; MapRun charges 30 points per *started* minute. Same rate, different granularity — 47
+seconds over the hour costs 30 points on MapRun's figures and 24 on the club's. So the
+penalty is recomputed from the elapsed time and the course's limit (`60` → 3600s, `40` →
+2400s) rather than read off `GrossScore − NetScore`, and a part-block counts in full, the
+same shape as MapRun's own rule.
+
+Because the elapsed time is stored raw alongside everything else, this applies to events
+already imported without re-fetching them. `raw_penalty` still holds what MapRun charged,
+unedited, and the review screen shows it next to the recomputed figure wherever the two
+differ. A correction typed into the Penalty box still beats both. Where the elapsed time or
+the course's limit is unknown — a hand-added row, an unrecognised course label — MapRun's
+penalty stands, because a missing time is not evidence that nobody was late.
+
 ```
 Position = count(better totals) + 1 + count(equal total with a smaller penalty)
 ```
@@ -173,8 +187,9 @@ Unauthenticated. The envelope is
 `{ errorFlag, statusMessage, warningFlag, warningMessage, results: [...] }`.
 
 `GrossScore` is the points collected and `NetScore` the figure after the time penalty, so
-the penalty is their difference. `Gender` and `YearOfBirth` are both supplied, which is why
-neither category needs classifying by hand.
+their difference is the penalty *MapRun* charged — kept on record, but replaced by the
+club's finer rule above. `TotalTimeSecs` is what that rule is measured from. `Gender` and
+`YearOfBirth` are both supplied, which is why neither category needs classifying by hand.
 
 The year of birth is used to derive the Over-55 flag at import and then discarded — **no
 date of birth is stored anywhere**, and a test asserts no table ever grows a column that

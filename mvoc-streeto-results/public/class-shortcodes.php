@@ -116,10 +116,7 @@ class Shortcodes {
 		$config = $this->events->scoring_config( $series ?? array() );
 
 		$scored = ( new Scoring_Engine( $config ) )->score_event(
-			array_map(
-				array( Results_Repo::class, 'effective' ),
-				$this->results->for_event( $event['id'] )
-			)
+			Results_Repo::effective_rows( $this->results->for_event( $event['id'] ), $config )
 		);
 
 		$organiser_ids = $this->events->organisers( (int) $event['id'] );
@@ -306,10 +303,7 @@ class Shortcodes {
 
 		foreach ( $published as $index => $event ) {
 			$scored = $engine->score_event(
-				array_map(
-					array( Results_Repo::class, 'effective' ),
-					$this->results->for_event( $event['id'] )
-				)
+				Results_Repo::effective_rows( $this->results->for_event( $event['id'] ), $config )
 			);
 
 			foreach ( $scored as $row ) {

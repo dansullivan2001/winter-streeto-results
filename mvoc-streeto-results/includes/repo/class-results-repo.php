@@ -13,6 +13,7 @@
 namespace MVOC\StreetO\Repo;
 
 use MVOC\StreetO\Domain\Import_Reconciler;
+use MVOC\StreetO\Domain\Scoring_Config;
 use MVOC\StreetO\League_Cache;
 use MVOC\StreetO\Schema;
 
@@ -306,28 +307,70 @@ class Results_Repo {
 	 * value stands. That is what makes a correction targeted rather than a
 	 * wholesale replacement of the row.
 	 *
-	 * @param array<string,mixed> $row Result row.
+	 * The late penalty has a third layer between those two. MapRun charges 30
+	 * points per *started* minute, where the club charges 1 point per 2
+	 * seconds — the same rate, but MapRun rounds a 47-second overrun up to a
+	 * full minute and takes 30 points for it instead of 24. So the penalty is
+	 * recomputed here from the elapsed time, which is stored raw alongside
+	 * everything else and therefore applies to events already imported without
+	 * re-fetching them. `raw_penalty` keeps what MapRun said, unedited, and is
+	 * returned as `maprun_penalty` so the difference can be shown rather than
+	 * silently applied. A correction still wins over both.
+	 *
+	 * @param array<string,mixed>      $row    Result row.
+	 * @param Scoring_Config|null      $config Series scoring rules; MapRun's penalty stands without them.
 	 * @return array<string,mixed>
 	 */
-	public static function effective( array $row ): array {
+	public static function effective( array $row, ?Scoring_Config $config = null ): array {
+		$course = '' !== ( $row['resolved_course_label'] ?? '' )
+			? $row['resolved_course_label']
+			: $row['course_label'];
+
+		$time_secs = $row['resolved_time_secs'] ?? $row['raw_time_secs'];
+		$maprun    = (int) $row['raw_penalty'];
+
+		// Null means the club's rule could not be applied — no elapsed time, or
+		// a course with no known limit — and MapRun's figure is then the only
+		// one there is. Not zero: a missing time is not proof nobody was late.
+		$recomputed = $config
+			? $config->late_penalty( null === $time_secs ? null : (int) $time_secs, (string) $course )
+			: null;
+
 		return array(
-			'result_id'     => $row['id'],
-			'competitor_id' => $row['competitor_id'],
-			'maprun_id'     => $row['maprun_id'],
-			'display_name'  => trim( $row['raw_first_name'] . ' ' . $row['raw_surname'] ),
-			'club'          => $row['raw_club'] ?? '',
-			'classifier'    => $row['classifier'],
-			'course_label'  => '' !== ( $row['resolved_course_label'] ?? '' )
-				? $row['resolved_course_label']
-				: $row['course_label'],
-			'score'         => $row['resolved_score'] ?? $row['raw_score'],
+			'result_id'      => $row['id'],
+			'competitor_id'  => $row['competitor_id'],
+			'maprun_id'      => $row['maprun_id'],
+			'display_name'   => trim( $row['raw_first_name'] . ' ' . $row['raw_surname'] ),
+			'club'           => $row['raw_club'] ?? '',
+			'classifier'     => $row['classifier'],
+			'course_label'   => $course,
+			'score'          => $row['resolved_score'] ?? $row['raw_score'],
 			// ?? not ?: - a penalty corrected to zero is a real correction, and
-			// must not fall through to the raw value.
-			'penalty'       => $row['resolved_penalty'] ?? $row['raw_penalty'],
-			'time_secs'     => $row['resolved_time_secs'] ?? $row['raw_time_secs'],
-			'is_excluded'   => (bool) $row['is_excluded'],
-			'is_withdrawn'  => (bool) $row['is_withdrawn'],
-			'is_manual'     => (bool) $row['is_manual'],
+			// must not fall through to the recomputed or raw value.
+			'penalty'        => $row['resolved_penalty'] ?? $recomputed ?? $maprun,
+			'maprun_penalty' => $maprun,
+			'time_secs'      => $time_secs,
+			'is_excluded'    => (bool) $row['is_excluded'],
+			'is_withdrawn'   => (bool) $row['is_withdrawn'],
+			'is_manual'      => (bool) $row['is_manual'],
+		);
+	}
+
+	/**
+	 * Resolve a whole set of rows under one scoring config.
+	 *
+	 * Exists because `effective()` is used as an array_map callback in half a
+	 * dozen places, and a callback cannot carry the config that the penalty
+	 * rule needs.
+	 *
+	 * @param array<int,array<string,mixed>> $rows   Result rows.
+	 * @param Scoring_Config|null            $config Series scoring rules.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function effective_rows( array $rows, ?Scoring_Config $config = null ): array {
+		return array_map(
+			static fn( array $row ): array => self::effective( $row, $config ),
+			$rows
 		);
 	}
 }
