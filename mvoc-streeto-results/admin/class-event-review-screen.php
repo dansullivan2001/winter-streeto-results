@@ -557,10 +557,27 @@ class Event_Review_Screen {
 				. '</p>';
 		}
 
-		if ( ! $decided ) {
-			return;
+		if ( $decided ) {
+			$this->render_decided_duplicates( $decided );
 		}
 
+		// Sections 1 and 4 each carry the button for their own action; without
+		// one here the only way to commit a choice made in this panel is the
+		// save at step 6, the far side of a sixty-row results table. Same
+		// action as that button, deliberately: one save, not two.
+		echo '<p><button type="submit" name="mvoc_streeto_action" value="save" class="button">'
+			. esc_html__( 'Save corrections', 'mvoc-streeto' )
+			. '</button> <span class="description">'
+			. esc_html__( 'The step 6 button, brought up here — it saves everything on this screen, not only this choice.', 'mvoc-streeto' )
+			. '</span></p>';
+	}
+
+	/**
+	 * The clusters that have already been answered, folded away.
+	 *
+	 * @param array<int,array<string,mixed>> $decided Described clusters.
+	 */
+	private function render_decided_duplicates( array $decided ): void {
 		echo '<details><summary>'
 			. esc_html(
 				sprintf(
@@ -624,8 +641,11 @@ class Event_Review_Screen {
 		}
 
 		if ( ! $described['is_decided'] ) {
+			// Not "nothing is chosen": the moment one is picked that reads as
+			// though the click did not register. It says what is true either
+			// way — nothing is picked *for* you, and picking is not saving.
 			echo '<p class="description">'
-				. esc_html__( 'Nothing is chosen for you: which scoring is right is your call.', 'mvoc-streeto' )
+				. esc_html__( 'Which scoring is right is your call — nothing is picked by default. Your choice takes effect when you save.', 'mvoc-streeto' )
 				. '</p>';
 		}
 
