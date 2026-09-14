@@ -140,7 +140,9 @@ first down to 1 for hundredth, and 1 for anything below.
 
 **League table.** The best 5 results count. An organiser scores their best result again in
 place of the event they ran, and that bonus competes for one of the five counting slots
-rather than being added on top.
+rather than being added on top. The bonus waits for the event: naming next month's
+organiser puts nothing on the table until that event's results are in, so a season's
+fixtures can be set up in full without inventing points for events nobody has run.
 
 Over-55 follows British Orienteering's convention — the age reached on 31 December of the
 competition year, which is why a year of birth is enough. A winter league straddles two

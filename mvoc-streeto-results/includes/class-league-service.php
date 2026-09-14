@@ -146,9 +146,18 @@ class League_Service {
 					: max( $existing, $row['league_points'] );
 			}
 
-			foreach ( $this->events->organisers( (int) $event['id'] ) as $organiser_id ) {
-				if ( isset( $competitors[ $organiser_id ] ) ) {
-					$competitors[ $organiser_id ]['organised'] = $event['label'];
+			// The bonus is earned by running the event, so it waits until the
+			// event has actually happened — which here means its results
+			// exist. A season's fixtures are set up months ahead with an
+			// organiser against each one, and crediting those straight away
+			// would put points on the table for events nobody has run yet.
+			// Results imported but not yet published still count, because the
+			// preview's job is to show what publishing will show.
+			if ( $scored ) {
+				foreach ( $this->events->organisers( (int) $event['id'] ) as $organiser_id ) {
+					if ( isset( $competitors[ $organiser_id ] ) ) {
+						$competitors[ $organiser_id ]['organised'] = $event['label'];
+					}
 				}
 			}
 		}
