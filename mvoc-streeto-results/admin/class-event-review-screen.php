@@ -653,6 +653,53 @@ class Event_Review_Screen {
 	}
 
 	/**
+	 * Warn about rows that are scoring without having recorded a run.
+	 *
+	 * The per-row note below says the same thing, but a real event runs to
+	 * sixty rows and the co-ordinator is reading them for names and scores, not
+	 * hunting for a blank time. These rows rank on their score alone, so
+	 * missing one publishes it — hence saying it once, up front, with the names
+	 * to look for.
+	 *
+	 * Nothing is excluded here. Which of these is a broken upload and which is
+	 * a real run MapRun mistimed is a judgement from the night, not one the
+	 * plugin can make.
+	 *
+	 * @param array<int,array<string,mixed>> $scored Scored rows.
+	 */
+	private function render_zero_time_notice( array $scored ): void {
+		$names = array();
+
+		foreach ( $scored as $row ) {
+			if ( ! empty( $row['is_zero_time'] ) && empty( $row['is_excluded'] ) ) {
+				$names[] = (string) $row['display_name'];
+			}
+		}
+
+		if ( ! $names ) {
+			return;
+		}
+
+		echo '<div class="notice notice-warning inline"><p><strong>'
+			. esc_html(
+				sprintf(
+					/* translators: %d: how many rows carry a score but no elapsed time. */
+					_n(
+						'%d row is scoring with no time recorded.',
+						'%d rows are scoring with no time recorded.',
+						count( $names ),
+						'mvoc-streeto'
+					),
+					count( $names )
+				)
+			)
+			. '</strong> '
+			. esc_html( implode( ', ', $names ) ) . '. '
+			. esc_html__( 'MapRun returned a score with an elapsed time of zero — usually a failed upload it did not mark as one. Check each against the night, then tick Exclude below for any that did not run. They count towards the league until you do.', 'mvoc-streeto' )
+			. '</p></div>';
+	}
+
+	/**
 	 * The editable results table.
 	 *
 	 * Elapsed time appears here and nowhere else. The published table
@@ -668,6 +715,8 @@ class Event_Review_Screen {
 	 */
 	private function render_rows( array $scored, array $stored, array $competitors, Scoring_Config $config ): void {
 		$flags = array_column( $stored, null, 'id' );
+
+		$this->render_zero_time_notice( $scored );
 
 		?>
 		<table class="widefat striped">
@@ -702,6 +751,9 @@ class Event_Review_Screen {
 					}
 					if ( empty( $row['competitor_id'] ) ) {
 						$notes[] = __( 'name not confirmed', 'mvoc-streeto' );
+					}
+					if ( ! empty( $row['is_zero_time'] ) ) {
+						$notes[] = __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
 					}
 
 					$time_secs = $row['time_secs'] ?? null;

@@ -232,6 +232,14 @@ Things real responses contain that a hand-written test fixture would not:
   while appearing only once.
 - **`Classifier: "--"`** for a failed upload: zero score, zero time, no punches. Excluded
   from ranking, kept visible.
+- **A failed upload MapRun did not mark as one.** A September response carried
+  `Classifier: "OK"`, twenty controls and a score of 660, with zero elapsed time, zero
+  distance and every punch at zero seconds. It is not `--`, so nothing excluded it; it is
+  not a duplicate, so the detector never saw it; and the engine ranks on a numeric score
+  alone, so it took 660 points in a field scoring 350 to 950. Such a row is now flagged for
+  review — named up front and noted on its own row — but still scores until the
+  co-ordinator excludes it, because a broken upload and a real run whose timing MapRun lost
+  look identical from here, and silently dropping the second would remove a genuine result.
 - **Repeat punches appended out of order.** `punchControlIds` gets "Extra" punches added at
   the end regardless of when they happened, so the parser re-sorts by time.
 

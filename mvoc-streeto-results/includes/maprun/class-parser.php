@@ -37,6 +37,15 @@ class Parser {
 	public const CLASSIFIER_FAILED = '--';
 
 	/**
+	 * Classifier the plugin writes on a row the co-ordinator added by hand.
+	 *
+	 * Never supplied by MapRun. It is here so that checks about what MapRun
+	 * recorded can tell a hand-added row apart from a parsed one — a manual
+	 * row legitimately carries a score and no elapsed time.
+	 */
+	public const CLASSIFIER_MANUAL = 'MANUAL';
+
+	/**
 	 * Pull the results array out of a decoded response envelope.
 	 *
 	 * @param mixed $decoded Decoded JSON.
@@ -125,6 +134,7 @@ class Parser {
 		$revision    = self::split_revision( $surname_raw );
 		$scores      = $this->extract_scores( $row );
 		$classifier  = trim( (string) ( $row['Classifier'] ?? '' ) );
+		$time_secs   = $this->extract_time_secs( $row );
 
 		return array(
 			'maprun_id'       => trim( (string) ( $row['Id'] ?? '' ) ),
@@ -138,11 +148,12 @@ class Parser {
 			'year_of_birth'   => $this->extract_year_of_birth( $row ),
 			'classifier'      => $classifier,
 			'is_failed'       => $this->is_failed_upload( $classifier, $row ),
+			'is_zero_time'    => self::is_zero_time( $classifier, $time_secs, $scores['score'] ),
 			'course_label'    => $course_label,
 			'start_local'     => trim( (string) ( $row['StartPunchTimeLocal'] ?? '' ) ),
 			'finish_local'    => trim( (string) ( $row['FinishPunchTimeLocal'] ?? '' ) ),
 			'time_display'    => trim( (string) ( $row['TotalTimehhmmss'] ?? '' ) ),
-			'time_secs'       => $this->extract_time_secs( $row ),
+			'time_secs'       => $time_secs,
 			'score'           => $scores['score'],
 			'net_score'       => $scores['net'],
 			'penalty'         => $scores['penalty'],
@@ -228,6 +239,44 @@ class Parser {
 		}
 
 		return 0 === (int) ( $row['TotalTimeSecs'] ?? 0 );
+	}
+
+	/**
+	 * Whether a row claims a score but recorded no run.
+	 *
+	 * The mirror of is_failed_upload(), and the case it does not cover. That
+	 * one asks whether a row MapRun marked `--` really is a failed upload; this
+	 * asks whether a row MapRun did *not* mark is one anyway. A real response
+	 * contained exactly that: `Classifier: "OK"`, twenty controls, a score of
+	 * 660 — and zero elapsed time, zero distance, every punch at zero seconds.
+	 * Nothing about it is a performance, but it is scored like one.
+	 *
+	 * It is only a flag. The row still ranks until the co-ordinator excludes
+	 * it, because the plugin cannot tell a broken upload from a genuine run
+	 * whose timing MapRun lost, and guessing would silently drop a real result.
+	 *
+	 * Two classifiers are never flagged. A `--` row with no time is already a
+	 * failed upload and excluded on import, so flagging it again would ask for
+	 * a decision that has been made. A `MANUAL` row is the co-ordinator's own:
+	 * a score with no elapsed time is exactly what hand entry produces.
+	 *
+	 * @param string   $classifier Classifier value, as MapRun supplied it.
+	 * @param int|null $time_secs  Elapsed time in seconds, or null where absent.
+	 * @param mixed    $score      Score the row carries.
+	 */
+	public static function is_zero_time( string $classifier, ?int $time_secs, $score ): bool {
+		$classifier = trim( $classifier );
+
+		if ( self::CLASSIFIER_FAILED === $classifier || self::CLASSIFIER_MANUAL === $classifier ) {
+			return false;
+		}
+
+		// No score means nothing that would rank, so nothing to warn about.
+		if ( ! is_numeric( $score ) ) {
+			return false;
+		}
+
+		return null === $time_secs || $time_secs <= 0;
 	}
 
 	/**

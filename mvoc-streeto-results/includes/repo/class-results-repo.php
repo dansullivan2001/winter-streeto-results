@@ -263,7 +263,7 @@ class Results_Repo {
 				'competitor_id'         => ( $row['competitor_id'] ?? 0 ) ?: null,
 				'raw_first_name'        => (string) ( $row['first_name'] ?? '' ),
 				'raw_surname'           => (string) ( $row['surname'] ?? '' ),
-				'classifier'            => 'MANUAL',
+				'classifier'            => Parser::CLASSIFIER_MANUAL,
 				'course_label'          => (string) ( $row['course_label'] ?? '60' ),
 				'raw_score'             => $score,
 				'raw_penalty'           => $penalty,
@@ -368,6 +368,15 @@ class Results_Repo {
 			'finish_local'    => (string) ( $row['raw_finish_local'] ?? '' ),
 			'course_revision' => $row['raw_course_revision'] ?? null,
 			'is_failed'       => Parser::CLASSIFIER_FAILED === (string) $row['classifier'] && ! $time_secs,
+			// Rebuilt from the stored classifier, time and score rather than
+			// stored in a column of its own: every input is already here, so an
+			// already-imported season carries the flag without a migration or a
+			// re-fetch, and a score correction is reflected at once.
+			'is_zero_time'    => Parser::is_zero_time(
+				(string) $row['classifier'],
+				null === $time_secs ? null : (int) $time_secs,
+				$row['resolved_score'] ?? $row['raw_score']
+			),
 			'is_excluded'     => (bool) $row['is_excluded'],
 			'is_withdrawn'    => (bool) $row['is_withdrawn'],
 			'is_manual'       => (bool) $row['is_manual'],
