@@ -167,4 +167,88 @@ class SchemaConsistencyTest extends TestCase {
 		$this->assertArrayHasKey( 'series_competitors', $this->schema_columns() );
 		$this->assertContains( 'is_over55', $this->schema_columns()['series_competitors'] );
 	}
+
+	/**
+	 * Every table pointing at a competitor must be re-pointed by a merge.
+	 *
+	 * Competitors_Repo::merge() absorbs one competitor into another and then
+	 * deletes the absorbed record, so a table it forgets is left pointing at an
+	 * id that no longer resolves. Nothing fails: the rows are simply never
+	 * matched again, and whatever they carried goes quiet.
+	 *
+	 * event_organisers was forgotten exactly that way. The organiser
+	 * disappeared from the published event table and lost their league bonus,
+	 * with no error anywhere — and the merge's own comment said "all three
+	 * tables", which was true of the list and not of the schema.
+	 *
+	 * So the schema is the authority here, not the list: any future table with
+	 * a competitor_id fails this until the merge handles it.
+	 */
+	public function test_every_table_referencing_a_competitor_is_handled_by_a_merge(): void {
+		$source = (string) file_get_contents(
+			dirname( __DIR__, 2 ) . '/mvoc-streeto-results/includes/repo/class-competitors-repo.php'
+		);
+
+		// The merge body alone. Matching the whole file would let a table named
+		// only in an unrelated method count as handled.
+		$start = strpos( $source, 'public function merge(' );
+		$this->assertNotFalse( $start, 'Competitors_Repo::merge() has been renamed or removed.' );
+		$merge = substr( $source, $start );
+
+		$referencing = array();
+
+		foreach ( $this->schema_columns() as $table => $columns ) {
+			// competitors itself is the record being deleted, not a reference.
+			if ( 'competitors' !== $table && in_array( 'competitor_id', $columns, true ) ) {
+				$referencing[] = $table;
+			}
+		}
+
+		$this->assertNotEmpty( $referencing );
+
+		foreach ( $referencing as $table ) {
+			$this->assertStringContainsString(
+				"'" . $table . "'",
+				$merge,
+				sprintf(
+					'%s carries a competitor_id but is not re-pointed by Competitors_Repo::merge(), '
+					. 'so a merge would orphan its rows.',
+					$table
+				)
+			);
+		}
+	}
+
+	/**
+	 * A merge must not collide with a unique key it did not plan for.
+	 *
+	 * Where a join table is unique on (something, competitor_id) and both
+	 * records already hold a row for the same season, event or result,
+	 * re-pointing the absorbed one violates the key and the update fails
+	 * silently. Those tables need their colliding rows deleted first, which is
+	 * what merge() groups separately — so every uniquely-keyed table must be in
+	 * that group rather than the wholesale one.
+	 */
+	public function test_uniquely_keyed_join_tables_are_deduplicated_before_a_merge(): void {
+		$source = (string) file_get_contents(
+			dirname( __DIR__, 2 ) . '/mvoc-streeto-results/includes/repo/class-competitors-repo.php'
+		);
+
+		$start = strpos( $source, 'public function merge(' );
+		$this->assertNotFalse( $start );
+		$merge = substr( $source, $start );
+
+		// The $scoped map is the group that deletes collisions first.
+		$this->assertMatchesRegularExpression( '/\$scoped\s*=\s*array\(/', $merge );
+		$scoped = substr( $merge, (int) strpos( $merge, '$scoped' ) );
+		$scoped = substr( $scoped, 0, (int) strpos( $scoped, ');' ) );
+
+		foreach ( array( 'series_competitors', 'event_organisers', 'result_competitors' ) as $table ) {
+			$this->assertStringContainsString(
+				"'" . $table . "'",
+				$scoped,
+				sprintf( '%s is unique on (scope, competitor_id) and must be deduplicated before a merge.', $table )
+			);
+		}
+	}
 }

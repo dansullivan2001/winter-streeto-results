@@ -90,6 +90,10 @@ class Events_Screen {
 			$events           = $this->repo->events( $series['id'] );
 			$competitors      = $this->competitors->all();
 			$competitor_names = array_column( $competitors, 'display_name', 'id' );
+			// The season's own courses, not a literal list: a course the
+			// scoring config does not know scores unscaled while still
+			// collecting a late penalty, so the two must not be able to drift.
+			$courses = $this->repo->scoring_config( $series )->course_labels();
 			?>
 
 			<h2><?php esc_html_e( 'Series', 'mvoc-streeto' ); ?></h2>
@@ -294,7 +298,7 @@ class Events_Screen {
 										name="<?php echo esc_attr( $field . '[organiser_name]' ); ?>"
 										placeholder="<?php esc_attr_e( 'add organiser', 'mvoc-streeto' ); ?>" />
 								</td>
-								<?php foreach ( array( '60', '40' ) as $course ) : ?>
+								<?php foreach ( $courses as $course ) : ?>
 									<?php
 									$suggested = MapRun_Name::suggest(
 										(string) ( $event['venue'] ?: $event['title'] ),
@@ -453,7 +457,7 @@ class Events_Screen {
 					continue;
 				}
 
-				foreach ( array( '60', '40' ) as $course ) {
+				foreach ( $this->repo->scoring_config( $series ?? array() )->course_labels() as $course ) {
 					$key = 'source_' . $course;
 
 					$lines[] = sprintf(
@@ -854,7 +858,8 @@ class Events_Screen {
 	 * @param array<string,mixed> $series Series row.
 	 */
 	private function fill_suggested_names( array $series ): string {
-		$filled = 0;
+		$filled  = 0;
+		$courses = $this->repo->scoring_config( $series )->course_labels();
 
 		foreach ( $this->repo->events( (int) $series['id'] ) as $event ) {
 			$existing = array();
@@ -864,7 +869,7 @@ class Events_Screen {
 
 			$names = array();
 
-			foreach ( array( '60', '40' ) as $course ) {
+			foreach ( $courses as $course ) {
 				if ( ! empty( $existing[ $course ] ) ) {
 					$names[ $course ] = $existing[ $course ];
 					continue;
@@ -876,10 +881,12 @@ class Events_Screen {
 					$course
 				);
 
-				// The 40-minute event often does not exist yet, so only the
-				// 60 is filled by default; the short course is left for the
-				// co-ordinator once MapRun has one.
-				$names[ $course ] = ( '' !== $suggested && '60' === $course ) ? $suggested : '';
+				// Only the longest course is filled by default. The shorter
+				// event often does not exist in MapRun yet, so it is left for
+				// the co-ordinator once there is one to point at. Taken from
+				// the config's own ordering rather than naming "60", so a
+				// season on different courses still fills the right one.
+				$names[ $course ] = ( '' !== $suggested && $course === ( $courses[0] ?? '' ) ) ? $suggested : '';
 
 				if ( '' !== $names[ $course ] ) {
 					++$filled;
@@ -910,6 +917,7 @@ class Events_Screen {
 		global $wpdb;
 
 		$changes = array();
+		$courses = $this->repo->scoring_config( $series )->course_labels();
 
 		if ( isset( $_POST['series_name'] ) ) {
 			$name = sanitize_text_field( wp_unslash( $_POST['series_name'] ) );
@@ -979,7 +987,7 @@ class Events_Screen {
 			// Every course is submitted, blanks included: an empty box means
 			// "remove this", which is only expressible if it is sent.
 			$names = array();
-			foreach ( array( '60', '40' ) as $course ) {
+			foreach ( $courses as $course ) {
 				$names[ $course ] = sanitize_text_field( (string) ( $fields[ 'source_' . $course ] ?? '' ) );
 			}
 

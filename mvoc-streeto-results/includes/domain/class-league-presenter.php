@@ -51,6 +51,15 @@ class League_Presenter {
 		'o55_women' => 'Over 55 Women',
 	);
 
+	private Scoring_Config $config;
+
+	/**
+	 * @param Scoring_Config|null $config Series scoring rules; defaults to the workbook's.
+	 */
+	public function __construct( ?Scoring_Config $config = null ) {
+		$this->config = $config ?? new Scoring_Config();
+	}
+
 	/**
 	 * Whether a category name is one this presenter knows.
 	 *
@@ -75,7 +84,7 @@ class League_Presenter {
 	 * @param array<int,array<string,mixed>> $standings Rows from League_Builder.
 	 * @param array<int,string>              $events    Event labels, in series order.
 	 * @param string                         $category  One of the category keys.
-	 * @return array{category:string,label:string,events:array<int,string>,rows:array<int,array<string,mixed>>}
+	 * @return array{category:string,label:string,events:array<int,string>,rows:array<int,array<string,mixed>>,counting_events:int}
 	 */
 	public function present( array $standings, array $events, string $category = 'overall' ): array {
 		if ( ! self::is_category( $category ) ) {
@@ -115,10 +124,14 @@ class League_Presenter {
 		usort( $rows, static fn( array $a, array $b ): int => $a['position'] <=> $b['position'] );
 
 		return array(
-			'category' => $category,
-			'label'    => self::CATEGORY_LABELS[ $category ],
-			'events'   => $events,
-			'rows'     => $rows,
+			'category'        => $category,
+			'label'           => self::CATEGORY_LABELS[ $category ],
+			'events'          => $events,
+			'rows'            => $rows,
+			// Carried so the published footnote states this series' rule rather
+			// than a number typed into the template, which would start lying
+			// the first time a season counts a different many.
+			'counting_events' => $this->config->counting_events,
 		);
 	}
 

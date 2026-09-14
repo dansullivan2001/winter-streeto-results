@@ -147,7 +147,7 @@ class League_Screen {
 		}
 
 		$scored = $this->league->standings_with_notes( $series, $events );
-		$model  = $this->league->model( $scored['rows'], $events, $category );
+		$model  = $this->league->model( $scored['rows'], $events, $category, $this->events->scoring_config( $series ) );
 
 		$this->render_summary( $events, $scored['unlinked'] );
 

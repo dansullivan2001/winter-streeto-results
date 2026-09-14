@@ -198,6 +198,11 @@ class Parser {
 			'score'           => $scores['score'],
 			'net_score'       => $scores['net'],
 			'penalty'         => $scores['penalty'],
+			// Which MapRun field the score came from. Read by the Explorer to
+			// confirm the contract holds on an unfamiliar response; the key was
+			// missing for a milestone, so the Explorer reported "no score field
+			// recognised" on every response it had just parsed correctly.
+			'score_field'     => $scores['field'],
 			'punches'         => $this->ordered_punches( $row ),
 		);
 	}
@@ -237,8 +242,12 @@ class Parser {
 	 * the penalty between them — so the penalty is simply the difference, and
 	 * the engine's `Score - Penalty` reduces back to `NetScore`.
 	 *
+	 * `field` names which MapRun field the score was actually read from, so the
+	 * Explorer can report that the contract held rather than asserting it. It
+	 * is empty only when neither field was usable.
+	 *
 	 * @param array<string,mixed> $row Raw MapRun row.
-	 * @return array{score:int|null,net:int|null,penalty:int}
+	 * @return array{score:int|null,net:int|null,penalty:int,field:string}
 	 */
 	private function extract_scores( array $row ): array {
 		$gross = isset( $row['GrossScore'] ) && is_numeric( $row['GrossScore'] ) ? (int) $row['GrossScore'] : null;
@@ -249,8 +258,13 @@ class Parser {
 				'score'   => null,
 				'net'     => null,
 				'penalty' => 0,
+				'field'   => '',
 			);
 		}
+
+		// Whichever the score itself came from. Gross is the score the club
+		// publishes, so where both are present it is the one named.
+		$field = null !== $gross ? 'GrossScore' : 'NetScore';
 
 		// If only one is present, treat it as both: a missing counterpart means
 		// no penalty information, not a penalty of the whole score.
@@ -261,6 +275,7 @@ class Parser {
 			'score'   => $gross,
 			'net'     => $net,
 			'penalty' => max( 0, $gross - $net ),
+			'field'   => $field,
 		);
 	}
 
@@ -679,6 +694,10 @@ class Parser {
 
 		$string = (string) $value;
 
-		return strlen( $string ) > 40 ? substr( $string, 0, 40 ) . '...' : $string;
+		// mb_*, so a cut at 40 characters cannot land mid-character and put a
+		// broken byte sequence on the Explorer screen.
+		return mb_strlen( $string, 'UTF-8' ) > 40
+			? mb_substr( $string, 0, 40, 'UTF-8' ) . '...'
+			: $string;
 	}
 }

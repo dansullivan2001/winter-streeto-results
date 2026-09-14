@@ -52,7 +52,7 @@ defined( 'ABSPATH' ) || exit;
 						<td data-label="<?php esc_attr_e( 'Total', 'mvoc-streeto' ); ?>">
 							<?php echo null === $row['total'] ? '—' : esc_html( (string) $row['total'] ); ?>
 							<?php if ( ! empty( $row['is_scaled'] ) ) : ?>
-								<abbr class="mvoc-streeto-scaled" title="<?php esc_attr_e( 'Adjusted for the 40-minute course', 'mvoc-streeto' ); ?>">*</abbr>
+								<abbr class="mvoc-streeto-scaled" title="<?php esc_attr_e( 'Adjusted onto the long-course scale', 'mvoc-streeto' ); ?>">*</abbr>
 							<?php endif; ?>
 						</td>
 						<td data-label="<?php esc_attr_e( 'League pts', 'mvoc-streeto' ); ?>">
@@ -64,9 +64,21 @@ defined( 'ABSPATH' ) || exit;
 		</table>
 	</div>
 
-	<?php if ( ! empty( $model['has_short_course'] ) ) : ?>
+	<?php if ( ! empty( $model['scaled_courses'] ) ) : ?>
 		<p class="mvoc-streeto-footnote">
-			<?php esc_html_e( '* Scores on the 40-minute course are multiplied by 150% so that both courses rank together.', 'mvoc-streeto' ); ?>
+			<?php
+			// Course and percentage come from the series' own scoring rules, so
+			// this says what was actually done rather than repeating a default.
+			foreach ( $model['scaled_courses'] as $scaled ) {
+				printf(
+					/* translators: 1: course label such as 40, 2: percentage such as 150. */
+					esc_html__( '* Scores on the %1$s-minute course are multiplied by %2$d%% so that both courses rank together.', 'mvoc-streeto' ),
+					esc_html( (string) $scaled['label'] ),
+					(int) $scaled['percent']
+				);
+				echo ' ';
+			}
+			?>
 		</p>
 	<?php endif; ?>
 

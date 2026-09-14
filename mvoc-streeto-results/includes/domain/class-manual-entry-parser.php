@@ -49,6 +49,7 @@ class Manual_Entry_Parser {
 	public function parse( string $text, string $default_course = '60' ): array {
 		$rows   = array();
 		$errors = array();
+		$first  = true;
 
 		foreach ( preg_split( '/\R/', $text ) ?: array() as $index => $line ) {
 			$line = trim( $line );
@@ -64,7 +65,13 @@ class Manual_Entry_Parser {
 				continue;
 			}
 
-			if ( 0 === $index && self::looks_like_a_header( $name ) ) {
+			// The first line with something on it, not line 0: a block copied
+			// out of a spreadsheet often starts with a blank line, and that
+			// used to carry the header past this check and into the results.
+			$was_first = $first;
+			$first     = false;
+
+			if ( $was_first && self::looks_like_a_header( $name ) ) {
 				continue;
 			}
 

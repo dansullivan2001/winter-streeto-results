@@ -19,9 +19,13 @@ person and one file on their laptop.
 
 ## Status
 
-Working and in testing. Import, correction, checking, publishing, both shortcodes and the
-co-ordinator's guide (**StreetO Results → Help & FAQ**) are complete; a live-site trial is
-outstanding.
+**1.0.0.** Import, correction, checking, publishing, both shortcodes and the co-ordinator's
+guide (**StreetO Results → Help & FAQ**) are complete and covered by the suite. A live-site
+trial is still outstanding, and the integration checks have only ever been run by hand.
+
+Deferred functionality — the shared-map case, and editing a season's scoring rules from the
+admin screens — is listed in [docs/roadmap.md](docs/roadmap.md) with what exists today and
+what each would cost.
 
 ## Installing
 
@@ -312,7 +316,7 @@ mvoc-streeto-results/     The plugin — this directory is what gets installed
   public/                 Shortcodes, templates, styles
 tests/                    Unit tests and fixtures
 tools/                    Build and verification scripts
-docs/                     Deployment notes
+docs/                     Deployment notes and the roadmap
 ```
 
 ## Licence

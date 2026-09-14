@@ -200,6 +200,26 @@ class Scoring_Config {
 	}
 
 	/**
+	 * The courses this series runs, longest first.
+	 *
+	 * The single source of truth for which courses exist. Every screen that
+	 * offers a course reads it from here, because a label the config does not
+	 * know scores unscaled — factor_for_course() returns 1.0 — while still
+	 * collecting a late penalty from the numeric fallback below. That produces
+	 * a plausible total that is quietly wrong, and hard-coded lists in the
+	 * admin screens were how such a label got offered in the first place.
+	 *
+	 * @return string[]
+	 */
+	public function course_labels(): array {
+		$labels = array_map( 'strval', array_keys( $this->course_factors ) );
+
+		usort( $labels, static fn( string $a, string $b ): int => (int) $b <=> (int) $a );
+
+		return $labels;
+	}
+
+	/**
 	 * Multiplier for a course, defaulting to 1 for an unrecognised label.
 	 *
 	 * An unknown label must not silently scale a score; leaving it at 1 means a

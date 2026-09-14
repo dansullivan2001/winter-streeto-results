@@ -124,7 +124,12 @@ class Client {
 	 * it means the club's hosting blocks the port, and the co-ordinator should
 	 * use the Paste JSON path.
 	 *
-	 * @return array{ok:bool,message:string}
+	 * `blocked` separates the two failures that matter to a webmaster: true
+	 * where the host reaches the server on 443 but not on 8886, which is a
+	 * firewall rule they can change, and false where it reaches nothing at all.
+	 * `detail` is the sentence explaining whichever it was.
+	 *
+	 * @return array{ok:bool,blocked:bool,message:string,detail:string}
 	 */
 	public function check_connectivity(): array {
 		$response = wp_remote_get(

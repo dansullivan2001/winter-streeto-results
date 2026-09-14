@@ -63,67 +63,96 @@ class Importer {
 	/**
 	 * Import every source configured for an event.
 	 *
-	 * @param int         $event_id Event id.
-	 * @param string|null $pasted   Pasted JSON, used instead of fetching when given.
+	 * @param int         $event_id  Event id.
+	 * @param string|null $pasted    Pasted JSON, used instead of fetching when given.
+	 * @param int         $source_id Which source the paste is for; required with $pasted.
 	 * @return array{summary:array<string,int>,warnings:string[],unmatched:array<int,array<string,mixed>>,errors:string[]}
 	 */
-	public function import( int $event_id, ?string $pasted = null ): array {
-		$sources  = $this->events->sources( $event_id );
+	public function import( int $event_id, ?string $pasted = null, int $source_id = 0 ): array {
+		$sources = $this->events->sources( $event_id );
+
+		// A paste is one MapRun response and belongs to exactly one source, so
+		// the co-ordinator has to say which. Assuming the first was not a near
+		// miss: the rows were parsed under that source's course label, so a 40
+		// pasted against the 60 scored unscaled — and because the reconciler
+		// matches on MapRun ids, every row already stored for the 60 was absent
+		// from the response and therefore withdrawn. The whole long course
+		// disappeared, on the one path a host that blocks port 8886 has.
+		if ( null !== $pasted ) {
+			$sources = self::sources_for_paste( $sources, $source_id );
+
+			if ( ! $sources ) {
+				return array(
+					'summary'   => array(),
+					'warnings'  => array(),
+					'errors'    => array( __( 'Choose which course the pasted results are for.', 'mvoc-streeto' ) ),
+					'unmatched' => array(),
+				);
+			}
+		}
+
 		$summary  = array();
 		$warnings = array();
 		$errors   = array();
 		$parsed   = array();
 
-		foreach ( $sources as $source ) {
-			try {
-				$result = null === $pasted
-					? $this->client->fetch( $source['maprun_event_name'] )
-					: $this->client->ingest( $pasted );
-			} catch ( \RuntimeException $e ) {
-				// One course failing must not abandon the other. A 40-minute
-				// event that nobody entered returns an error, and that should
-				// not block importing the 60.
-				$errors[] = sprintf( '%s: %s', $source['course_label'], $e->getMessage() );
-				continue;
+		// One option write per import rather than one per row: every action
+		// below bumps the league cache, and a 64-row event bumped it 64 times
+		// to invalidate the same thing once.
+		League_Cache::defer();
+
+		try {
+			foreach ( $sources as $source ) {
+				try {
+					$result = null === $pasted
+						? $this->client->fetch( $source['maprun_event_name'] )
+						: $this->client->ingest( $pasted );
+				} catch ( \RuntimeException $e ) {
+					// One course failing must not abandon the other. A 40-minute
+					// event that nobody entered returns an error, and that should
+					// not block importing the 60.
+					$errors[] = sprintf( '%s: %s', $source['course_label'], $e->getMessage() );
+					continue;
+				}
+
+				if ( ! empty( $result['warning'] ) ) {
+					$warnings[] = sprintf( '%s: %s', $source['course_label'], $result['warning'] );
+				}
+
+				$rows = $this->with_categories(
+					( new Parser() )->parse( $result['rows'], (string) $source['course_label'] ),
+					$event_id
+				);
+
+				$fetch_id = $this->events->record_fetch(
+					(int) $source['id'],
+					$result['payload'],
+					count( $rows ),
+					null === $pasted ? 'http' : 'paste'
+				);
+
+				$actions = $this->reconciler->reconcile(
+					$this->results->for_source( (int) $source['id'] ),
+					$rows
+				);
+
+				foreach ( $actions as $action ) {
+					$this->results->apply_action( $action, $event_id, (int) $source['id'], $fetch_id );
+				}
+
+				$summary = self::add_summaries( $summary, Import_Reconciler::summarise( $actions ) );
+				$parsed  = array_merge( $parsed, $rows );
 			}
 
-			if ( ! empty( $result['warning'] ) ) {
-				$warnings[] = sprintf( '%s: %s', $source['course_label'], $result['warning'] );
-			}
-
-			$rows = $this->with_categories(
-				( new Parser() )->parse( $result['rows'], (string) $source['course_label'] ),
-				$event_id
-			);
-
-			$fetch_id = $this->events->record_fetch(
-				(int) $source['id'],
-				$result['payload'],
-				count( $rows ),
-				null === $pasted ? 'http' : 'paste'
-			);
-
-			$actions = $this->reconciler->reconcile(
-				$this->results->for_source( (int) $source['id'] ),
-				$rows
-			);
-
-			foreach ( $actions as $action ) {
-				$this->results->apply_action( $action, $event_id, (int) $source['id'], $fetch_id );
-			}
-
-			$summary = self::add_summaries( $summary, Import_Reconciler::summarise( $actions ) );
-			$parsed  = array_merge( $parsed, $rows );
-
-			// A paste only ever covers one source, so stop after the first.
-			if ( null !== $pasted ) {
-				break;
-			}
+			$this->events->touch_fetched( $event_id );
+			$this->link_competitors( $event_id );
+			$this->sync_categories( $event_id );
+		} finally {
+			// finally, not a plain call: a throw anywhere above must not leave
+			// the cache deferred for the rest of the request, which would drop
+			// invalidations from every later write.
+			League_Cache::release();
 		}
-
-		$this->events->touch_fetched( $event_id );
-		$this->link_competitors( $event_id );
-		$this->sync_categories( $event_id );
 
 		$resolution = $this->registry->resolve(
 			$parsed,
@@ -136,6 +165,36 @@ class Importer {
 			'warnings'  => $warnings,
 			'errors'    => $errors,
 			'unmatched' => $resolution['unmatched'],
+		);
+	}
+
+	/**
+	 * The one source a paste may be imported against, or none.
+	 *
+	 * Kept separate from import() above, and public, so the decision can be
+	 * tested without a database — the same reason the ladder migration on
+	 * Schema is split this way.
+	 *
+	 * Returns an empty array for an id that matches nothing, which the caller
+	 * reads as "ask again" rather than falling back to a source of its own
+	 * choosing. Falling back is the whole bug: no id and a wrong id are both
+	 * "we do not know which course this is", and guessing wrong withdrew a
+	 * course's entire field.
+	 *
+	 * @param array<int,array<string,mixed>> $sources   Every source for the event.
+	 * @param int                            $source_id The source the co-ordinator chose.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function sources_for_paste( array $sources, int $source_id ): array {
+		if ( $source_id < 1 ) {
+			return array();
+		}
+
+		return array_values(
+			array_filter(
+				$sources,
+				static fn( array $source ): bool => (int) $source['id'] === $source_id
+			)
 		);
 	}
 

@@ -23,9 +23,53 @@ class League_Cache {
 	private const OPTION = 'mvoc_streeto_league_gen';
 
 	/**
+	 * Whether bumps are being held back for a batch.
+	 */
+	private static bool $deferred = false;
+
+	/**
+	 * Whether a held-back bump is waiting to be applied.
+	 */
+	private static bool $pending = false;
+
+	/**
+	 * Hold bumps until release(), collapsing a batch into one write.
+	 *
+	 * An import calls the repo once per result row and each of those bumps,
+	 * so a 64-row event wrote the option 64 times to invalidate the same
+	 * tables once. Nothing is lost by collapsing them: the generation only
+	 * has to differ from the one the cached entries were built under, not
+	 * count the writes.
+	 */
+	public static function defer(): void {
+		self::$deferred = true;
+	}
+
+	/**
+	 * Stop holding bumps, applying one if any were asked for.
+	 *
+	 * Call from a `finally`, so a failed import cannot leave the cache
+	 * deferred for the rest of the request.
+	 */
+	public static function release(): void {
+		self::$deferred = false;
+
+		if ( self::$pending ) {
+			self::$pending = false;
+			self::bump();
+		}
+	}
+
+	/**
 	 * Invalidate every cached league table.
 	 */
 	public static function bump(): void {
+		if ( self::$deferred ) {
+			self::$pending = true;
+
+			return;
+		}
+
 		update_option( self::OPTION, self::generation() + 1, false );
 	}
 

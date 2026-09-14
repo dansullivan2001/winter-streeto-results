@@ -79,6 +79,18 @@ class ManualEntryParserTest extends TestCase {
 		$this->assertSame( 'A One', $result['rows'][0]['display_name'] );
 	}
 
+	public function test_a_header_after_a_blank_line_is_still_skipped(): void {
+		// A block copied out of a spreadsheet often starts with a blank line.
+		// The check used to be on line index 0 rather than on the first line
+		// with anything on it, so the header sailed past it — and a
+		// single-column paste would have created a competitor called Name.
+		$result = ( new Manual_Entry_Parser() )->parse( "\n\nName\nA One\nB Two" );
+
+		$this->assertCount( 2, $result['rows'] );
+		$this->assertSame( 'A One', $result['rows'][0]['display_name'] );
+		$this->assertSame( array(), $result['errors'] );
+	}
+
 	public function test_a_header_word_further_down_is_treated_as_a_runner(): void {
 		// Only the first line can be a header; a runner actually called Name
 		// further down is vanishingly unlikely, but dropping rows silently is

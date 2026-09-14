@@ -141,17 +141,31 @@ class Event_Review_Screen {
 					</p>
 
 					<?php if ( $sources ) : ?>
+						<?php
+						// The course is chosen here rather than assumed, because a
+						// paste carries no course of its own. Imported against the
+						// wrong source it would be scored on the wrong scale and,
+						// since the reconciler matches on MapRun ids, would withdraw
+						// every row already stored for that course. Pre-selected only
+						// when there is one course to choose, so a real choice is
+						// never made by default.
+						?>
 						<ol>
 							<?php foreach ( $sources as $source ) : ?>
 								<?php $url = \MVOC\StreetO\MapRun\Client::url_for( (string) $source['maprun_event_name'] ); ?>
-								<li style="margin-bottom:0.5em;">
-									<?php
-									printf(
-										/* translators: %s: course label such as 60. */
-										esc_html__( '%s minute course —', 'mvoc-streeto' ),
-										esc_html( (string) $source['course_label'] )
-									);
-									?>
+								<li style="margin-bottom:0.75em;">
+									<label>
+										<input type="radio" name="paste_source"
+											value="<?php echo esc_attr( (string) $source['id'] ); ?>"
+											<?php checked( 1, count( $sources ) ); ?> />
+										<?php
+										printf(
+											/* translators: %s: course label such as 60. */
+											esc_html__( '%s minute course —', 'mvoc-streeto' ),
+											esc_html( (string) $source['course_label'] )
+										);
+										?>
+									</label>
 									<a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer">
 										<?php esc_html_e( 'open in a new tab', 'mvoc-streeto' ); ?>
 									</a>
@@ -163,6 +177,11 @@ class Event_Review_Screen {
 								</li>
 							<?php endforeach; ?>
 						</ol>
+						<?php if ( count( $sources ) > 1 ) : ?>
+							<p class="description">
+								<?php esc_html_e( 'Tick the course you opened above. The pasted results are imported against that course only; the other is left exactly as it is.', 'mvoc-streeto' ); ?>
+							</p>
+						<?php endif; ?>
 					<?php else : ?>
 						<p class="description">
 							<?php esc_html_e( 'No MapRun event name is set for this event yet — add one on the Series and events screen and the exact URL to open will appear here.', 'mvoc-streeto' ); ?>
@@ -200,8 +219,9 @@ class Event_Review_Screen {
 							<input type="number" name="manual[penalty]" style="width:7em" step="1" min="0"
 								placeholder="<?php esc_attr_e( 'Penalty', 'mvoc-streeto' ); ?>" />
 							<select name="manual[course]">
-								<option value="60">60</option>
-								<option value="40">40</option>
+								<?php foreach ( $config->course_labels() as $course ) : ?>
+									<option value="<?php echo esc_attr( $course ); ?>"><?php echo esc_html( $course ); ?></option>
+								<?php endforeach; ?>
 							</select>
 						</td>
 					</tr>
@@ -841,7 +861,7 @@ class Event_Review_Screen {
 						</td>
 						<td>
 							<select name="rows[<?php echo esc_attr( (string) $id ); ?>][course]">
-								<?php foreach ( array( '60', '40' ) as $course ) : ?>
+								<?php foreach ( $config->course_labels() as $course ) : ?>
 									<option value="<?php echo esc_attr( $course ); ?>"
 										<?php selected( $row['course_label'], $course ); ?>>
 										<?php echo esc_html( $course ); ?>
@@ -976,7 +996,7 @@ class Event_Review_Screen {
 		// Its own field rather than an id encoded into the action: sanitize_key
 		// strips the separator, so "remove:7" silently arrived as "remove7".
 		if ( isset( $_POST['remove_row'] ) ) {
-			return array( 'notice' => $this->remove_manual( (int) $_POST['remove_row'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			return array( 'notice' => $this->remove_manual( (int) $_POST['remove_row'], $event_id ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
 		if ( 'import' === $action || 'import_paste' === $action ) {
@@ -985,7 +1005,11 @@ class Event_Review_Screen {
 				? trim( wp_unslash( $_POST['pasted_json'] ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 				: null;
 
-			$result = $this->importer->import( $event_id, $pasted ?: null );
+			// Which course the paste is for. Only meaningful alongside $pasted;
+			// the fetch path imports every source and needs no choice.
+			$source_id = isset( $_POST['paste_source'] ) ? (int) $_POST['paste_source'] : 0; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+			$result = $this->importer->import( $event_id, $pasted ?: null, $source_id );
 
 			return array(
 				'notice'    => $this->summarise( $result['summary'] ),
@@ -1110,9 +1134,10 @@ class Event_Review_Screen {
 	 * deleted, so its raw record and audit trail survive.
 	 *
 	 * @param int $result_id Result id.
+	 * @param int $event_id  Event being reviewed.
 	 */
-	private function remove_manual( int $result_id ): string {
-		$this->results->delete_manual( $result_id );
+	private function remove_manual( int $result_id, int $event_id ): string {
+		$this->results->delete_manual( $result_id, $event_id );
 
 		return __( 'Removed.', 'mvoc-streeto' );
 	}

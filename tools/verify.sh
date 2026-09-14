@@ -33,6 +33,22 @@ fi
 
 if out=$( "$PHP" tools/check-references.php 2>&1 ); then step references "$out"; else step references "FAILED: $out"; fail=1; fi
 
+# The version is declared twice in the plugin file: the header WordPress and the
+# update checker read, and the constant the enqueued assets are cache-busted on.
+# Bumping one and not the other ships correct update metadata with a stale
+# stylesheet, which nothing else here would notice.
+PLUGIN_FILE="mvoc-streeto-results/mvoc-streeto-results.php"
+HEADER_VERSION="$(grep -m1 '^ \* Version:' "$PLUGIN_FILE" | awk '{print $3}')"
+CONST_VERSION="$(grep -m1 "define( 'MVOC_STREETO_VERSION'" "$PLUGIN_FILE" | sed "s/.*'\([0-9][^']*\)'.*/\1/")"
+
+if [ -z "$HEADER_VERSION" ] || [ -z "$CONST_VERSION" ]; then
+  step version "FAILED: could not read both version declarations"; fail=1
+elif [ "$HEADER_VERSION" != "$CONST_VERSION" ]; then
+  step version "FAILED: header $HEADER_VERSION != MVOC_STREETO_VERSION $CONST_VERSION"; fail=1
+else
+  step version "$HEADER_VERSION"
+fi
+
 if out=$( "$PHP" "$PHPUNIT" 2>&1 | tail -1 ); then step unit "$out"; else step unit "FAILED: $out"; fail=1; fi
 
 SITE="${1:-}"

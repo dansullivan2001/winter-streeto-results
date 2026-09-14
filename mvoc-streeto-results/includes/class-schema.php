@@ -423,7 +423,7 @@ class Schema {
 			UNIQUE KEY slug (slug)
 		) {$charset};";
 
-		// One club event, typically offering both a 60 and a 45 minute course.
+		// One club event, typically offering both a 60 and a 40 minute course.
 		$table = self::table( 'events' );
 		$sql[] = "CREATE TABLE {$table} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -565,12 +565,20 @@ class Schema {
 			KEY maprun_id (maprun_id)
 		) {$charset};";
 
-		// A result normally belongs to one competitor, recorded on results.
-		// competitor_id. This table covers the rare shared-map case, where two
-		// people run one map and both take the row's league points. Modelling
-		// it as a relationship keeps the scoring engine from special-casing
-		// pairs, and the co-ordinator establishes the link explicitly rather
-		// than it being guessed from an "&" in the name.
+		// RESERVED — NOT YET IMPLEMENTED. Nothing reads or writes this table.
+		//
+		// It is here for the rare shared-map case, where two people run one map
+		// and both should take the row's league points. Modelling that as a
+		// relationship would keep the scoring engine from special-casing pairs,
+		// and the co-ordinator would establish the link explicitly rather than
+		// it being guessed from an "&" in the name — but none of that is built:
+		// there is no UI to make the link, and Scoring_Engine and League_Service
+		// both read results.competitor_id only. Competitors_Repo::merge() is the
+		// sole reference, and only so a merge cannot leave rows behind if the
+		// table is ever populated.
+		//
+		// Kept rather than dropped because dropping it would cost a migration
+		// on every site for a table that holds nothing. See docs/roadmap.md.
 		$table = self::table( 'result_competitors' );
 		$sql[] = "CREATE TABLE {$table} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

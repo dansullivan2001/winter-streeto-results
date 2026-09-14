@@ -49,11 +49,15 @@ class Event_Presenter {
 	 *
 	 * @param array<int,array<string,mixed>> $scored     Rows from Scoring_Engine.
 	 * @param array<int,array<string,mixed>> $organisers Organiser competitors, usually zero or one.
-	 * @return array{columns:string[],rows:array<int,array<string,mixed>>,has_short_course:bool}
+	 * @return array{columns:string[],rows:array<int,array<string,mixed>>,has_short_course:bool,scaled_courses:array<int,array{label:string,percent:int}>}
 	 */
 	public function present( array $scored, array $organisers = array() ): array {
 		$rows             = array();
 		$has_short_course = false;
+		// Which courses were actually scaled, and by how much, so the footnote
+		// states this series' own rule instead of a sentence that happens to
+		// match the default. Keyed by label to report each course once.
+		$scaled_courses = array();
 
 		foreach ( $scored as $row ) {
 			// Excluded and withdrawn rows never reach the public table: test
@@ -63,8 +67,14 @@ class Event_Presenter {
 			}
 
 			$course = (string) ( $row['course_label'] ?? '' );
-			if ( '' !== $course && 1.0 !== $this->config->factor_for_course( $course ) ) {
-				$has_short_course = true;
+			$factor = '' === $course ? 1.0 : $this->config->factor_for_course( $course );
+
+			if ( 1.0 !== $factor ) {
+				$has_short_course          = true;
+				$scaled_courses[ $course ] = array(
+					'label'   => $course,
+					'percent' => (int) round( $factor * 100 ),
+				);
 			}
 
 			$rows[] = array(
@@ -77,7 +87,7 @@ class Event_Presenter {
 				'penalty'        => (int) ( $row['penalty'] ?? 0 ),
 				'total'          => $row['total'],
 				'league_points'  => $row['league_points'],
-				'is_scaled'      => '' !== $course && 1.0 !== $this->config->factor_for_course( $course ),
+				'is_scaled'      => 1.0 !== $factor,
 			);
 		}
 
@@ -104,6 +114,7 @@ class Event_Presenter {
 			'columns'          => $this->columns(),
 			'rows'             => $rows,
 			'has_short_course' => $has_short_course,
+			'scaled_courses'   => array_values( $scaled_courses ),
 		);
 	}
 

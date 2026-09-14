@@ -285,18 +285,25 @@ class Results_Repo {
 	 * Only manual rows can be deleted: a MapRun row is excluded rather than
 	 * removed, so its raw record and audit trail survive.
 	 *
+	 * Scoped to an event as well as an id. The id arrives from a form, and the
+	 * screen that submits it is only ever looking at one event — so a stale or
+	 * edited one should match nothing rather than reach across to a row the
+	 * co-ordinator cannot currently see.
+	 *
 	 * @param int $result_id Result id.
+	 * @param int $event_id  Event the row must belong to.
 	 */
-	public function delete_manual( int $result_id ): void {
+	public function delete_manual( int $result_id, int $event_id ): void {
 		global $wpdb;
 
 		$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			Schema::table( 'results' ),
 			array(
 				'id'        => $result_id,
+				'event_id'  => $event_id,
 				'is_manual' => 1,
 			),
-			array( '%d', '%d' )
+			array( '%d', '%d', '%d' )
 		);
 
 		League_Cache::bump();

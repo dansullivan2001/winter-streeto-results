@@ -329,6 +329,11 @@ class Competitors_Repo {
 	 * Used when the co-ordinator spots that two records are the same person —
 	 * for example after an earlier confirmation went to the wrong entry.
 	 *
+	 * Every table referencing a competitor is re-pointed before the absorbed
+	 * record is deleted. Missing one does not fail loudly: the rows simply
+	 * point at an id that no longer resolves, and whatever they carried goes
+	 * quiet.
+	 *
 	 * @param int $from_id Competitor to absorb.
 	 * @param int $into_id Competitor to keep.
 	 */
@@ -339,34 +344,52 @@ class Competitors_Repo {
 			return;
 		}
 
-		// All three tables reference a competitor by the same column name.
-		$tables = array(
-			Schema::table( 'aliases' ),
-			Schema::table( 'results' ),
-			Schema::table( 'result_competitors' ),
+		// Join tables carrying a unique key on (something, competitor_id), and
+		// the column that "something" is. Where both records already have a row
+		// for the same season, event or result, re-pointing the absorbed one
+		// would collide with the key and the update would fail silently — so
+		// the colliding rows are deleted first and the rest re-pointed.
+		//
+		// Every one of these must be listed. event_organisers was missed here
+		// once, and because the absorbed competitor is deleted at the end, its
+		// organiser rows were left pointing at an id that no longer existed:
+		// the organiser vanished from the published event table and lost their
+		// league bonus, with nothing raised anywhere.
+		$scoped = array(
+			'series_competitors' => 'series_id',
+			'event_organisers'   => 'event_id',
+			'result_competitors' => 'result_id',
 		);
 
-		// The absorbed competitor's per-season categories go first: the unique
-		// key on (series, competitor) would otherwise collide where both
-		// records have a row for the same season.
-		$series_competitors = Schema::table( 'series_competitors' );
-		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->prepare(
-				"DELETE FROM `{$series_competitors}` WHERE competitor_id = %d
-				 AND series_id IN ( SELECT series_id FROM ( SELECT series_id FROM `{$series_competitors}` WHERE competitor_id = %d ) AS keep )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$from_id,
-				$into_id
-			)
-		);
-		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$series_competitors,
-			array( 'competitor_id' => $into_id ),
-			array( 'competitor_id' => $from_id ),
-			array( '%d' ),
-			array( '%d' )
-		);
+		foreach ( $scoped as $logical => $scope ) {
+			$table = Schema::table( $logical );
 
-		foreach ( $tables as $table ) {
+			// $scope is interpolated because a column name cannot be bound, and
+			// it is safe to do so only because both it and $logical come from
+			// the hard-coded list above and never from a caller.
+			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$wpdb->prepare(
+					"DELETE FROM `{$table}` WHERE competitor_id = %d
+					 AND `{$scope}` IN ( SELECT `{$scope}` FROM ( SELECT `{$scope}` FROM `{$table}` WHERE competitor_id = %d ) AS keep )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$from_id,
+					$into_id
+				)
+			);
+
+			$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$table,
+				array( 'competitor_id' => $into_id ),
+				array( 'competitor_id' => $from_id ),
+				array( '%d' ),
+				array( '%d' )
+			);
+		}
+
+		// No unique key involving competitor_id on these two, so they re-point
+		// wholesale: a competitor may hold any number of aliases and results.
+		foreach ( array( 'aliases', 'results' ) as $logical ) {
+			$table = Schema::table( $logical );
+
 			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 				$wpdb->prepare(
 					"UPDATE `{$table}` SET competitor_id = %d WHERE competitor_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

@@ -37,7 +37,7 @@ class Scoring_Engine {
 	 *   name          string
 	 *   score         int|null   raw points from MapRun
 	 *   penalty       int        time penalty, defaults to 0
-	 *   course_label  string     '60' or '45', defaults to '60'
+	 *   course_label  string     a label from Scoring_Config::course_labels(), defaults to '60'
 	 *   is_organiser  bool       organiser: listed, but not ranked
 	 *   is_excluded   bool       test run, course setter, duplicate
 	 *

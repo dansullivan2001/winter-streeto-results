@@ -114,6 +114,15 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 
 	<p class="mvoc-streeto-footnote">
-		<?php esc_html_e( 'The best 5 results count. Event organisers score their best result again in place of the event they ran.', 'mvoc-streeto' ); ?>
+		<?php
+		// The count comes from the series' scoring rules rather than the
+		// sentence, so a season that counts a different many says so.
+		printf(
+			/* translators: %d: how many event results count towards the league total. */
+			esc_html( _n( 'The best result counts.', 'The best %d results count.', (int) $model['counting_events'], 'mvoc-streeto' ) ),
+			(int) $model['counting_events']
+		);
+		?>
+		<?php esc_html_e( 'Event organisers score their best result again in place of the event they ran.', 'mvoc-streeto' ); ?>
 	</p>
 </div>

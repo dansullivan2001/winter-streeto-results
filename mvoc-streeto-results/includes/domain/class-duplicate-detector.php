@@ -119,7 +119,7 @@ class Duplicate_Detector {
 	 * instead would silently drop the ordering below.
 	 *
 	 * @param array<int,array<string,mixed>> $cluster One duplicate cluster.
-	 * @return array{name:string,time_display:string,options:array<int,array<string,mixed>>}
+	 * @return array{name:string,time_display:string,options:array<int,array<string,mixed>>,is_decided:bool}
 	 */
 	public function describe( array $cluster ): array {
 		$first = $cluster[0] ?? array();

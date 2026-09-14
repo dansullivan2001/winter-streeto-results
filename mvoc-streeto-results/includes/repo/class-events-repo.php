@@ -449,6 +449,13 @@ class Events_Repo {
 		);
 
 		$wpdb->delete( $sources, array( 'event_id' => $event_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+		// Organisers go too. A fixture is seeded months ahead with an organiser
+		// against it, so deleting one that was never run is the normal case —
+		// and leaving the join rows behind points them at an event that no
+		// longer exists.
+		$wpdb->delete( Schema::table( 'event_organisers' ), array( 'event_id' => $event_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
 		$wpdb->delete( Schema::table( 'events' ), array( 'id' => $event_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
 		return true;

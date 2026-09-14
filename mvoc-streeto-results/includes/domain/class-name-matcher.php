@@ -79,7 +79,6 @@ class Name_Matcher {
 		'ben'    => 'benjamin',
 		'matt'   => 'matthew',
 		'greg'   => 'gregory',
-		'ian'    => 'iain',
 		'kate'   => 'katherine',
 		'katie'  => 'katherine',
 		'cathy'  => 'catherine',
@@ -90,9 +89,8 @@ class Name_Matcher {
 		'vicky'  => 'victoria',
 		'debbie' => 'deborah',
 		'deb'    => 'deborah',
-		'chrissy' => 'christine',
+		'chrissy'=> 'christine',
 		'abi'    => 'abigail',
-		'gemma'  => 'gemma',
 	);
 
 	/**

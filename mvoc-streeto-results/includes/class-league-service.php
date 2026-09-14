@@ -19,6 +19,7 @@ namespace MVOC\StreetO;
 
 use MVOC\StreetO\Domain\League_Builder;
 use MVOC\StreetO\Domain\League_Presenter;
+use MVOC\StreetO\Domain\Scoring_Config;
 use MVOC\StreetO\Domain\Scoring_Engine;
 use MVOC\StreetO\Repo\Competitors_Repo;
 use MVOC\StreetO\Repo\Events_Repo;
@@ -184,7 +185,12 @@ class League_Service {
 	 * @return array<string,mixed>
 	 */
 	public function present( array $series, array $events, string $category = 'overall' ): array {
-		return $this->model( $this->standings( $series, $events ), $events, $category );
+		return $this->model(
+			$this->standings( $series, $events ),
+			$events,
+			$category,
+			$this->events->scoring_config( $series )
+		);
 	}
 
 	/**
@@ -197,10 +203,11 @@ class League_Service {
 	 * @param array<int,array<string,mixed>> $standings Rows from League_Builder.
 	 * @param array<int,array<string,mixed>> $events    Events they were built from.
 	 * @param string                         $category  One of League_Presenter's category keys.
+	 * @param Scoring_Config|null            $config    Series scoring rules, for the published footnote.
 	 * @return array<string,mixed>
 	 */
-	public function model( array $standings, array $events, string $category = 'overall' ): array {
-		return ( new League_Presenter() )->present(
+	public function model( array $standings, array $events, string $category = 'overall', ?Scoring_Config $config = null ): array {
+		return ( new League_Presenter( $config ) )->present(
 			$standings,
 			array_map( static fn( array $event ): string => (string) $event['label'], $events ),
 			$category
