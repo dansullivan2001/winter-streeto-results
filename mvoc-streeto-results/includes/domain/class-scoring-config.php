@@ -173,14 +173,14 @@ class Scoring_Config {
 	}
 
 	/**
-	 * The workbook's ladder: 1st scores 50, falling by one to 50th scoring 1.
+	 * The club's ladder: 1st scores 100, falling by one to 100th scoring 1.
 	 *
 	 * @return int[]
 	 */
 	private static function default_ladder(): array {
 		$ladder = array();
-		for ( $position = 1; $position <= 50; $position++ ) {
-			$ladder[] = 51 - $position;
+		for ( $position = 1; $position <= 100; $position++ ) {
+			$ladder[] = 101 - $position;
 		}
 
 		return $ladder;

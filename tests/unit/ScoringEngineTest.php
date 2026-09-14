@@ -166,10 +166,11 @@ class ScoringEngineTest extends TestCase {
 	public function test_league_points_ladder(): void {
 		$config = new Scoring_Config();
 
-		$this->assertSame( 50, $config->points_for_position( 1 ) );
-		$this->assertSame( 49, $config->points_for_position( 2 ) );
-		$this->assertSame( 1, $config->points_for_position( 50 ) );
-		$this->assertSame( 1, $config->points_for_position( 51 ) );
+		$this->assertSame( 100, $config->points_for_position( 1 ) );
+		$this->assertSame( 99, $config->points_for_position( 2 ) );
+		$this->assertSame( 51, $config->points_for_position( 50 ) );
+		$this->assertSame( 1, $config->points_for_position( 100 ) );
+		$this->assertSame( 1, $config->points_for_position( 101 ) );
 		$this->assertSame( 1, $config->points_for_position( 200 ) );
 	}
 
@@ -237,7 +238,7 @@ class ScoringEngineTest extends TestCase {
 
 		$this->assertSame( 4, $revived->counting_events );
 		$this->assertSame( Scoring_Config::ROUND_DOWN, $revived->rounding );
-		$this->assertSame( 50, $revived->points_for_position( 1 ) );
+		$this->assertSame( 100, $revived->points_for_position( 1 ) );
 	}
 
 	/**

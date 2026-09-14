@@ -135,8 +135,8 @@ Position = count(better totals) + 1 + count(equal total with a smaller penalty)
 ```
 
 That second term is the club's deliberately coarse tie-break: equal totals finish equal and
-are separated **only** by time penalty, never by finishing time. League points run 50 for
-first down to 1 for fiftieth, and 1 for anything below.
+are separated **only** by time penalty, never by finishing time. League points run 100 for
+first down to 1 for hundredth, and 1 for anything below.
 
 **League table.** The best 5 results count. An organiser scores their best result again in
 place of the event they ran, and that bonus competes for one of the five counting slots
