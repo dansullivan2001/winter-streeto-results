@@ -31,9 +31,26 @@ class ScoringEngineTest extends TestCase {
 		);
 	}
 
+	/**
+	 * An engine configured with the workbook season's own ladder.
+	 *
+	 * That season paid 50 for first down to 1 for fiftieth, where the club now
+	 * starts at 100. The fixture's expected values are the workbook's own
+	 * answers and must not be rewritten, so the ladder of the day is supplied
+	 * here instead.
+	 */
+	private function workbook_engine(): Scoring_Engine {
+		$ladder = array();
+		for ( $position = 1; $position <= 50; $position++ ) {
+			$ladder[] = 51 - $position;
+		}
+
+		return new Scoring_Engine( new Scoring_Config( array( 'points_ladder' => $ladder ) ) );
+	}
+
 	public function test_reproduces_the_workbook_event_exactly(): void {
 		$fixture = $this->workbook_event();
-		$scored  = ( new Scoring_Engine() )->score_event( $fixture['rows'] );
+		$scored  = $this->workbook_engine()->score_event( $fixture['rows'] );
 
 		$checked = 0;
 		foreach ( $scored as $row ) {
@@ -66,7 +83,7 @@ class ScoringEngineTest extends TestCase {
 		// The workbook shows the organiser on the results table with a dash for
 		// league points, so the row must survive scoring rather than be dropped.
 		$fixture = $this->workbook_event();
-		$scored  = ( new Scoring_Engine() )->score_event( $fixture['rows'] );
+		$scored  = $this->workbook_engine()->score_event( $fixture['rows'] );
 
 		$organisers = array_values( array_filter( $scored, static fn( $r ) => ! empty( $r['organiser'] ) ) );
 
