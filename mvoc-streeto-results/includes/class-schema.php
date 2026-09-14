@@ -58,8 +58,13 @@ class Schema {
 	 *    compare and every event reported no duplicates. The revision goes with
 	 *    them because it is the thing that tells the co-ordinator which of two
 	 *    scorings is which.
+	 * 11: no table change — the active series is moved onto the league points
+	 *    ladder that now starts at 100 for first place. The whole config is
+	 *    serialised onto the series row, so a series created before that change
+	 *    carries the old ladder and would go on scoring 50 for a win however
+	 *    many times the plugin was updated.
 	 */
-	public const DB_VERSION = 10;
+	public const DB_VERSION = 11;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -109,6 +114,7 @@ class Schema {
 		self::migrate_organisers();
 		self::drop_retired_columns();
 		self::backfill_run_identity();
+		self::migrate_points_ladder();
 
 		update_option( self::OPTION_DB_VERSION, self::DB_VERSION );
 	}
@@ -234,6 +240,95 @@ class Schema {
 				);
 			}
 		}
+	}
+
+	/**
+	 * Move the active series onto the current league points ladder.
+	 *
+	 * A series stores the whole scoring config as JSON, so the ladder it was
+	 * created with is the ladder it keeps: updating the plugin changes what a
+	 * new season scores and nothing about a season already under way. The
+	 * ladder now starts at 100 for first place, and the season being run has to
+	 * follow it, or the club would publish a table scoring 50 for a win from a
+	 * plugin that documents 100.
+	 *
+	 * Only the active series. A completed season stays as it was published:
+	 * every result in it would otherwise gain 50 points, and because a runner
+	 * with five counting scores gains 250 where one with three gains 150, the
+	 * order of a finished table could change months after the fact.
+	 *
+	 * Nothing is recomputed or stored: positions and league points are worked
+	 * out from the config every time a table is rendered, so the new ladder
+	 * applies to events already published as soon as the cache is dropped.
+	 */
+	private static function migrate_points_ladder(): void {
+		global $wpdb;
+
+		$table = self::table( 'series' );
+
+		$row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"SELECT id, scoring_config FROM `{$table}` WHERE is_active = 1 LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( ! $row ) {
+			return;
+		}
+
+		$migrated = self::series_config_on_current_ladder( (string) $row['scoring_config'] );
+
+		if ( null === $migrated ) {
+			return;
+		}
+
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$table,
+			array( 'scoring_config' => $migrated ),
+			array( 'id' => (int) $row['id'] ),
+			array( '%s' ),
+			array( '%d' )
+		);
+
+		// Every cached table was built on the old ladder.
+		League_Cache::bump();
+	}
+
+	/**
+	 * A stored scoring config rewritten onto the current ladder.
+	 *
+	 * Replaces only a ladder that is exactly what the old default produced —
+	 * 50 for first, falling by one to 1 for fiftieth. Anything else is either
+	 * already current or a ladder somebody set deliberately, and overwriting
+	 * either would be guessing. A config with no ladder of its own is likewise
+	 * left alone: it already picks up whatever the code's default is.
+	 *
+	 * Kept separate from the query above, and public, so the decision can be
+	 * tested without a database.
+	 *
+	 * @param string $json Stored `scoring_config` JSON.
+	 * @return string|null Replacement JSON, or null to leave the row as it is.
+	 */
+	public static function series_config_on_current_ladder( string $json ): ?string {
+		$stored = json_decode( $json, true );
+
+		if ( ! is_array( $stored ) || ! isset( $stored['points_ladder'] ) || ! is_array( $stored['points_ladder'] ) ) {
+			return null;
+		}
+
+		$retired = array();
+		for ( $position = 1; $position <= 50; $position++ ) {
+			$retired[] = 51 - $position;
+		}
+
+		if ( array_map( 'intval', array_values( $stored['points_ladder'] ) ) !== $retired ) {
+			return null;
+		}
+
+		$stored['points_ladder'] = ( new Domain\Scoring_Config() )->points_ladder;
+
+		// Plain json_encode, as Scoring_Config::to_json does and for the same
+		// reason: this is stored data, with no output escaping to do.
+		return (string) json_encode( $stored ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 	}
 
 	/**

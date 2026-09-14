@@ -37,6 +37,7 @@ $GLOBALS['table_prefix'] = 'wp_';
 define( 'WP_USE_THEMES', false );
 require $site . '/wp-load.php';
 
+use MVOC\StreetO\Domain\Scoring_Config;
 use MVOC\StreetO\Domain\Season;
 use MVOC\StreetO\Repo\Competitors_Repo;
 use MVOC\StreetO\Repo\Events_Repo;
@@ -228,6 +229,71 @@ if ( $active ) {
 	$events_repo->set_active( (int) $active['id'] );
 }
 $wpdb->delete( \MVOC\StreetO\Schema::table( 'series' ), array( 'id' => $other_id ), array( '%d' ) );
+
+echo "\nScoring ladder migration\n";
+
+// A series stores the whole scoring config, so one created before the ladder
+// started at 100 keeps the old one until the migration moves it. Two series
+// are set up with that old ladder — one active, one not — because the
+// migration is supposed to touch only the season being run.
+$retired_ladder = array();
+for ( $position = 1; $position <= 50; $position++ ) {
+	$retired_ladder[] = 51 - $position;
+}
+
+$old_ladder_config = (string) json_encode(
+	array_merge( get_object_vars( new Scoring_Config() ), array( 'points_ladder' => $retired_ladder ) )
+);
+
+$running_slug   = 'itest3-' . wp_generate_password( 6, false, false );
+$finished_slug  = 'itest4-' . wp_generate_password( 6, false, false );
+$running_id     = $events_repo->ensure_series( $running_slug, 'Season being run' );
+$finished_id    = $events_repo->ensure_series( $finished_slug, 'Season already published' );
+$series_table   = \MVOC\StreetO\Schema::table( 'series' );
+
+foreach ( array( $running_id, $finished_id ) as $id ) {
+	$wpdb->update(
+		$series_table,
+		array( 'scoring_config' => $old_ladder_config ),
+		array( 'id' => $id ),
+		array( '%s' ),
+		array( '%d' )
+	);
+}
+
+$was_active = $events_repo->active_series();
+$events_repo->set_active( $running_id );
+
+\MVOC\StreetO\Schema::install();
+
+$running_config  = $events_repo->scoring_config( $events_repo->find_series( $running_slug ) );
+$finished_config = $events_repo->scoring_config( $events_repo->find_series( $finished_slug ) );
+
+check(
+	'the season being run moves onto the 100 ladder',
+	100 === $running_config->points_for_position( 1 ),
+	(string) $running_config->points_for_position( 1 )
+);
+check(
+	'a season already published keeps the ladder it was published with',
+	50 === $finished_config->points_for_position( 1 ),
+	(string) $finished_config->points_for_position( 1 )
+);
+
+// Running it again must not undo anything: the migration only ever replaces a
+// ladder that is exactly the retired default.
+\MVOC\StreetO\Schema::install();
+check(
+	'a second upgrade leaves the migrated ladder alone',
+	100 === $events_repo->scoring_config( $events_repo->find_series( $running_slug ) )->points_for_position( 1 )
+);
+
+if ( $was_active ) {
+	$events_repo->set_active( (int) $was_active['id'] );
+}
+
+$wpdb->delete( $series_table, array( 'id' => $running_id ), array( '%d' ) );
+$wpdb->delete( $series_table, array( 'id' => $finished_id ), array( '%d' ) );
 
 echo "\nSeason derivation\n";
 check( 'slug matches the live series format', '2026-27' === Season::slug( 2026 ) );
