@@ -11,10 +11,12 @@
  */
 
 use MVOC\StreetO\Domain\Duplicate_Detector;
+use MVOC\StreetO\MapRun\Parser;
 use PHPUnit\Framework\TestCase;
 
 /**
  * @covers \MVOC\StreetO\Domain\Duplicate_Detector
+ * @covers \MVOC\StreetO\MapRun\Parser::warning
  */
 class DuplicateDecisionTest extends TestCase {
 
@@ -48,6 +50,59 @@ class DuplicateDecisionTest extends TestCase {
 				'is_excluded'     => $second_excluded,
 			),
 		);
+	}
+
+	public function test_a_duplicate_can_arrive_with_no_warning_flag(): void {
+		// The correction to a long-standing claim in this codebase, kept as a
+		// test so it cannot drift back. `warningFlag` reports an event name
+		// matching more than one MapRun event; it was written up — in the
+		// README, the parser and this suite — as the thing that produces
+		// duplicate rows.
+		//
+		// It is not. This is a real September response, errorFlag and
+		// warningFlag both clear, carrying one run scored twice against two
+		// course revisions: 480 points against 430, same start, same finish,
+		// same 3135 seconds. Reading the warning as the explanation would mean
+		// not looking for duplicates on a clean event.
+		$response = array(
+			'errorFlag'   => false,
+			'warningFlag' => false,
+			'results'     => array(
+				array(
+					'Id'                   => 543809,
+					'Firstname'            => 'Marcus',
+					'Surname'              => 'Pentlow (Rev30)',
+					'Classifier'           => 'OK',
+					'StartPunchTimeLocal'  => '18:44:48',
+					'FinishPunchTimeLocal' => '19:37:04',
+					'TotalTimeSecs'        => 3135,
+					'GrossScore'           => 480,
+					'NetScore'             => 480,
+				),
+				array(
+					'Id'                   => 543791,
+					'Firstname'            => 'Marcus',
+					'Surname'              => 'Pentlow',
+					'Classifier'           => 'OK',
+					'StartPunchTimeLocal'  => '18:44:48',
+					'FinishPunchTimeLocal' => '19:37:04',
+					'TotalTimeSecs'        => 3135,
+					'GrossScore'           => 430,
+					'NetScore'             => 430,
+				),
+			),
+		);
+
+		$this->assertNull( Parser::warning( $response ), 'this response carried no warning' );
+
+		$clusters = ( new Duplicate_Detector() )->find(
+			( new Parser() )->parse( Parser::unwrap( $response ), '60' )
+		);
+
+		$this->assertCount( 1, $clusters, 'a duplicate is present despite the clear warning flag' );
+		$this->assertCount( 2, $clusters[0] );
+		$this->assertSame( 30, $clusters[0][0]['course_revision'] );
+		$this->assertNull( $clusters[0][1]['course_revision'] );
 	}
 
 	public function test_an_untouched_cluster_still_needs_deciding(): void {

@@ -105,10 +105,11 @@ class Client {
 			);
 		}
 
-		// A warning is not an error and must not stop the import — but it is
-		// how MapRun reports things like an event name matching more than one
-		// event, which is exactly what produces duplicate rows. It travels with
-		// the result so the review screen can show it.
+		// A warning is not an error and must not stop the import — but it is how
+		// MapRun reports things like an event name matching more than one event,
+		// which merges several events' results into one response. It travels
+		// with the result so the review screen can show it. Duplicate rows have
+		// their own cause, course revisions, and appear with or without this.
 		return array(
 			'payload' => $payload,
 			'rows'    => Parser::unwrap( $decoded ),

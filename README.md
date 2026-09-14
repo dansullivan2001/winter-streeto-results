@@ -225,8 +225,11 @@ trade.
 
 Things real responses contain that a hand-written test fixture would not:
 
-- **`warningFlag`**, raised when an event name matches more than one MapRun event — which is
-  what produces duplicate rows. Surfaced, never swallowed.
+- **`warningFlag`**, raised when an event name matches more than one MapRun event, so the
+  response merges results from all of them. Surfaced, never swallowed. It is *not* the cause
+  of duplicate rows, though it reads like one: a September event came back with the flag
+  clear and still contained a genuine `(Rev30)` duplicate. The two are independent, and
+  treating the warning as the explanation would mean not looking on a clean event.
 - **`(RevNN)` suffixes on surnames**, recording which course revision a result was scored
   against. Stripped for matching — but *not* a duplicate marker: some runners carry one
   while appearing only once.

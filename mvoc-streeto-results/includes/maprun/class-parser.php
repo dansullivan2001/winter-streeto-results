@@ -107,10 +107,16 @@ class Parser {
 	 * Any warning the response carried, or null.
 	 *
 	 * The real Worcester Park response came back with warningFlag set and
-	 * "Multiple events found ... There should be only one." — which is exactly
-	 * what produced its duplicate rows. A warning is not an error and must not
-	 * stop the import, but swallowing it would hide the cause of a real data
-	 * problem, so it is surfaced on the review screen.
+	 * "Multiple events found ... There should be only one." — an event name
+	 * matching more than one MapRun event, so the response merges results from
+	 * all of them.
+	 *
+	 * That is worth seeing, but it is not what produces duplicate rows, however
+	 * much the two look connected: a September response carried the flag clear
+	 * and a genuine (Rev30) duplicate all the same. Course revisions cause
+	 * those, independently of this. A warning is also not an error and must not
+	 * stop the import, so it is surfaced on the review screen rather than
+	 * swallowed or thrown.
 	 *
 	 * @param mixed $decoded Decoded JSON.
 	 */

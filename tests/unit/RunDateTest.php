@@ -13,9 +13,10 @@
  * the night; and it is nobody's duplicate, so the duplicate detector — which
  * needs two rows to compare — was never going to see it.
  *
- * Every literal below is from a real response, both seasons, so the
+ * Every timestamp below is from a real response, both seasons, so the
  * daylight-saving claim in TRACK_START_OFFSET_HOURS is tested against the data
- * it was measured from rather than restated.
+ * it was measured from rather than restated. Names are invented, as in the
+ * committed fixtures — no assertion here rests on one.
  *
  * @package MVOC_StreetO
  */

@@ -13,6 +13,11 @@
  * field scoring 350 to 950. The event carried no warning flag either. Nothing
  * in the plugin said a word about it.
  *
+ * Names are invented, as in the committed fixtures: every number and structural
+ * quirk below is exactly as MapRun returned it, and none of the assertions rest
+ * on a name, so pseudonymising costs nothing and keeps real competitors out of
+ * the repository.
+ *
  * @package MVOC_StreetO
  */
 

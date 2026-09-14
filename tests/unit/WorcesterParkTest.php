@@ -71,9 +71,14 @@ class WorcesterParkTest extends TestCase {
 	}
 
 	public function test_the_warning_is_surfaced(): void {
-		// This response really did come back with a warning, and it is the
-		// direct cause of the duplicate rows. Silently ignoring it would hide
-		// the explanation for a genuine data problem.
+		// This response really did come back with a warning: the event name
+		// matched more than one MapRun event, so several events' results were
+		// merged into it. Worth knowing and easy to swallow by accident.
+		//
+		// It is not the cause of this response's duplicate rows, though it was
+		// long recorded here as though it were. Course revisions cause those,
+		// and a later response proved it by carrying a duplicate with no
+		// warning at all.
 		$warning = Parser::warning( $this->response() );
 
 		$this->assertNotNull( $warning );
