@@ -230,6 +230,10 @@ Things real responses contain that a hand-written test fixture would not:
 - **`(RevNN)` suffixes on surnames**, recording which course revision a result was scored
   against. Stripped for matching — but *not* a duplicate marker: some runners carry one
   while appearing only once.
+- **`TrackStartDateTimeUTC`**, the only date in a row — everything else is a time of day
+  with no day attached. It is not UTC: the offset is a flat ten hours in both GMT and BST,
+  so MapRun is subtracting their own Australian Eastern Standard Time from the local
+  wall-clock and mislabelling it. Ten hours back gives the date the run belongs to.
 - **`Classifier: "--"`** for a failed upload: zero score, zero time, no punches. Excluded
   from ranking, kept visible.
 - **A failed upload MapRun did not mark as one.** A September response carried
@@ -247,12 +251,19 @@ Duplicates are clustered on identical start, finish and elapsed time rather than
 suffix — far stronger evidence of one run scored twice. The runner's name is part of that
 signature, so pairs who set off together are never merged.
 
-Those four fields are therefore stored raw, alongside the course revision. They were not
-until v10, and the cost was exact: the detector was handed stored rows, found no start or
+Those four fields are therefore stored raw, alongside the course revision and the track
+start date. They were not until v10, and the cost was exact: the detector was handed stored rows, found no start or
 finish on any of them, and reported no duplicates on every event for the whole of the
 plugin's life — while its own tests, which fed it parser output, passed. The upgrade
 backfills the columns from the response snapshots in `fetches`, so an already-imported
-season is repaired without re-fetching it.
+season is repaired without re-fetching it. v11 adds the track start date the same way, and
+the same backfill recovers it.
+
+A MapRun course stays live after the night, so a run done weeks later arrives in the same
+response and scores like any other — a real December event carried one from the following
+April. That is not a duplicate of anything, so no amount of cluster detection would find
+it; only the date does. Rows whose date is not the event's are named on the review screen
+and score until the co-ordinator excludes them.
 
 Once a cluster has been answered it stays on the screen but folds into an "already decided"
 block, with the kept scoring still selected. It cannot simply vanish — that card is the only

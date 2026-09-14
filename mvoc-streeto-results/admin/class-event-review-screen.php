@@ -182,7 +182,7 @@ class Event_Review_Screen {
 				<?php $this->render_duplicates( $duplicates ); ?>
 
 				<h2><?php esc_html_e( '3. Results', 'mvoc-streeto' ); ?></h2>
-				<?php $this->render_rows( $scored, $rows, $competitors, $config ); ?>
+				<?php $this->render_rows( $scored, $rows, $competitors, $config, (string) ( $event['event_date'] ?? '' ) ); ?>
 
 				<h2><?php esc_html_e( '4. Add runners by hand', 'mvoc-streeto' ); ?></h2>
 				<p class="description">
@@ -700,6 +700,57 @@ class Event_Review_Screen {
 	}
 
 	/**
+	 * Warn about runs recorded on a day other than the event's.
+	 *
+	 * A MapRun course stays live after the night, so anyone with the app can run
+	 * it later and their result arrives in the same response, scored and ranked
+	 * like everyone else's. The duplicate detector cannot help: such a row is
+	 * not a duplicate of anything.
+	 *
+	 * Silent where the event has no date set, which is the honest answer — there
+	 * is then nothing to be off.
+	 *
+	 * @param array<int,array<string,mixed>> $scored     Scored rows.
+	 * @param string                         $event_date Date the event was held, as `Y-m-d`.
+	 */
+	private function render_off_date_notice( array $scored, string $event_date ): void {
+		$late = array();
+
+		foreach ( $scored as $row ) {
+			if ( Parser::is_off_date( $row['run_date'] ?? null, $event_date ) && empty( $row['is_excluded'] ) ) {
+				$late[] = sprintf(
+					/* translators: 1: runner's name, 2: date the run was recorded. */
+					__( '%1$s (%2$s)', 'mvoc-streeto' ),
+					(string) $row['display_name'],
+					mysql2date( 'j F Y', (string) $row['run_date'] )
+				);
+			}
+		}
+
+		if ( ! $late ) {
+			return;
+		}
+
+		echo '<div class="notice notice-warning inline"><p><strong>'
+			. esc_html(
+				sprintf(
+					/* translators: %d: how many runs were recorded on another day. */
+					_n(
+						'%d run was not done on the night.',
+						'%d runs were not done on the night.',
+						count( $late ),
+						'mvoc-streeto'
+					),
+					count( $late )
+				)
+			)
+			. '</strong> '
+			. esc_html( implode( ', ', $late ) ) . '. '
+			. esc_html__( 'The course stayed live, so these were run later and MapRun returned them with everyone else. They score in the league until you tick Exclude below.', 'mvoc-streeto' )
+			. '</p></div>';
+	}
+
+	/**
 	 * The editable results table.
 	 *
 	 * Elapsed time appears here and nowhere else. The published table
@@ -712,11 +763,13 @@ class Event_Review_Screen {
 	 * @param array<int,array<string,mixed>> $stored      Stored rows, for flags.
 	 * @param array<int,array<string,mixed>> $competitors Known competitors.
 	 * @param Scoring_Config                 $config      Scoring rules.
+	 * @param string                         $event_date  Date the event was held, as `Y-m-d`.
 	 */
-	private function render_rows( array $scored, array $stored, array $competitors, Scoring_Config $config ): void {
+	private function render_rows( array $scored, array $stored, array $competitors, Scoring_Config $config, string $event_date = '' ): void {
 		$flags = array_column( $stored, null, 'id' );
 
 		$this->render_zero_time_notice( $scored );
+		$this->render_off_date_notice( $scored, $event_date );
 
 		?>
 		<table class="widefat striped">
@@ -754,6 +807,13 @@ class Event_Review_Screen {
 					}
 					if ( ! empty( $row['is_zero_time'] ) ) {
 						$notes[] = __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
+					}
+					if ( Parser::is_off_date( $row['run_date'] ?? null, $event_date ) ) {
+						$notes[] = sprintf(
+							/* translators: %s: the date the run was recorded, e.g. 12 April 2026. */
+							__( 'run on %s, not the event date', 'mvoc-streeto' ),
+							mysql2date( 'j F Y', (string) $row['run_date'] )
+						);
 					}
 
 					$time_secs = $row['time_secs'] ?? null;

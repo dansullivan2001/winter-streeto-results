@@ -63,8 +63,13 @@ class Schema {
 	 *    serialised onto the series row, so a series created before that change
 	 *    carries the old ladder and would go on scoring 50 for a win however
 	 *    many times the plugin was updated.
+	 * 12: results.raw_track_start_utc. MapRun's only date field, and the sole
+	 *    way to tell a run done on the night from one done months later on a
+	 *    course that stayed live — every other moment in a row is a time of day
+	 *    with no date attached. A real December event carried a row from the
+	 *    following April, scored and ranked like any other.
 	 */
-	public const DB_VERSION = 11;
+	public const DB_VERSION = 12;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -181,16 +186,20 @@ class Schema {
 	}
 
 	/**
-	 * Fill in the run-identity columns added in v10 from the stored snapshots.
+	 * Fill in the run-identity columns added in v10 and v11 from the snapshots.
 	 *
 	 * Every MapRun response is kept verbatim in `fetches`, and each result row
 	 * records the fetch it was written from — so the start, finish and course
-	 * revision that v10 adds can be recovered without asking the co-ordinator
-	 * to re-import a season. Without this the duplicate detector would stay
-	 * blind until every event had been fetched again, which is a step nobody
-	 * would know they had to take.
+	 * revision that v10 adds, and the track start date that v11 adds, can be
+	 * recovered without asking the co-ordinator to re-import a season. Without
+	 * this the duplicate detector would stay blind, and no past event could be
+	 * checked for a run done on the wrong day, until every event had been
+	 * fetched again — a step nobody would know they had to take.
 	 *
-	 * Touches only the three new columns. No resolved value, exclusion or
+	 * A row is selected when either generation of column is still empty, so a
+	 * site already on v10 has its rows revisited for the v11 column alone.
+	 *
+	 * Touches only those four columns. No resolved value, exclusion or
 	 * competitor link is written, so corrections already made are untouched.
 	 *
 	 * Rows are matched on (fetch_id, maprun_id), which is exact: MapRun ids are
@@ -209,7 +218,8 @@ class Schema {
 		// and cheaper than a marker column to record that it was tried.
 		$fetch_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			"SELECT DISTINCT fetch_id FROM `{$results}`
-			 WHERE fetch_id > 0 AND maprun_id <> '' AND raw_start_local = ''" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			 WHERE fetch_id > 0 AND maprun_id <> ''
+			   AND ( raw_start_local = '' OR raw_track_start_utc = '' )" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);
 
 		foreach ( $fetch_ids ?: array() as $fetch_id ) {
@@ -227,6 +237,7 @@ class Schema {
 				$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 					$results,
 					array(
+						'raw_track_start_utc' => $identity['track_start_utc'],
 						'raw_start_local'     => $identity['start_local'],
 						'raw_finish_local'    => $identity['finish_local'],
 						'raw_course_revision' => $identity['course_revision'],
@@ -235,7 +246,7 @@ class Schema {
 						'fetch_id'  => (int) $fetch_id,
 						'maprun_id' => (string) $maprun_id,
 					),
-					array( '%s', '%s', '%d' ),
+					array( '%s', '%s', '%s', '%d' ),
 					array( '%d', '%s' )
 				);
 			}
@@ -532,6 +543,7 @@ class Schema {
 			raw_club varchar(100) NOT NULL DEFAULT '',
 			raw_gender varchar(10) NOT NULL DEFAULT '',
 			raw_is_over55 tinyint(1) NULL,
+			raw_track_start_utc varchar(32) NOT NULL DEFAULT '',
 			raw_start_local varchar(32) NOT NULL DEFAULT '',
 			raw_finish_local varchar(32) NOT NULL DEFAULT '',
 			raw_course_revision smallint(5) unsigned NULL,

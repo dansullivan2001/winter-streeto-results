@@ -8,10 +8,14 @@
  *   envelope : { errorFlag, statusMessage, warningFlag, warningMessage,
  *                results: [ ... ] }
  *   row      : Id, Firstname, Surname, Gender, YearOfBirth, ClubName,
- *              Classifier, StartPunchTimeLocal, FinishPunchTimeLocal,
- *              TotalTimehhmmss, TotalTimeSecs, GrossScore, NetScore, Distance,
- *              Pacemmss, PaceMins, MapRunVersion, punchControlIds[],
- *              punchTimeAfterStartSecs[]
+ *              Classifier, TrackStartDateTimeUTC, StartPunchTimeLocal,
+ *              FinishPunchTimeLocal, TotalTimehhmmss, TotalTimeSecs,
+ *              GrossScore, NetScore, Distance, Pacemmss, PaceMins,
+ *              MapRunVersion, punchControlIds[], punchTimeAfterStartSecs[]
+ *
+ * TrackStartDateTimeUTC is the only date in a row — every other moment is a
+ * time of day — and it was dropped by the fixture this list was first pinned
+ * against, so the parser went a season without knowing what day a run was on.
  *
  * Deliberately free of WordPress dependencies so it can be unit-tested with
  * plain PHPUnit.
@@ -44,6 +48,36 @@ class Parser {
 	 * row legitimately carries a score and no elapsed time.
 	 */
 	public const CLASSIFIER_MANUAL = 'MANUAL';
+
+	/**
+	 * Hours to add to `TrackStartDateTimeUTC` to get back to UK local time.
+	 *
+	 * The field is not UTC, whatever it is called. Measured against the first
+	 * punch of the same row, across two real responses either side of the
+	 * daylight-saving boundary, 65 phone and Strava uploads between them:
+	 *
+	 *   December (GMT)   40 of 41 within 55 seconds of local minus 10h
+	 *   September (BST)  24 of 24 within  9 seconds of local minus 10h
+	 *
+	 * A genuine UTC field would differ by a whole hour between those two. This
+	 * one does not move at all, so it is not a conversion: MapRun takes the
+	 * local wall-clock time and subtracts ten hours — Australian Eastern
+	 * Standard Time, which their server runs on and which never observes
+	 * daylight saving either — then labels the result UTC. Adding the ten hours
+	 * back is therefore right in both seasons, which no timezone-aware reading
+	 * of this field would be.
+	 *
+	 * Two kinds of row sit further out, neither near an hour. MapRunG watch
+	 * uploads scatter by up to 1h 33m, because there the field records when the
+	 * GPS track started rather than when the runner punched. The single phone
+	 * row outside a minute was 14m 20s out, on a much later app version than
+	 * anything else in either response.
+	 *
+	 * So only the date is taken from this, and the time of day is left to
+	 * StartPunchTimeLocal. Across all 109 rows the recovered date was right
+	 * every time, including the one row that really was run on another day.
+	 */
+	public const TRACK_START_OFFSET_HOURS = 10;
 
 	/**
 	 * Pull the results array out of a decoded response envelope.
@@ -150,6 +184,7 @@ class Parser {
 			'is_failed'       => $this->is_failed_upload( $classifier, $row ),
 			'is_zero_time'    => self::is_zero_time( $classifier, $time_secs, $scores['score'] ),
 			'course_label'    => $course_label,
+			'track_start_utc' => trim( (string) ( $row['TrackStartDateTimeUTC'] ?? '' ) ),
 			'start_local'     => trim( (string) ( $row['StartPunchTimeLocal'] ?? '' ) ),
 			'finish_local'    => trim( (string) ( $row['FinishPunchTimeLocal'] ?? '' ) ),
 			'time_display'    => trim( (string) ( $row['TotalTimehhmmss'] ?? '' ) ),
@@ -280,6 +315,75 @@ class Parser {
 	}
 
 	/**
+	 * The local calendar date a run was recorded on, as `Y-m-d`.
+	 *
+	 * The only date MapRun gives at all. Everything else in a result row is a
+	 * time of day, which says nothing about *which* day — so without this a run
+	 * uploaded months after the event is indistinguishable from one done on the
+	 * night, and scores in the league exactly the same.
+	 *
+	 * The date alone is taken, never the time: see TRACK_START_OFFSET_HOURS for
+	 * why the time of day in this field cannot be trusted on a watch upload
+	 * while the date can.
+	 *
+	 * Returns null where there is nothing to read rather than guessing at a
+	 * date. An older MapRun version that never sent the field, or a value that
+	 * will not parse, must leave a row unjudged rather than wrongly flagged.
+	 *
+	 * @param string $track_start Raw TrackStartDateTimeUTC value.
+	 */
+	public static function local_date_of( string $track_start ): ?string {
+		$track_start = trim( $track_start );
+
+		if ( '' === $track_start ) {
+			return null;
+		}
+
+		try {
+			// The explicit UTC fallback applies only when the value carries no
+			// zone of its own. Real responses end in `Z` and ignore it, but
+			// without it a value that ever arrived bare would be read in the
+			// server's timezone, making the recovered date depend on where
+			// WordPress is hosted.
+			$moment = new \DateTimeImmutable( $track_start, new \DateTimeZone( 'UTC' ) );
+		} catch ( \Exception $e ) {
+			return null;
+		}
+
+		return $moment
+			->add( new \DateInterval( 'PT' . self::TRACK_START_OFFSET_HOURS . 'H' ) )
+			->format( 'Y-m-d' );
+	}
+
+	/**
+	 * Whether a run was recorded on a different day from the event.
+	 *
+	 * MapRun courses stay live after the event, so anyone with the app can run
+	 * one later and their result lands in the same response. A real December
+	 * event carried a row from the following April, scored and ranked like any
+	 * other. The duplicate detector was never going to catch it — it is not a
+	 * duplicate of anything, just a lone run on the wrong day.
+	 *
+	 * False unless both dates are known and they differ. A missing event date
+	 * or an unreadable track start is an absence of evidence, and flagging a
+	 * whole field on the strength of one would train the co-ordinator to
+	 * dismiss the warning.
+	 *
+	 * @param string|null $run_date   Local date of the run, from local_date_of().
+	 * @param string|null $event_date Date the event was held, as `Y-m-d`.
+	 */
+	public static function is_off_date( ?string $run_date, ?string $event_date ): bool {
+		$run_date   = trim( (string) $run_date );
+		$event_date = trim( (string) $event_date );
+
+		if ( '' === $run_date || '' === $event_date ) {
+			return false;
+		}
+
+		return $run_date !== $event_date;
+	}
+
+	/**
 	 * Year of birth, used to derive the Over-55 category and then discarded.
 	 *
 	 * It is deliberately never persisted: the flag it produces is all the
@@ -353,7 +457,7 @@ class Parser {
 	 * bad snapshot should leave the columns empty, not stop an upgrade.
 	 *
 	 * @param string $payload Stored MapRun response.
-	 * @return array<string,array{start_local:string,finish_local:string,course_revision:int|null}>
+	 * @return array<string,array{start_local:string,finish_local:string,course_revision:int|null,track_start_utc:string}>
 	 */
 	public static function identities( string $payload ): array {
 		try {
@@ -375,6 +479,7 @@ class Parser {
 				'start_local'     => (string) $row['start_local'],
 				'finish_local'    => (string) $row['finish_local'],
 				'course_revision' => $row['course_revision'],
+				'track_start_utc' => (string) $row['track_start_utc'],
 			);
 		}
 

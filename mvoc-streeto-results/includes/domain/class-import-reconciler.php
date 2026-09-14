@@ -157,6 +157,12 @@ class Import_Reconciler {
 			'raw_score'           => isset( $row['score'] ) ? (int) $row['score'] : null,
 			'raw_penalty'         => (int) ( $row['penalty'] ?? 0 ),
 			'raw_time_secs'       => isset( $row['time_secs'] ) ? (int) $row['time_secs'] : null,
+			// The only date MapRun sends. Kept raw, exactly as it arrived and
+			// under its own misleading name, because the ten-hour correction
+			// that turns it into a local date is an observation about MapRun's
+			// server rather than a fact — storing the derived date instead
+			// would bake today's reading of it into every row.
+			'raw_track_start_utc' => (string) ( $row['track_start_utc'] ?? '' ),
 			// What identifies one run: the duplicate detector recognises the
 			// same run recorded twice by its start, finish and elapsed time,
 			// and cannot do it from the elapsed time alone. The revision goes

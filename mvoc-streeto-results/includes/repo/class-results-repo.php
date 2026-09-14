@@ -367,6 +367,11 @@ class Results_Repo {
 			'start_local'     => (string) ( $row['raw_start_local'] ?? '' ),
 			'finish_local'    => (string) ( $row['raw_finish_local'] ?? '' ),
 			'course_revision' => $row['raw_course_revision'] ?? null,
+			'track_start_utc' => (string) ( $row['raw_track_start_utc'] ?? '' ),
+			// Derived on read, not stored: the ten-hour correction is a reading
+			// of MapRun's server rather than a fact about the run, so a better
+			// reading later must not need a re-import to take effect.
+			'run_date'        => Parser::local_date_of( (string) ( $row['raw_track_start_utc'] ?? '' ) ),
 			'is_failed'       => Parser::CLASSIFIER_FAILED === (string) $row['classifier'] && ! $time_secs,
 			// Rebuilt from the stored classifier, time and score rather than
 			// stored in a column of its own: every input is already here, so an
