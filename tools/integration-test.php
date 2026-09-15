@@ -169,8 +169,29 @@ $guard = $events_repo->save_sources( $event_id, array( '60' => '' ) );
 check( 'a source with results is not silently removed', array( '60' ) === $guard['kept'] );
 check( 'and it is still there', 1 === count( $events_repo->sources( $event_id ) ) );
 
-$results_repo->delete_manual( $result_id );
+// Scoped to its event as well as its id, so a stale id from a form cannot
+// reach across to a row the co-ordinator is not looking at.
+$results_repo->delete_manual( $result_id, $event_id );
 check( 'manual row removed', 0 === $events_repo->result_count( $event_id ) );
+
+$wrong_event = $events_repo->save_event(
+	$series_id,
+	array( 'event_number' => 9, 'title' => 'Other event' )
+);
+$other_row = $results_repo->add_manual(
+	$wrong_event,
+	0,
+	array( 'first_name' => 'Wrong', 'surname' => 'Event', 'score' => 100, 'course_label' => '60' )
+);
+$results_repo->delete_manual( $other_row, $event_id );
+check(
+	'a row belonging to another event is not deleted',
+	1 === $events_repo->result_count( $wrong_event )
+);
+$results_repo->delete_manual( $other_row, $wrong_event );
+check( 'and it goes when its own event is named', 0 === $events_repo->result_count( $wrong_event ) );
+$events_repo->delete_event( $wrong_event );
+
 check( 'delete allowed once empty', true === $events_repo->delete_event( $event_id ) );
 check( 'event gone', null === $events_repo->find_event_by_id( $event_id ) );
 
@@ -294,6 +315,157 @@ if ( $was_active ) {
 
 $wpdb->delete( $series_table, array( 'id' => $running_id ), array( '%d' ) );
 $wpdb->delete( $series_table, array( 'id' => $finished_id ), array( '%d' ) );
+
+echo "\nMerging competitors\n";
+
+// The SQL merge() issues had never been executed anywhere before these checks.
+// It re-points every table referencing a competitor and then deletes the
+// absorbed record, so a table it forgets is left pointing at an id that no
+// longer resolves — silently, because nothing joins back to complain.
+//
+// event_organisers was forgotten exactly that way: the organiser vanished from
+// the published event table and lost their league bonus, with no error raised.
+// Three of these tables also carry a unique key on (something, competitor_id),
+// so where both records already hold a row for the same season, event or
+// result, a blind UPDATE violates the key and fails without saying so. Both
+// hazards are set up deliberately below.
+$merge_slug  = 'itest5-' . wp_generate_password( 6, false, false );
+$merge_serie = $events_repo->ensure_series( $merge_slug, 'Merge test series' );
+$merge_event = $events_repo->save_event(
+	$merge_serie,
+	array( 'event_number' => 1, 'title' => 'Merge test event' )
+);
+
+$keep_id   = $comp_repo->create_with_alias(
+	array( 'first_name' => 'David', 'surname' => 'Mergeton' ),
+	'david mergeton'
+);
+$absorb_id = $comp_repo->create_with_alias(
+	array( 'first_name' => 'Dave', 'surname' => 'Mergeton' ),
+	'dave mergeton'
+);
+check( 'two competitors to merge', $keep_id > 0 && $absorb_id > 0 && $keep_id !== $absorb_id );
+
+// Both in the same season, both organising the same event, both on the same
+// result: every unique key that could collide, does.
+$comp_repo->set_over55( $merge_serie, $keep_id, false );
+$comp_repo->set_over55( $merge_serie, $absorb_id, true );
+$events_repo->save_organisers( $merge_event, array( $keep_id, $absorb_id ) );
+check( 'both organise the event', 2 === count( $events_repo->organisers( $merge_event ) ) );
+
+$merge_row = $results_repo->add_manual(
+	$merge_event,
+	0,
+	array( 'first_name' => 'Dave', 'surname' => 'Mergeton', 'score' => 300, 'course_label' => '60' )
+);
+$results_repo->override( $merge_row, 'competitor', $absorb_id, 'integration test' );
+
+// Nothing in the plugin writes result_competitors yet — it is reserved for the
+// shared-map case, see docs/roadmap.md — so it is populated directly here. The
+// point is that merge() must already cope if it ever is.
+$rc_table = \MVOC\StreetO\Schema::table( 'result_competitors' );
+foreach ( array( $keep_id, $absorb_id ) as $linked ) {
+	$wpdb->insert( $rc_table, array( 'result_id' => $merge_row, 'competitor_id' => $linked ), array( '%d', '%d' ) );
+}
+check(
+	'both are linked to the same result',
+	2 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$rc_table` WHERE result_id = %d", $merge_row ) )
+);
+
+$comp_repo->merge( $absorb_id, $keep_id );
+
+check( 'the absorbed competitor is gone', null === $wpdb->get_var(
+	$wpdb->prepare(
+		'SELECT id FROM `' . \MVOC\StreetO\Schema::table( 'competitors' ) . '` WHERE id = %d',
+		$absorb_id
+	)
+) );
+
+// The defect that shipped: organiser credit must survive the merge.
+$after_organisers = $events_repo->organisers( $merge_event );
+check(
+	'the organiser survives the merge',
+	array( $keep_id ) === $after_organisers,
+	'got ' . implode( ',', $after_organisers )
+);
+
+$aliases_after = $comp_repo->aliases();
+check(
+	'both spellings now resolve to the survivor',
+	( $aliases_after['david mergeton'] ?? 0 ) === $keep_id
+		&& ( $aliases_after['dave mergeton'] ?? 0 ) === $keep_id
+);
+
+$merged_row = $results_repo->for_event( $merge_event );
+check(
+	'the result follows the survivor',
+	$keep_id === (int) ( $merged_row[0]['competitor_id'] ?? 0 ),
+	var_export( $merged_row[0]['competitor_id'] ?? null, true )
+);
+
+// Collisions resolved rather than silently failing: one row each, on the
+// survivor, in all three uniquely-keyed tables.
+$sc_table = \MVOC\StreetO\Schema::table( 'series_competitors' );
+check(
+	'one season category row remains, on the survivor',
+	array( (string) $keep_id ) === $wpdb->get_col(
+		$wpdb->prepare( "SELECT competitor_id FROM `$sc_table` WHERE series_id = %d", $merge_serie )
+	)
+);
+check(
+	'one result link remains, on the survivor',
+	array( (string) $keep_id ) === $wpdb->get_col(
+		$wpdb->prepare( "SELECT competitor_id FROM `$rc_table` WHERE result_id = %d", $merge_row )
+	)
+);
+check(
+	'no rows anywhere still point at the absorbed competitor',
+	0 === (int) $wpdb->get_var(
+		$wpdb->prepare( "SELECT COUNT(*) FROM `$rc_table` WHERE competitor_id = %d", $absorb_id )
+	) + (int) $wpdb->get_var(
+		$wpdb->prepare( "SELECT COUNT(*) FROM `$sc_table` WHERE competitor_id = %d", $absorb_id )
+	) + (int) $wpdb->get_var(
+		$wpdb->prepare(
+			'SELECT COUNT(*) FROM `' . \MVOC\StreetO\Schema::table( 'event_organisers' ) . '` WHERE competitor_id = %d',
+			$absorb_id
+		)
+	)
+);
+
+echo "\nDeleting an event with organisers\n";
+
+// delete_event() removes snapshots and sources before the event row. It used to
+// leave event_organisers behind, which matters because a season is seeded with
+// an organiser against each fixture months ahead — so deleting one that was
+// never run is the normal case, not an edge one.
+$org_event = $events_repo->save_event(
+	$merge_serie,
+	array( 'event_number' => 2, 'title' => 'Organiser cleanup' )
+);
+$events_repo->save_organisers( $org_event, array( $keep_id ) );
+check( 'organiser assigned to a fixture', 1 === count( $events_repo->organisers( $org_event ) ) );
+
+check( 'the fixture deletes', true === $events_repo->delete_event( $org_event ) );
+check(
+	'its organiser rows go with it',
+	0 === (int) $wpdb->get_var(
+		$wpdb->prepare(
+			'SELECT COUNT(*) FROM `' . \MVOC\StreetO\Schema::table( 'event_organisers' ) . '` WHERE event_id = %d',
+			$org_event
+		)
+	)
+);
+
+// Clean up the merge fixtures.
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'overrides' ), array( 'result_id' => $merge_row ), array( '%d' ) );
+$results_repo->delete_manual( $merge_row, $merge_event );
+$wpdb->delete( $rc_table, array( 'result_id' => $merge_row ), array( '%d' ) );
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'results' ), array( 'event_id' => $merge_event ), array( '%d' ) );
+$events_repo->delete_event( $merge_event );
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'aliases' ), array( 'competitor_id' => $keep_id ), array( '%d' ) );
+$wpdb->delete( $sc_table, array( 'competitor_id' => $keep_id ), array( '%d' ) );
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'competitors' ), array( 'id' => $keep_id ), array( '%d' ) );
+$wpdb->delete( \MVOC\StreetO\Schema::table( 'series' ), array( 'id' => $merge_serie ), array( '%d' ) );
 
 echo "\nSeason derivation\n";
 check( 'slug matches the live series format', '2026-27' === Season::slug( 2026 ) );

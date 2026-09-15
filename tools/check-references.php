@@ -58,5 +58,110 @@ foreach ( glob( MVOC_STREETO_DIR . '{,*/,*/*/}*.php', GLOB_BRACE ) as $file ) {
 	}
 }
 
-echo $fail ? "\n$fail problem(s) found\n" : "All self:: constants and \$this-> calls resolve.\n";
+// And every call made on a locally constructed object must pass enough
+// arguments for the method's signature.
+//
+// Added because it happened: delete_manual() gained a required $event_id, and
+// tools/integration-test.php went on calling it with one argument. php -l sees
+// only syntax, the unit tests never touch that script, and the script itself
+// had not been run — so a guaranteed ArgumentCountError sat in the repository
+// through two releases. The scripts under tools/ are the ones at risk, because
+// nothing else exercises them.
+//
+// Deliberately narrow: it resolves `$var = new Class_Name(...)` and then checks
+// `$var->method(...)` against that class. Anything it cannot resolve is
+// skipped, so this never guesses.
+foreach ( array( __DIR__, dirname( __DIR__ ) . '/tests' ) as $directory ) {
+	foreach ( glob( $directory . '/{,*/}*.php', GLOB_BRACE ) as $file ) {
+		$source = file_get_contents( $file );
+		$short  = basename( dirname( $file ) ) . '/' . basename( $file );
+
+		// Map short class names to the fully qualified ones this file imports.
+		preg_match_all( '/^use\s+([^;]+);/m', $source, $imports );
+		$aliases = array();
+		foreach ( $imports[1] as $imported ) {
+			$imported            = trim( $imported );
+			$parts               = explode( '\\', $imported );
+			$aliases[ end( $parts ) ] = $imported;
+		}
+
+		// $var = new Thing( ... )
+		preg_match_all( '/\$(\w+)\s*=\s*new\s+\\\\?([\w\\\\]+)\s*\(/', $source, $built, PREG_SET_ORDER );
+
+		$types = array();
+		foreach ( $built as $match ) {
+			$name  = $match[2];
+			$class = $aliases[ $name ] ?? ( false !== strpos( $name, '\\' ) ? $name : null );
+
+			if ( $class && class_exists( $class ) ) {
+				$types[ $match[1] ] = $class;
+			}
+		}
+
+		foreach ( $types as $variable => $class ) {
+			// Count arguments at the top level of the call only, so a nested
+			// call or an array literal cannot inflate the tally.
+			preg_match_all( '/\$' . preg_quote( $variable, '/' ) . '->(\w+)\(/', $source, $calls, PREG_OFFSET_CAPTURE );
+
+			foreach ( $calls[1] as $index => $call ) {
+				$method = $call[0];
+
+				if ( ! method_exists( $class, $method ) ) {
+					printf( "  %s calls undefined %s::%s()\n", $short, $class, $method );
+					$fail++;
+					continue;
+				}
+
+				$open  = $calls[0][ $index ][1] + strlen( $calls[0][ $index ][0] ) - 1;
+				$depth = 0;
+				$args  = '';
+
+				for ( $i = $open, $length = strlen( $source ); $i < $length; $i++ ) {
+					$character = $source[ $i ];
+
+					if ( '(' === $character || '[' === $character ) {
+						$depth++;
+					} elseif ( ')' === $character || ']' === $character ) {
+						$depth--;
+						if ( 0 === $depth ) {
+							break;
+						}
+					}
+
+					$args .= $character;
+				}
+
+				$args  = trim( substr( $args, 1 ) );
+				$given = '' === $args ? 0 : 1;
+
+				$depth = 0;
+				foreach ( str_split( $args ) as $character ) {
+					if ( '(' === $character || '[' === $character ) {
+						$depth++;
+					} elseif ( ')' === $character || ']' === $character ) {
+						$depth--;
+					} elseif ( ',' === $character && 0 === $depth ) {
+						$given++;
+					}
+				}
+
+				$required = ( new ReflectionMethod( $class, $method ) )->getNumberOfRequiredParameters();
+
+				if ( $given < $required ) {
+					printf(
+						"  %s calls %s::%s() with %d argument(s); %d required\n",
+						$short,
+						$class,
+						$method,
+						$given,
+						$required
+					);
+					$fail++;
+				}
+			}
+		}
+	}
+}
+
+echo $fail ? "\n$fail problem(s) found\n" : "All self:: constants, \$this-> calls and tool/test call signatures resolve.\n";
 exit( $fail ? 1 : 0 );

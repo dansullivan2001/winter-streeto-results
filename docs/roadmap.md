@@ -98,22 +98,54 @@ than the series has courses.
 
 ## Integration coverage
 
-**Status:** the harness exists; it has not been run in CI.
+**Status:** the harness exists and now covers the repository code that had none;
+it still does not run in CI.
 
-`tools/integration-test.php` runs against a real WordPress install and
-`tools/verify.sh` will run it when given a path — but every run recorded so far
-reports `integration skipped (no WordPress path given)`, including in the release
-workflow.
+`tools/integration-test.php` boots a real WordPress via `wp-load.php`, creates a
+throwaway series, exercises the persistence layer against a live database and
+cleans up after itself. `tools/verify.sh` runs it **only when given a path**:
 
-Everything below the domain layer is therefore unexercised by automation: the
-repositories, the migrations in `Schema::install()`, activation, and uninstall.
-`SchemaConsistencyTest` covers part of the gap by reading the DDL and comparing it
-against what the repos write, which is why it exists, but it cannot catch a query
+```sh
+./tools/verify.sh ~/Local\ Sites/mvoc/app/public
+```
+
+Without one it prints `integration skipped (no WordPress path given)` and
+`verify.sh` still exits 0. Every run on record — including every release run —
+reports `skipped`.
+
+That the script is never run has already cost something. 1.0.0 gave
+`Results_Repo::delete_manual()` a required `$event_id` and left
+`integration-test.php` calling it with one argument: a guaranteed
+`ArgumentCountError` that sat in the repository through two releases, invisible
+because `php -l` checks only syntax and the unit tests never load that file.
+`tools/check-references.php` now also checks call arity across `tools/` and
+`tests/`, so that specific failure cannot recur silently.
+
+**What it covers now.** Schema and column existence, that no birth year is
+stored anywhere, series and event CRUD, clearing and renaming MapRun sources,
+manual rows, overrides, the delete-refused-while-results-exist guard, per-season
+Over-55 flags, exactly-one-active-season, and the v11 ladder migration. Added
+after the 1.0.0 review, covering SQL that had never been executed anywhere:
+
+- `Competitors_Repo::merge()` with both competitors sharing a season, an event
+  and a result — every unique key that can collide, colliding — asserting that
+  organiser credit survives, that all three uniquely-keyed join tables end with
+  one row on the survivor, and that nothing anywhere still points at the
+  absorbed id;
+- `delete_event()` leaving no `event_organisers` rows behind;
+- `delete_manual()` refusing a row that belongs to a different event.
+
+**What it still does not cover.** The import pipeline end to end (it needs
+either a MapRun response or a stubbed client), activation and uninstall, and
+anything in the admin screens, which are only reachable through a real request.
+
+**Cost to finish:** a WordPress service container in the release workflow, or a
+`wp-env` step, and a path passed to `verify.sh`. Consider making a missing path
+a failure rather than a skip once CI supplies one, so `skipped` stops being a
+passing outcome.
+
+**Why it matters:** of the four defects found reviewing 1.0.0 and its release,
+three were in code no database-free test can reach — two repository methods and
+the call above. `SchemaConsistencyTest` closes part of the gap by reading the
+DDL and comparing it against what the repos write, but it cannot catch a query
 that is syntactically fine and semantically wrong.
-
-**Cost to build:** a WordPress service container in the release workflow, or a
-`wp-env` step, and a path passed to `verify.sh`.
-
-**Why it matters:** two of the three defects found in the 1.0.0 review were in
-repository code, and neither could have been caught by a test that does not touch
-a database.
