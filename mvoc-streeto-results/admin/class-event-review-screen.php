@@ -879,14 +879,21 @@ class Event_Review_Screen {
 						$notes[] = __( 'name not confirmed', 'mvoc-streeto' );
 					}
 					if ( ! empty( $row['is_zero_time'] ) ) {
-						// The note stays after the tick, because the row really
-						// is scoring without a time and the table should say so.
-						// What changes is the instruction: leaving "check before
-						// publishing" on a row already checked would read as
-						// though the tick had not registered.
-						$notes[] = ! empty( $row['is_checked'] )
-							? __( 'scoring with no time recorded — checked', 'mvoc-streeto' )
-							: __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
+						// The note stays whatever was decided, because the row
+						// really is scoring without a time and the table should
+						// say so. Only the clause after it changes, and each of
+						// the three is the one true thing to say: an excluded
+						// row is not being kept, so "checked" would misdescribe
+						// it; a checked row has been dealt with, so "check
+						// before publishing" would read as though the tick had
+						// not registered.
+						if ( ! empty( $row['is_excluded'] ) ) {
+							$notes[] = __( 'scoring with no time recorded', 'mvoc-streeto' );
+						} elseif ( ! empty( $row['is_checked'] ) ) {
+							$notes[] = __( 'scoring with no time recorded — checked', 'mvoc-streeto' );
+						} else {
+							$notes[] = __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
+						}
 					}
 					if ( $off_date ) {
 						$notes[] = sprintf(
@@ -909,6 +916,18 @@ class Event_Review_Screen {
 					// waiting on one.
 					$flagged     = ! empty( $row['is_zero_time'] ) || $off_date;
 					$needs_check = $flagged && ! $this->is_answered( $row );
+
+					// Not offered on an excluded row. "Keep this row" beside a
+					// ticked Exclude is a contradiction the screen would then
+					// have to resolve silently — and it does, in Exclude's
+					// favour, since nothing in the scoring engine reads the
+					// tick. Better that the two cannot be said at once.
+					//
+					// The stored value is untouched meanwhile, not cleared: the
+					// hidden marker below is absent when there is no tick, so
+					// save_corrections() leaves it alone and un-excluding the
+					// row brings back the answer that was given.
+					$offer_tick = $flagged && empty( $row['is_excluded'] );
 					?>
 					<tr<?php echo $needs_check ? ' class="mvoc-needs-check"' : ''; ?>>
 						<td><?php echo esc_html( $row['position_label'] ?: '—' ); ?></td>
@@ -917,7 +936,7 @@ class Event_Review_Screen {
 							<?php if ( $notes ) : ?>
 								<br /><span class="description"><?php echo esc_html( implode( ', ', $notes ) ); ?></span>
 							<?php endif; ?>
-							<?php if ( $flagged ) : ?>
+							<?php if ( $offer_tick ) : ?>
 								<?php
 								// Offered beside the warning it answers rather
 								// than in a column of its own, which would be
