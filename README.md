@@ -258,6 +258,23 @@ Duplicates are clustered on identical start, finish and elapsed time rather than
 suffix — far stronger evidence of one run scored twice. The runner's name is part of that
 signature, so pairs who set off together are never merged.
 
+That strictness is right for the question it answers and blind to a second one, which
+`Repeat_Entry_Detector` now asks: is this one *runner* scoring twice? A real Cobham response
+had eleven such runners in a field of fifty-one, and the duplicate detector could see three
+of them. The rest shared none of the four fields: a completed run alongside a stray
+recording an hour later, scoring 0 over two minutes — and 0 is a number, so the stray ranked
+— or two genuine runs against two course revisions, scoring 830 and 730 fourteen seconds
+apart. Every one of them ranked, took a place off everyone below, and reached the published
+table, while the league kept the better of the two without anybody choosing it. Sixty-seven
+rows took a position in a field of fifty-one people.
+
+Rows are grouped by the confirmed competitor where there is one and by name where there is
+not, because on a fresh import nothing is linked yet and that is exactly when the table is
+being read. Two runners who genuinely share a name are grouped only until they are linked to
+different competitors, so the false positive is cleared by doing the thing the warning asks
+for. Unlike the other two warnings this one carries no "checked" tick: one runner scoring
+twice is wrong whichever row is right, so the only answer is to exclude the others.
+
 Those four fields are therefore stored raw, alongside the course revision and the track
 start date. They were not until v10, and the cost was exact: the detector was handed stored rows, found no start or
 finish on any of them, and reported no duplicates on every event for the whole of the

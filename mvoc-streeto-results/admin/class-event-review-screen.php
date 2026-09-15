@@ -14,6 +14,7 @@ namespace MVOC\StreetO\Admin;
 use MVOC\StreetO\Domain\Duplicate_Detector;
 use MVOC\StreetO\Domain\Event_Presenter;
 use MVOC\StreetO\Domain\Manual_Entry_Parser;
+use MVOC\StreetO\Domain\Repeat_Entry_Detector;
 use MVOC\StreetO\Domain\Scoring_Config;
 use MVOC\StreetO\Domain\Scoring_Engine;
 use MVOC\StreetO\Importer;
@@ -776,6 +777,61 @@ class Event_Review_Screen {
 	}
 
 	/**
+	 * Warn where one runner is scoring more than once.
+	 *
+	 * The duplicate section above answers a different question and answers it
+	 * strictly, so it says nothing about a runner whose second row is a stray
+	 * recording or a second real run. Those rank, publish and take a place off
+	 * everyone below them, and the league keeps whichever is better without
+	 * anybody choosing it. One real event had eleven such runners out of
+	 * fifty-one, three of which the duplicate detector could see.
+	 *
+	 * No tick answers this one. Two scoring rows for one runner is a mistake
+	 * whichever way round it is, so the answer is always to exclude the rows
+	 * that should not count.
+	 *
+	 * @param array<int,array<string,mixed>> $scored Scored rows.
+	 */
+	private function render_repeat_entry_notice( array $scored ): void {
+		$clashes = ( new Repeat_Entry_Detector() )->find( $scored );
+
+		if ( ! $clashes ) {
+			return;
+		}
+
+		$named = array();
+
+		foreach ( $clashes as $group ) {
+			$described = Repeat_Entry_Detector::describe( $group );
+
+			$named[] = sprintf(
+				/* translators: 1: runner's name, 2: how many of their rows are scoring. */
+				__( '%1$s (%2$d)', 'mvoc-streeto' ),
+				$described['name'],
+				$described['count']
+			);
+		}
+
+		echo '<div class="notice notice-warning inline"><p><strong>'
+			. esc_html(
+				sprintf(
+					/* translators: %d: how many runners have more than one scoring row. */
+					_n(
+						'%d runner is scoring more than once at this event.',
+						'%d runners are scoring more than once at this event.',
+						count( $named ),
+						'mvoc-streeto'
+					),
+					count( $named )
+				)
+			)
+			. '</strong> '
+			. esc_html( implode( ', ', $named ) ) . '. '
+			. esc_html__( 'Each row ranks on its own and all of them reach the published table, while the league counts only the best — a choice nobody made. Tick Exclude below on every row that should not score. A runner whose rows are not yet matched to a competitor is grouped by name here, so confirming their names may be the fix instead.', 'mvoc-streeto' )
+			. '</p></div>';
+	}
+
+	/**
 	 * Whether a flagged row has already been dealt with.
 	 *
 	 * Two answers, and the plugin does not care which was given: the row was
@@ -839,7 +895,12 @@ class Event_Review_Screen {
 	private function render_rows( array $scored, array $stored, array $competitors, Scoring_Config $config, string $event_date = '' ): void {
 		$flags = array_column( $stored, null, 'id' );
 
+		// Once for the table, not once per row: the detector groups the whole
+		// field, so asking it per row would regroup sixty rows sixty times.
+		$clashing = ( new Repeat_Entry_Detector() )->clashing_ids( $scored );
+
 		$this->render_row_styles();
+		$this->render_repeat_entry_notice( $scored );
 		$this->render_zero_time_notice( $scored );
 		$this->render_off_date_notice( $scored, $event_date );
 
@@ -895,6 +956,9 @@ class Event_Review_Screen {
 							$notes[] = __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
 						}
 					}
+					if ( isset( $clashing[ $id ] ) ) {
+						$notes[] = __( 'this runner is scoring more than once — exclude the rows that should not count', 'mvoc-streeto' );
+					}
 					if ( $off_date ) {
 						$notes[] = sprintf(
 							/* translators: %s: the date the run was recorded, e.g. 12 April 2026. */
@@ -914,8 +978,16 @@ class Event_Review_Screen {
 					// as the record of what was decided, but a stripe on a
 					// decision already made would only dilute the ones still
 					// waiting on one.
-					$flagged     = ! empty( $row['is_zero_time'] ) || $off_date;
-					$needs_check = $flagged && ! $this->is_answered( $row );
+					// Two different kinds of flag, and they are kept apart on
+					// purpose. The answerable ones can be right after a look at
+					// the night, so they can be ticked off. A runner scoring
+					// twice cannot be right either way round, so it is
+					// highlighted but never offered the tick — the only answer
+					// is to exclude a row, and an excluded row leaves the
+					// clash by itself.
+					$answerable  = ! empty( $row['is_zero_time'] ) || $off_date;
+					$clashes     = isset( $clashing[ $id ] );
+					$needs_check = $clashes || ( $answerable && ! $this->is_answered( $row ) );
 
 					// Not offered on an excluded row. "Keep this row" beside a
 					// ticked Exclude is a contradiction the screen would then
@@ -927,7 +999,7 @@ class Event_Review_Screen {
 					// hidden marker below is absent when there is no tick, so
 					// save_corrections() leaves it alone and un-excluding the
 					// row brings back the answer that was given.
-					$offer_tick = $flagged && empty( $row['is_excluded'] );
+					$offer_tick = $answerable && empty( $row['is_excluded'] );
 					?>
 					<tr<?php echo $needs_check ? ' class="mvoc-needs-check"' : ''; ?>>
 						<td><?php echo esc_html( $row['position_label'] ?: '—' ); ?></td>
