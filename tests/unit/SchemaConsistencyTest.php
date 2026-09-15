@@ -17,6 +17,7 @@
 
 use MVOC\StreetO\Domain\Import_Reconciler;
 use MVOC\StreetO\Repo\Competitors_Repo;
+use MVOC\StreetO\Repo\Results_Repo;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -144,6 +145,25 @@ class SchemaConsistencyTest extends TestCase {
 				$column,
 				$schema['results'],
 				sprintf( 'Column "%s" is written by an import but missing from the results table.', $column )
+			);
+		}
+	}
+
+	public function test_every_column_a_correction_writes_exists_in_the_schema(): void {
+		// Results_Repo::override() materialises a correction onto the column
+		// OVERRIDABLE names, and a name with no column behind it fails the
+		// UPDATE silently — wpdb returns false, the overrides row is already
+		// written, and the screen reports the correction as saved. The audit
+		// trail would then say a change was made that the table never shows.
+		$schema = $this->schema_columns();
+
+		$this->assertNotEmpty( Results_Repo::OVERRIDABLE );
+
+		foreach ( Results_Repo::OVERRIDABLE as $field => $column ) {
+			$this->assertContains(
+				$column,
+				$schema['results'],
+				sprintf( 'Correction "%s" writes to "%s", which the results table has no column for.', $field, $column )
 			);
 		}
 	}

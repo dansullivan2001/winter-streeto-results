@@ -68,8 +68,15 @@ class Schema {
 	 *    course that stayed live — every other moment in a row is a time of day
 	 *    with no date attached. A real December event carried a row from the
 	 *    following April, scored and ranked like any other.
+	 * 13: results.is_checked. The zero-time and off-date warnings had no way to
+	 *    be answered except by excluding the row, so a row the co-ordinator had
+	 *    looked at and decided was genuine went on warning for the rest of the
+	 *    season. A standing warning about a decision already made is what
+	 *    teaches someone to ignore the colour, and then the next real one goes
+	 *    unread. Defaults to 0, so nothing already imported is treated as
+	 *    checked.
 	 */
-	public const DB_VERSION = 12;
+	public const DB_VERSION = 13;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -559,6 +566,7 @@ class Schema {
 			is_excluded tinyint(1) NOT NULL DEFAULT 0,
 			is_manual tinyint(1) NOT NULL DEFAULT 0,
 			is_withdrawn tinyint(1) NOT NULL DEFAULT 0,
+			is_checked tinyint(1) NOT NULL DEFAULT 0,
 			PRIMARY KEY  (id),
 			KEY event_id (event_id),
 			KEY competitor_id (competitor_id),

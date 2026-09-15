@@ -249,7 +249,7 @@ Things real responses contain that a hand-written test fixture would not:
   not a duplicate, so the detector never saw it; and the engine ranks on a numeric score
   alone, so it took 660 points in a field scoring 350 to 950. Such a row is now flagged for
   review — named up front, and its row highlighted and noted — but still scores until the
-  co-ordinator excludes it, because a broken upload and a real run whose timing MapRun lost
+  co-ordinator either excludes it or ticks it as checked, because a broken upload and a real run whose timing MapRun lost
   look identical from here, and silently dropping the second would remove a genuine result.
 - **Repeat punches appended out of order.** `punchControlIds` gets "Extra" punches added at
   the end regardless of when they happened, so the parser re-sorts by time.
@@ -271,7 +271,20 @@ response and scores like any other — a real December event carried one from th
 April. That is not a duplicate of anything, so no amount of cluster detection would find
 it; only the date does. Rows whose date is not the event's are named on the review screen
 and score until the co-ordinator excludes them. Their rows carry the same highlight as a
-zero-time row, and both drop it once excluded.
+zero-time row, and both drop it once answered.
+
+Either warning can be answered two ways, and v13 adds the second. Excluding the row says it
+should not have scored; ticking "Checked — keep this row" says it should, and both are
+recorded in the overrides trail with whatever reason was given. Without the second, the only
+answer the screen accepted was Exclude, so a row checked against the night and found genuine
+went on warning for the rest of the season — and a warning that cannot be answered is the
+one that teaches a co-ordinator to read past the colour, taking the next real warning with
+it. The tick is deliberately inert: it changes no score, penalty or position, and a test
+asserts that. It does not survive its own evidence either. An import that changes the row's
+classifier, score, penalty, elapsed time or track start un-ticks it, because the decision was
+about figures MapRun has since revised; an import that brings the same figures back — which
+is most of them, on a night when the co-ordinator imports two or three times as late uploads
+arrive — leaves it alone.
 
 Once a cluster has been answered it stays on the screen but folds into an "already decided"
 block, with the kept scoring still selected. It cannot simply vanish — that card is the only

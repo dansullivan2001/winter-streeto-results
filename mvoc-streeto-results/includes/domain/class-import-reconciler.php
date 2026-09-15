@@ -92,6 +92,7 @@ class Import_Reconciler {
 				'action'    => empty( $existing['is_withdrawn'] ) ? self::UPDATE : self::RESTORE,
 				'result_id' => (int) $existing['id'],
 				'row'       => $row,
+				'recheck'   => self::evidence_changed( $existing, $row ),
 			);
 		}
 
@@ -129,6 +130,58 @@ class Import_Reconciler {
 		}
 
 		return $summary;
+	}
+
+	/**
+	 * The figures a co-ordinator was looking at when they accepted a row.
+	 *
+	 * The two warnings are read from the classifier, the score, the elapsed
+	 * time and the track start; the penalty is here because it is the fourth
+	 * number on the review row and, on a zero-time row, the one that decides
+	 * the published total, MapRun's own figure standing unrecomputed once there
+	 * is no time to recompute from.
+	 *
+	 * Not every raw column, and the difference is the point: a runner adding
+	 * their club, or MapRun correcting a spelling, says nothing about whether
+	 * the row is a broken upload or a run done on the wrong night, and must not
+	 * throw away a decision someone made about it.
+	 */
+	private const EVIDENCE = array(
+		'classifier',
+		'raw_score',
+		'raw_penalty',
+		'raw_time_secs',
+		'raw_track_start_utc',
+	);
+
+	/**
+	 * Whether an import changes what the co-ordinator would have been looking at.
+	 *
+	 * Answers one question for apply_action(): does this row still deserve the
+	 * "checked" it was given? Every import issues an UPDATE for every matched
+	 * row whether or not anything moved, so un-checking on the action alone
+	 * would wipe a season's decisions on a re-fetch that changed nothing —
+	 * which is the normal case on the night, when the co-ordinator imports
+	 * two or three times as late uploads arrive.
+	 *
+	 * Compared strictly, which is safe because both sides are normalised:
+	 * stored rows arrive through Results_Repo::hydrate() and incoming ones
+	 * through raw_columns(), and both cast the score and elapsed time to
+	 * int-or-null.
+	 *
+	 * @param array<string,mixed> $stored   The row as it is held now.
+	 * @param array<string,mixed> $incoming The freshly parsed MapRun row.
+	 */
+	public static function evidence_changed( array $stored, array $incoming ): bool {
+		$fresh = self::raw_columns( $incoming );
+
+		foreach ( self::EVIDENCE as $column ) {
+			if ( ( $stored[ $column ] ?? null ) !== $fresh[ $column ] ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

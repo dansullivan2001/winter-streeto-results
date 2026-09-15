@@ -36,6 +36,10 @@ class Results_Repo {
 		'course'      => 'resolved_course_label',
 		'excluded'    => 'is_excluded',
 		'competitor'  => 'competitor_id',
+		// Not a figure, but a decision about one, and it belongs in the same
+		// trail: "this row scores with no time and I am publishing it anyway"
+		// is exactly the call someone will want explained in March.
+		'checked'     => 'is_checked',
 	);
 
 	/**
@@ -85,8 +89,12 @@ class Results_Repo {
 			$row[ $int ] = (int) $row[ $int ];
 		}
 
-		foreach ( array( 'is_excluded', 'is_manual', 'is_withdrawn' ) as $flag ) {
-			$row[ $flag ] = (bool) $row[ $flag ];
+		foreach ( array( 'is_excluded', 'is_manual', 'is_withdrawn', 'is_checked' ) as $flag ) {
+			// Coalesced rather than read straight: maybe_upgrade() runs on
+			// plugins_loaded, so a column added in a new version is missing for
+			// exactly as long as it takes that hook to fire, and an unchecked
+			// row is the right reading of a row that has no such column yet.
+			$row[ $flag ] = (bool) ( $row[ $flag ] ?? false );
 		}
 
 		$nullables = array(
@@ -158,6 +166,17 @@ class Results_Repo {
 		// co-ordinator's corrections are left exactly as they were.
 		if ( Import_Reconciler::RESTORE === $action['action'] ) {
 			$columns['is_withdrawn'] = 0;
+		}
+
+		// is_checked is the exception, and deliberately so. It records that a
+		// person looked at this row's time, date and score and accepted them;
+		// once MapRun sends different ones, it is a judgement about a row that
+		// no longer exists. Left standing, it would silence a warning nobody
+		// had read — the precise failure the flag was added to prevent. Only a
+		// changed row is un-checked: a re-import that brings the same figures
+		// back, which is most of them, leaves the decision alone.
+		if ( ! empty( $action['recheck'] ) ) {
+			$columns['is_checked'] = 0;
 		}
 
 		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -392,6 +411,12 @@ class Results_Repo {
 			'is_excluded'     => (bool) $row['is_excluded'],
 			'is_withdrawn'    => (bool) $row['is_withdrawn'],
 			'is_manual'       => (bool) $row['is_manual'],
+			// The co-ordinator's answer to is_zero_time and is_off_date: they
+			// have looked at this row against the night and it stands. It
+			// silences the warning and nothing else — the row was already
+			// scoring, and a check that changed the score would be a
+			// correction, made in the fields above.
+			'is_checked'      => (bool) ( $row['is_checked'] ?? false ),
 		);
 	}
 

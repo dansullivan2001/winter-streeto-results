@@ -685,13 +685,18 @@ class Event_Review_Screen {
 	 * a real run MapRun mistimed is a judgement from the night, not one the
 	 * plugin can make.
 	 *
+	 * Rows already ticked as checked are left out, as excluded ones are. Both
+	 * have been answered — one by dropping the row, one by keeping it — and a
+	 * warning that cannot be answered is one the co-ordinator learns to read
+	 * past, taking the next real one with it.
+	 *
 	 * @param array<int,array<string,mixed>> $scored Scored rows.
 	 */
 	private function render_zero_time_notice( array $scored ): void {
 		$names = array();
 
 		foreach ( $scored as $row ) {
-			if ( ! empty( $row['is_zero_time'] ) && empty( $row['is_excluded'] ) ) {
+			if ( ! empty( $row['is_zero_time'] ) && ! $this->is_answered( $row ) ) {
 				$names[] = (string) $row['display_name'];
 			}
 		}
@@ -715,7 +720,7 @@ class Event_Review_Screen {
 			)
 			. '</strong> '
 			. esc_html( implode( ', ', $names ) ) . '. '
-			. esc_html__( 'MapRun returned a score with an elapsed time of zero — usually a failed upload it did not mark as one. Check each against the night, then tick Exclude below for any that did not run. They count towards the league until you do.', 'mvoc-streeto' )
+			. esc_html__( 'MapRun returned a score with an elapsed time of zero — usually a failed upload it did not mark as one. Check each against the night, then tick Exclude below for any that did not run, or "Checked" for any that did. They count towards the league until you exclude them.', 'mvoc-streeto' )
 			. '</p></div>';
 	}
 
@@ -737,7 +742,7 @@ class Event_Review_Screen {
 		$late = array();
 
 		foreach ( $scored as $row ) {
-			if ( Parser::is_off_date( $row['run_date'] ?? null, $event_date ) && empty( $row['is_excluded'] ) ) {
+			if ( Parser::is_off_date( $row['run_date'] ?? null, $event_date ) && ! $this->is_answered( $row ) ) {
 				$late[] = sprintf(
 					/* translators: 1: runner's name, 2: date the run was recorded. */
 					__( '%1$s (%2$s)', 'mvoc-streeto' ),
@@ -766,8 +771,22 @@ class Event_Review_Screen {
 			)
 			. '</strong> '
 			. esc_html( implode( ', ', $late ) ) . '. '
-			. esc_html__( 'The course stayed live, so these were run later and MapRun returned them with everyone else. They score in the league until you tick Exclude below.', 'mvoc-streeto' )
+			. esc_html__( 'The course stayed live, so these were run later and MapRun returned them with everyone else. They score in the league until you tick Exclude below, or "Checked" to let one stand.', 'mvoc-streeto' )
 			. '</p></div>';
+	}
+
+	/**
+	 * Whether a flagged row has already been dealt with.
+	 *
+	 * Two answers, and the plugin does not care which was given: the row was
+	 * excluded, so it no longer scores, or it was ticked as checked, so it
+	 * scores on purpose. Either way somebody decided, and the warning has done
+	 * its work.
+	 *
+	 * @param array<string,mixed> $row Scored row.
+	 */
+	private function is_answered( array $row ): bool {
+		return ! empty( $row['is_excluded'] ) || ! empty( $row['is_checked'] );
 	}
 
 	/**
@@ -860,7 +879,14 @@ class Event_Review_Screen {
 						$notes[] = __( 'name not confirmed', 'mvoc-streeto' );
 					}
 					if ( ! empty( $row['is_zero_time'] ) ) {
-						$notes[] = __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
+						// The note stays after the tick, because the row really
+						// is scoring without a time and the table should say so.
+						// What changes is the instruction: leaving "check before
+						// publishing" on a row already checked would read as
+						// though the tick had not registered.
+						$notes[] = ! empty( $row['is_checked'] )
+							? __( 'scoring with no time recorded — checked', 'mvoc-streeto' )
+							: __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
 					}
 					if ( $off_date ) {
 						$notes[] = sprintf(
@@ -876,11 +902,13 @@ class Event_Review_Screen {
 
 					// Exactly the two rows the notices above name, and for the
 					// same reason: each scores in the league on a figure nobody
-					// has yet stood behind. Excluded rows drop out here as they
-					// do from the notices — the row keeps its note as the record
-					// of why, but a stripe on a decision already made would only
-					// dilute the ones still waiting on one.
-					$needs_check = ( ! empty( $row['is_zero_time'] ) || $off_date ) && empty( $row['is_excluded'] );
+					// has yet stood behind. A row that has been answered drops
+					// out here as it does from the notices — it keeps its note
+					// as the record of what was decided, but a stripe on a
+					// decision already made would only dilute the ones still
+					// waiting on one.
+					$flagged     = ! empty( $row['is_zero_time'] ) || $off_date;
+					$needs_check = $flagged && ! $this->is_answered( $row );
 					?>
 					<tr<?php echo $needs_check ? ' class="mvoc-needs-check"' : ''; ?>>
 						<td><?php echo esc_html( $row['position_label'] ?: '—' ); ?></td>
@@ -888,6 +916,31 @@ class Event_Review_Screen {
 							<?php echo esc_html( $row['display_name'] ); ?>
 							<?php if ( $notes ) : ?>
 								<br /><span class="description"><?php echo esc_html( implode( ', ', $notes ) ); ?></span>
+							<?php endif; ?>
+							<?php if ( $flagged ) : ?>
+								<?php
+								// Offered beside the warning it answers rather
+								// than in a column of its own, which would be
+								// empty on all but a row or two of a full field
+								// — and next to Exclude it would read as a
+								// second way to drop the runner.
+								//
+								// The hidden marker is what tells save_corrections()
+								// that this row was asked the question at all.
+								// Without it an unticked box and a row that
+								// never offered one look identical on submit,
+								// and a row whose warning has since cleared
+								// would have its answer silently rewritten.
+								?>
+								<br />
+								<label class="description">
+									<input type="hidden" value="1"
+										name="rows[<?php echo esc_attr( (string) $id ); ?>][checked_offered]" />
+									<input type="checkbox" value="1"
+										name="rows[<?php echo esc_attr( (string) $id ); ?>][checked]"
+										<?php checked( ! empty( $row['is_checked'] ) ); ?> />
+									<?php esc_html_e( 'Checked — keep this row', 'mvoc-streeto' ); ?>
+								</label>
 							<?php endif; ?>
 						</td>
 						<td>
@@ -1354,6 +1407,16 @@ class Event_Review_Screen {
 				'competitor' => $was['competitor_id'],
 				'excluded'   => $was['is_excluded'] ? 1 : 0,
 			);
+
+			// Only where the screen actually offered the tick. An unticked box
+			// and a row with no box at all submit exactly the same thing —
+			// nothing — so without the marker every row whose warning had since
+			// cleared would be recorded as un-checked on the next save, each
+			// one a correction nobody made.
+			if ( ! empty( $fields['checked_offered'] ) ) {
+				$updates['checked'] = ! empty( $fields['checked'] ) ? 1 : 0;
+				$before['checked']  = $was['is_checked'] ? 1 : 0;
+			}
 
 			foreach ( $updates as $field => $value ) {
 				if ( $before[ $field ] !== $value ) {
