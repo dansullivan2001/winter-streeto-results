@@ -895,6 +895,12 @@ class Event_Review_Screen {
 			table.widefat > tbody > tr.mvoc-needs-check > td:first-child {
 				box-shadow: inset 4px 0 0 #dba617;
 			}
+
+			/* Core styles p as a block, which would otherwise show the order
+			   control before its script has made it work. */
+			#mvoc-review-sort[hidden] {
+				display: none;
+			}
 		</style>
 		<?php
 	}
@@ -926,6 +932,8 @@ class Event_Review_Screen {
 		$this->render_zero_time_notice( $scored );
 		$this->render_off_date_notice( $scored, $event_date );
 
+		$this->render_sort_controls();
+
 		?>
 		<table class="widefat striped">
 			<thead>
@@ -941,8 +949,8 @@ class Event_Review_Screen {
 					<th><?php esc_html_e( 'Exclude', 'mvoc-streeto' ); ?></th>
 				</tr>
 			</thead>
-			<tbody>
-				<?php foreach ( $scored as $row ) : ?>
+			<tbody id="mvoc-review-rows">
+				<?php foreach ( array_values( $scored ) as $order => $row ) : ?>
 					<?php
 					$id       = (int) $row['result_id'];
 					$flag     = $flags[ $id ] ?? array();
@@ -1061,7 +1069,9 @@ class Event_Review_Screen {
 					// row brings back the answer that was given.
 					$offer_tick = $answerable && empty( $row['is_excluded'] );
 					?>
-					<tr<?php echo $needs_check ? ' class="mvoc-needs-check"' : ''; ?>>
+					<tr<?php echo $needs_check ? ' class="mvoc-needs-check"' : ''; ?>
+						data-sort-name="<?php echo esc_attr( (string) $row['display_name'] ); ?>"
+						data-sort-position="<?php echo esc_attr( (string) $order ); ?>">
 						<td><?php echo esc_html( $row['position_label'] ?: '—' ); ?></td>
 						<td>
 							<?php echo esc_html( $row['display_name'] ); ?>
@@ -1175,6 +1185,8 @@ class Event_Review_Screen {
 			</tbody>
 		</table>
 
+		<?php $this->render_sort_script(); ?>
+
 		<p>
 			<label>
 				<?php esc_html_e( 'Reason for these corrections', 'mvoc-streeto' ); ?>
@@ -1183,6 +1195,110 @@ class Event_Review_Screen {
 			</label>
 			<span class="description"><?php esc_html_e( 'Recorded against every change you save, so the table can always be explained later.', 'mvoc-streeto' ); ?></span>
 		</p>
+		<?php
+	}
+
+	/**
+	 * The order control above the results table.
+	 *
+	 * The table is built in finishing order, which is the order it is published
+	 * in and the order the scoring reads. It is the wrong order for the one
+	 * check that has to be made against a piece of paper: the start list, which
+	 * is alphabetical. Reading sixty rows in score order looking for the two
+	 * names that are missing is where a runner gets lost.
+	 *
+	 * Display only. Nothing here is submitted, the stored order is untouched,
+	 * and every field keeps its own row id, so a half-finished set of
+	 * corrections survives a re-sort — which is the whole reason it is done in
+	 * the browser rather than by reloading the screen.
+	 *
+	 * Hidden until the script below reveals it: without JavaScript the buttons
+	 * would do nothing, and a dead control is worse than no control.
+	 */
+	private function render_sort_controls(): void {
+		?>
+		<p id="mvoc-review-sort" hidden>
+			<strong><?php esc_html_e( 'Order', 'mvoc-streeto' ); ?></strong>
+			<button type="button" class="button button-small button-primary"
+				data-mvoc-sort="position" aria-pressed="true">
+				<?php esc_html_e( 'Finishing position', 'mvoc-streeto' ); ?>
+			</button>
+			<button type="button" class="button button-small"
+				data-mvoc-sort="name" aria-pressed="false">
+				<?php esc_html_e( 'Name (A–Z)', 'mvoc-streeto' ); ?>
+			</button>
+			<span class="description">
+				<?php esc_html_e( 'Name order is for checking the field against the start list. It changes what you see and nothing else — positions, your edits and what is saved are all unaffected.', 'mvoc-streeto' ); ?>
+			</span>
+		</p>
+		<?php
+	}
+
+	/**
+	 * The re-ordering itself.
+	 *
+	 * Inline for the same reason the one row style above is: it belongs to this
+	 * table and no other screen, and it is short enough that a file would put it
+	 * a long way from the markup it depends on.
+	 *
+	 * Rows are moved, never rebuilt, so every input keeps its value and its
+	 * name. Equal names fall back to the position order the table was rendered
+	 * in, so a runner with two rows keeps them in the order they are ranked.
+	 */
+	private function render_sort_script(): void {
+		?>
+		<script>
+		( function () {
+			var controls = document.getElementById( 'mvoc-review-sort' );
+			var body     = document.getElementById( 'mvoc-review-rows' );
+
+			if ( ! controls || ! body ) {
+				return;
+			}
+
+			var buttons = Array.prototype.slice.call( controls.querySelectorAll( '[data-mvoc-sort]' ) );
+			var rows    = Array.prototype.slice.call( body.rows );
+
+			function order( row ) {
+				return parseInt( row.dataset.sortPosition, 10 );
+			}
+
+			function sort( mode ) {
+				rows.slice().sort( function ( a, b ) {
+					if ( 'name' === mode ) {
+						var compared = a.dataset.sortName.trim().localeCompare(
+							b.dataset.sortName.trim(),
+							undefined,
+							{ sensitivity: 'base', numeric: true }
+						);
+
+						if ( compared ) {
+							return compared;
+						}
+					}
+
+					return order( a ) - order( b );
+				} ).forEach( function ( row ) {
+					body.appendChild( row );
+				} );
+
+				buttons.forEach( function ( button ) {
+					var active = button.dataset.mvocSort === mode;
+
+					button.setAttribute( 'aria-pressed', active ? 'true' : 'false' );
+					button.classList.toggle( 'button-primary', active );
+				} );
+			}
+
+			buttons.forEach( function ( button ) {
+				button.addEventListener( 'click', function () {
+					sort( button.dataset.mvocSort );
+				} );
+			} );
+
+			controls.hidden = false;
+		}() );
+		</script>
 		<?php
 	}
 
