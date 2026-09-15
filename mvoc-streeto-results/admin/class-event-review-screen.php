@@ -1070,7 +1070,7 @@ class Event_Review_Screen {
 					$offer_tick = $answerable && empty( $row['is_excluded'] );
 					?>
 					<tr<?php echo $needs_check ? ' class="mvoc-needs-check"' : ''; ?>
-						data-sort-name="<?php echo esc_attr( (string) $row['display_name'] ); ?>"
+						data-sort-name="<?php echo esc_attr( self::surname_sort_key( $row ) ); ?>"
 						data-sort-position="<?php echo esc_attr( (string) $order ); ?>">
 						<td><?php echo esc_html( $row['position_label'] ?: '—' ); ?></td>
 						<td>
@@ -1199,12 +1199,37 @@ class Event_Review_Screen {
 	}
 
 	/**
+	 * What a row sorts on in surname order.
+	 *
+	 * The stored parts, not the displayed name split on a space: MapRun sends
+	 * the two fields separately and the plugin keeps them that way, so a
+	 * double-barrelled or multi-word surname sorts under the whole thing rather
+	 * than under its last word. The first name is appended so that a family
+	 * entering together keeps a sensible order among themselves.
+	 *
+	 * A name with no surname — a single-word MapRun entry — falls back to what
+	 * the Name column shows, which is all there is of it. Sorting it among the
+	 * surnames is right: that word is how it will be looked for on the list.
+	 *
+	 * @param array<string,mixed> $row Scored row.
+	 */
+	private static function surname_sort_key( array $row ): string {
+		$surname = trim( (string) ( $row['surname'] ?? '' ) );
+
+		if ( '' === $surname ) {
+			return trim( (string) ( $row['display_name'] ?? '' ) );
+		}
+
+		return trim( $surname . ' ' . trim( (string) ( $row['first_name'] ?? '' ) ) );
+	}
+
+	/**
 	 * The order control above the results table.
 	 *
 	 * The table is built in finishing order, which is the order it is published
 	 * in and the order the scoring reads. It is the wrong order for the one
 	 * check that has to be made against a piece of paper: the start list, which
-	 * is alphabetical. Reading sixty rows in score order looking for the two
+	 * is by surname. Reading sixty rows in score order looking for the two
 	 * names that are missing is where a runner gets lost.
 	 *
 	 * Display only. Nothing here is submitted, the stored order is untouched,
@@ -1225,10 +1250,10 @@ class Event_Review_Screen {
 			</button>
 			<button type="button" class="button button-small"
 				data-mvoc-sort="name" aria-pressed="false">
-				<?php esc_html_e( 'Name (A–Z)', 'mvoc-streeto' ); ?>
+				<?php esc_html_e( 'Surname (A–Z)', 'mvoc-streeto' ); ?>
 			</button>
 			<span class="description">
-				<?php esc_html_e( 'Name order is for checking the field against the start list. It changes what you see and nothing else — positions, your edits and what is saved are all unaffected.', 'mvoc-streeto' ); ?>
+				<?php esc_html_e( 'Surname order is for checking the field against the start list — the Name column still reads first name first. It changes what you see and nothing else: positions, your edits and what is saved are all unaffected.', 'mvoc-streeto' ); ?>
 			</span>
 		</p>
 		<?php
