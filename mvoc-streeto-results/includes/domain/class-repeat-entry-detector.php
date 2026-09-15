@@ -50,6 +50,54 @@ class Repeat_Entry_Detector {
 	 * @return array<int,array<int,array<string,mixed>>> One inner array per runner with 2+.
 	 */
 	public function find( array $rows ): array {
+		return array_values(
+			array_filter( self::counting_by_runner( $rows ), static fn( array $group ): bool => count( $group ) > 1 )
+		);
+	}
+
+	/**
+	 * For every row, the runner's *other* rows that are scoring.
+	 *
+	 * Answers the question the co-ordinator is actually asking when they look
+	 * at an excluded row: is this person already in the table with a result
+	 * that counts? Fifty rows in, that cannot be held in the head, and the
+	 * consequence of guessing wrong is un-excluding a row that then scores
+	 * twice — which is how the excluded list gets undone one plausible-looking
+	 * row at a time.
+	 *
+	 * Covers every row, not just the scoring ones, because an excluded row is
+	 * precisely where the answer is needed. A row is never its own company:
+	 * its own id is removed, so an empty list means what it says.
+	 *
+	 * @param array<int,array<string,mixed>> $rows Effective result rows.
+	 * @return array<int,array<int,array<string,mixed>>> Result id => that runner's other scoring rows.
+	 */
+	public function elsewhere( array $rows ): array {
+		$counting = self::counting_by_runner( $rows );
+		$map      = array();
+
+		foreach ( $rows as $row ) {
+			$id  = (int) $row['result_id'];
+			$key = self::identity( $row );
+
+			$map[ $id ] = array_values(
+				array_filter(
+					null === $key ? array() : ( $counting[ $key ] ?? array() ),
+					static fn( array $other ): bool => (int) $other['result_id'] !== $id
+				)
+			);
+		}
+
+		return $map;
+	}
+
+	/**
+	 * The scoring rows, grouped by the runner they belong to.
+	 *
+	 * @param array<int,array<string,mixed>> $rows Effective result rows.
+	 * @return array<string,array<int,array<string,mixed>>>
+	 */
+	private static function counting_by_runner( array $rows ): array {
 		$groups = array();
 
 		foreach ( $rows as $row ) {
@@ -66,9 +114,7 @@ class Repeat_Entry_Detector {
 			$groups[ $key ][] = $row;
 		}
 
-		return array_values(
-			array_filter( $groups, static fn( array $group ): bool => count( $group ) > 1 )
-		);
+		return $groups;
 	}
 
 	/**

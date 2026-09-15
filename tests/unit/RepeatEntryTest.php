@@ -46,8 +46,9 @@ class RepeatEntryTest extends TestCase {
 				'first_name'    => 'Rowan',
 				'surname'       => 'Ashdown',
 				'display_name'  => 'Rowan Ashdown',
-				'score'         => 700,
-				'is_excluded'   => false,
+				'score'          => 700,
+				'position_label' => '33rd',
+				'is_excluded'    => false,
 				'is_withdrawn'  => false,
 			),
 			$overrides
@@ -210,6 +211,52 @@ class RepeatEntryTest extends TestCase {
 		);
 
 		$this->assertSame( array(), ( new Repeat_Entry_Detector() )->find( $rows ) );
+	}
+
+	public function test_an_excluded_row_is_told_what_its_runner_already_has(): void {
+		// The question the co-ordinator cannot answer by eye fifty rows in, and
+		// the one that decides whether un-excluding is a fix or a second
+		// scoring row. Excluded rows are not clashes, but they still need the
+		// answer.
+		$rows = array(
+			$this->row( array( 'result_id' => 1, 'score' => 830, 'position_label' => '18th' ) ),
+			$this->row( array( 'result_id' => 2, 'score' => 0, 'is_excluded' => true ) ),
+		);
+
+		$elsewhere = ( new Repeat_Entry_Detector() )->elsewhere( $rows );
+
+		$this->assertCount( 1, $elsewhere[2] );
+		$this->assertSame( 830, $elsewhere[2][0]['score'] );
+		$this->assertSame( '18th', $elsewhere[2][0]['position_label'] );
+
+		// And the scoring row has no company, because the other is excluded.
+		$this->assertSame( array(), $elsewhere[1] );
+	}
+
+	public function test_an_excluded_row_with_no_counterpart_says_so(): void {
+		// Excluded, and nothing else of theirs scores: as it stands this runner
+		// is not in the results at all, which is when un-excluding is right.
+		$rows = array(
+			$this->row( array( 'result_id' => 1, 'score' => 700, 'is_excluded' => true ) ),
+			$this->row(
+				array(
+					'result_id'    => 2,
+					'first_name'   => 'Casper',
+					'surname'      => 'Greenway',
+					'display_name' => 'Casper Greenway',
+				)
+			),
+		);
+
+		$this->assertSame( array(), ( new Repeat_Entry_Detector() )->elsewhere( $rows )[1] );
+	}
+
+	public function test_a_row_is_never_its_own_company(): void {
+		// An empty list has to mean "nothing else", or the note built from it
+		// tells the co-ordinator the row duplicates itself.
+		$rows = array( $this->row( array( 'result_id' => 1 ) ) );
+
+		$this->assertSame( array(), ( new Repeat_Entry_Detector() )->elsewhere( $rows )[1] );
 	}
 
 	public function test_clashing_ids_marks_every_row_in_the_group(): void {

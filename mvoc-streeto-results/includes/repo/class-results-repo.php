@@ -398,7 +398,15 @@ class Results_Repo {
 			// of MapRun's server rather than a fact about the run, so a better
 			// reading later must not need a re-import to take effect.
 			'run_date'        => Parser::local_date_of( (string) ( $row['raw_track_start_utc'] ?? '' ) ),
-			'is_failed'       => Parser::CLASSIFIER_FAILED === (string) $row['classifier'] && ! $time_secs,
+			// One predicate, shared with the parser, so a stored row and a
+			// freshly parsed one agree about what is not a performance. They
+			// did not while this was spelled out here: the parser learned about
+			// DNF and this did not, which would have left the duplicate
+			// detector reading DNF rows it is meant to skip.
+			'is_failed'       => Parser::is_unfinished(
+				(string) $row['classifier'],
+				null === $time_secs ? null : (int) $time_secs
+			),
 			// Rebuilt from the stored classifier, time and score rather than
 			// stored in a column of its own: every input is already here, so an
 			// already-imported season carries the flag without a migration or a

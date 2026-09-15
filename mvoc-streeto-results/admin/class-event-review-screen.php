@@ -897,7 +897,7 @@ class Event_Review_Screen {
 
 		// Once for the table, not once per row: the detector groups the whole
 		// field, so asking it per row would regroup sixty rows sixty times.
-		$clashing = ( new Repeat_Entry_Detector() )->clashing_ids( $scored );
+		$elsewhere = ( new Repeat_Entry_Detector() )->elsewhere( $scored );
 
 		$this->render_row_styles();
 		$this->render_repeat_entry_notice( $scored );
@@ -927,8 +927,16 @@ class Event_Review_Screen {
 					$notes    = array();
 					$off_date = Parser::is_off_date( $row['run_date'] ?? null, $event_date );
 
-					if ( '--' === ( $row['classifier'] ?? '' ) ) {
+					// That runner's other rows that are scoring, which decides
+					// what this row's note says more than anything about the
+					// row itself does.
+					$others = $elsewhere[ $id ] ?? array();
+
+					if ( Parser::CLASSIFIER_FAILED === ( $row['classifier'] ?? '' ) ) {
 						$notes[] = __( 'failed upload', 'mvoc-streeto' );
+					}
+					if ( Parser::CLASSIFIER_DNF === ( $row['classifier'] ?? '' ) ) {
+						$notes[] = __( 'did not finish — no finish punch, so no score', 'mvoc-streeto' );
 					}
 					if ( ! empty( $row['is_withdrawn'] ) ) {
 						$notes[] = __( 'not in the latest import — MapRun may have replaced the event', 'mvoc-streeto' );
@@ -956,7 +964,37 @@ class Event_Review_Screen {
 							$notes[] = __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
 						}
 					}
-					if ( isset( $clashing[ $id ] ) ) {
+					if ( $others && ! empty( $row['is_excluded'] ) ) {
+						// The answer to "was excluding this a mistake?", given
+						// where the co-ordinator is standing: fifty rows in,
+						// looking at an excluded row that carries a score, with
+						// no way to see whether its owner is already in the
+						// table. Saying what they already have turns
+						// un-excluding into a decision instead of a guess.
+						$notes[] = sprintf(
+							/* translators: %s: the runner's other results, e.g. "830 (18th), 730 (30th)". */
+							__( 'this runner already scores here: %s', 'mvoc-streeto' ),
+							implode(
+								', ',
+								array_map(
+									static fn( array $other ): string => sprintf(
+										/* translators: 1: score, 2: finishing position, e.g. 18th. */
+										__( '%1$s (%2$s)', 'mvoc-streeto' ),
+										(string) $other['score'],
+										$other['position_label'] ?: '—'
+									),
+									$others
+								)
+							)
+						);
+					} elseif ( ! $others && ! empty( $row['is_excluded'] ) ) {
+						// The other half of the same question, and the case
+						// where un-excluding may well be right: excluded, and
+						// nothing else of theirs counts, so as things stand
+						// this runner is not in the results at all.
+						$notes[] = __( 'nothing else of this runner\'s is scoring — they are not in the results as it stands', 'mvoc-streeto' );
+					}
+					if ( $others && empty( $row['is_excluded'] ) ) {
 						$notes[] = __( 'this runner is scoring more than once — exclude the rows that should not count', 'mvoc-streeto' );
 					}
 					if ( $off_date ) {
@@ -986,7 +1024,7 @@ class Event_Review_Screen {
 					// is to exclude a row, and an excluded row leaves the
 					// clash by itself.
 					$answerable  = ! empty( $row['is_zero_time'] ) || $off_date;
-					$clashes     = isset( $clashing[ $id ] );
+					$clashes     = $others && empty( $row['is_excluded'] );
 					$needs_check = $clashes || ( $answerable && ! $this->is_answered( $row ) );
 
 					// Not offered on an excluded row. "Keep this row" beside a

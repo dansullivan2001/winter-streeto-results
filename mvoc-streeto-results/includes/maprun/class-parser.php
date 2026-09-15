@@ -41,6 +41,18 @@ class Parser {
 	public const CLASSIFIER_FAILED = '--';
 
 	/**
+	 * Classifier MapRun uses for a run that never punched the finish.
+	 *
+	 * Distinct from `--` in the response and, until now, nowhere else: a DNF
+	 * row fell through every check the plugin made and was scored like a
+	 * completed run. Under the club's rule a missing finish punch means no
+	 * score, so one of these is not a performance whatever it carries — and a
+	 * real Cobham response carried one with 550 points across sixteen controls,
+	 * which ranked 47th and pushed thirteen runners down a place.
+	 */
+	public const CLASSIFIER_DNF = 'DNF';
+
+	/**
 	 * Classifier the plugin writes on a row the co-ordinator added by hand.
 	 *
 	 * Never supplied by MapRun. It is here so that checks about what MapRun
@@ -282,19 +294,43 @@ class Parser {
 	/**
 	 * Whether this row is a failed upload rather than a performance.
 	 *
-	 * MapRun marks these `--`, and every one in the real response also had zero
-	 * elapsed time. Both conditions are checked so that a `--` row carrying a
-	 * genuine run would still be surfaced rather than silently discarded.
-	 *
 	 * @param string              $classifier Classifier value.
 	 * @param array<string,mixed> $row        Raw MapRun row.
 	 */
 	private function is_failed_upload( string $classifier, array $row ): bool {
-		if ( self::CLASSIFIER_FAILED !== $classifier ) {
+		return self::is_unfinished( $classifier, (int) ( $row['TotalTimeSecs'] ?? 0 ) );
+	}
+
+	/**
+	 * Whether MapRun recorded no completed run here, under either of its names.
+	 *
+	 * `--` is a failed upload: every one in the real response carried zero
+	 * score, zero elapsed time and no punches. `DNF` is a run that never
+	 * punched the finish, and the club's rule is that a missing finish punch
+	 * means no score — so neither should rank, and both are excluded on import
+	 * while staying visible on the review screen.
+	 *
+	 * Zero elapsed time is required as well as the classifier, for both. It is
+	 * the observable trace of the finish punch that never arrived, and it is
+	 * the safety catch: should MapRun ever mark a row with a real elapsed time
+	 * this way, the row is left alone for the co-ordinator rather than silently
+	 * dropped. Being wrong in that direction costs a second's reading; being
+	 * wrong in the other loses a result nobody knew was there.
+	 *
+	 * A hand-added row is never either of these. It legitimately carries a
+	 * score and no elapsed time, and its classifier says so.
+	 *
+	 * @param string   $classifier Classifier value, as MapRun supplied it.
+	 * @param int|null $time_secs  Elapsed time in seconds, or null where absent.
+	 */
+	public static function is_unfinished( string $classifier, ?int $time_secs ): bool {
+		$classifier = trim( $classifier );
+
+		if ( self::CLASSIFIER_FAILED !== $classifier && self::CLASSIFIER_DNF !== $classifier ) {
 			return false;
 		}
 
-		return 0 === (int) ( $row['TotalTimeSecs'] ?? 0 );
+		return null === $time_secs || $time_secs <= 0;
 	}
 
 	/**

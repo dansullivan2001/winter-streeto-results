@@ -243,6 +243,24 @@ Things real responses contain that a hand-written test fixture would not:
   wall-clock and mislabelling it. Ten hours back gives the date the run belongs to.
 - **`Classifier: "--"`** for a failed upload: zero score, zero time, no punches. Excluded
   from ranking, kept visible.
+- **`Classifier: "DNF"`**, which is not `--` and went unhandled for most of the plugin's
+  life. Nothing excluded it, and the engine ranks on whether the score is numeric — where
+  zero is numeric — so every DNF row took a position. A Cobham response had eight. Seven
+  were empty on every measure and drew 46 league points each for equal-55th; a runner whose
+  only row was one of those would have banked 46 for opening the app and abandoning it,
+  against 50 for genuinely finishing 51st. The eighth had sixteen controls and 550 points
+  with no finish punch, ranked 47th, and pushed thirteen runners down a place. Under the
+  club's rule a missing finish punch means no score, so both shapes are now excluded on
+  import and stay visible, exactly as `--` does. The zero-elapsed-time condition is required
+  as well as the classifier: it is the trace the missing finish punch leaves, and it means a
+  DNF arriving with a real time is left for the co-ordinator rather than dropped on a guess.
+
+  Excluding is not deleting, so the score stays on the review screen and the row can be put
+  back. That is where the counterpart annotation earns its place: an excluded row carrying a
+  score is exactly what tempts someone into un-excluding it, and in a field of fifty there is
+  no way to see by eye whether its owner is already in the table. Every excluded row now says
+  either what that runner already scores — `this runner already scores here: 830 (18th)` —
+  or that nothing else of theirs counts, which is the case where putting it back is right.
 - **A failed upload MapRun did not mark as one.** A September response carried
   `Classifier: "OK"`, twenty controls and a score of 660, with zero elapsed time, zero
   distance and every punch at zero seconds. It is not `--`, so nothing excluded it; it is
