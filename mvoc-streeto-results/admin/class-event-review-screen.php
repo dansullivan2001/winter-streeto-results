@@ -771,6 +771,38 @@ class Event_Review_Screen {
 	}
 
 	/**
+	 * The one rule the review table needs beyond core's own.
+	 *
+	 * Printed here rather than enqueued as a stylesheet because it is one
+	 * selector that belongs to this table and no other screen, and a file would
+	 * put the rule a long way from the markup that depends on it.
+	 *
+	 * The selector carries `table` and both of core's classes so it outranks
+	 * `.widefat.striped > tbody > :nth-child(odd)`, which would otherwise win on
+	 * every other row and highlight only half of them. The stripe is drawn as an
+	 * inset shadow on the first cell, not a border on the row: `.widefat`
+	 * collapses its borders, and a row-level border or shadow renders
+	 * inconsistently once they are collapsed.
+	 *
+	 * Colour is never the only signal — every highlighted row also carries its
+	 * note in words, and the notices above name the runners.
+	 */
+	private function render_row_styles(): void {
+		?>
+		<style>
+			table.widefat.striped > tbody > tr.mvoc-needs-check,
+			table.widefat > tbody > tr.mvoc-needs-check {
+				background-color: #fcf9e8;
+			}
+
+			table.widefat > tbody > tr.mvoc-needs-check > td:first-child {
+				box-shadow: inset 4px 0 0 #dba617;
+			}
+		</style>
+		<?php
+	}
+
+	/**
 	 * The editable results table.
 	 *
 	 * Elapsed time appears here and nowhere else. The published table
@@ -788,6 +820,7 @@ class Event_Review_Screen {
 	private function render_rows( array $scored, array $stored, array $competitors, Scoring_Config $config, string $event_date = '' ): void {
 		$flags = array_column( $stored, null, 'id' );
 
+		$this->render_row_styles();
 		$this->render_zero_time_notice( $scored );
 		$this->render_off_date_notice( $scored, $event_date );
 
@@ -809,9 +842,10 @@ class Event_Review_Screen {
 			<tbody>
 				<?php foreach ( $scored as $row ) : ?>
 					<?php
-					$id    = (int) $row['result_id'];
-					$flag  = $flags[ $id ] ?? array();
-					$notes = array();
+					$id       = (int) $row['result_id'];
+					$flag     = $flags[ $id ] ?? array();
+					$notes    = array();
+					$off_date = Parser::is_off_date( $row['run_date'] ?? null, $event_date );
 
 					if ( '--' === ( $row['classifier'] ?? '' ) ) {
 						$notes[] = __( 'failed upload', 'mvoc-streeto' );
@@ -828,7 +862,7 @@ class Event_Review_Screen {
 					if ( ! empty( $row['is_zero_time'] ) ) {
 						$notes[] = __( 'scoring with no time recorded — check before publishing', 'mvoc-streeto' );
 					}
-					if ( Parser::is_off_date( $row['run_date'] ?? null, $event_date ) ) {
+					if ( $off_date ) {
 						$notes[] = sprintf(
 							/* translators: %s: the date the run was recorded, e.g. 12 April 2026. */
 							__( 'run on %s, not the event date', 'mvoc-streeto' ),
@@ -839,8 +873,16 @@ class Event_Review_Screen {
 					$time_secs = $row['time_secs'] ?? null;
 					$limit     = $config->time_limit_for_course( (string) ( $row['course_label'] ?? '' ) );
 					$over      = ( null !== $time_secs && null !== $limit ) ? $time_secs - $limit : null;
+
+					// Exactly the two rows the notices above name, and for the
+					// same reason: each scores in the league on a figure nobody
+					// has yet stood behind. Excluded rows drop out here as they
+					// do from the notices — the row keeps its note as the record
+					// of why, but a stripe on a decision already made would only
+					// dilute the ones still waiting on one.
+					$needs_check = ( ! empty( $row['is_zero_time'] ) || $off_date ) && empty( $row['is_excluded'] );
 					?>
-					<tr>
+					<tr<?php echo $needs_check ? ' class="mvoc-needs-check"' : ''; ?>>
 						<td><?php echo esc_html( $row['position_label'] ?: '—' ); ?></td>
 						<td>
 							<?php echo esc_html( $row['display_name'] ); ?>
