@@ -117,11 +117,21 @@ defined( 'ABSPATH' ) || exit;
 		<?php
 		// The count comes from the series' scoring rules rather than the
 		// sentence, so a season that counts a different many says so.
-		printf(
-			/* translators: %d: how many event results count towards the league total. */
-			esc_html( _n( 'The best result counts.', 'The best %d results count.', (int) $model['counting_events'], 'mvoc-streeto' ) ),
-			(int) $model['counting_events']
-		);
+		//
+		// Guarded, like `includes_drafts` above, because a model can be served
+		// from a transient written by an earlier version of the plugin that
+		// never set this key. The cache key now carries the plugin version so
+		// that should not happen — but a published page saying "The best 0
+		// results count." is a bad enough failure to be worth two defences
+		// rather than one. Absent, the sentence is simply left out.
+		if ( ! empty( $model['counting_events'] ) ) {
+			printf(
+				/* translators: %d: how many event results count towards the league total. */
+				esc_html( _n( 'The best result counts.', 'The best %d results count.', (int) $model['counting_events'], 'mvoc-streeto' ) ),
+				(int) $model['counting_events']
+			);
+			echo ' ';
+		}
 		?>
 		<?php esc_html_e( 'Event organisers score their best result again in place of the event they ran.', 'mvoc-streeto' ); ?>
 	</p>

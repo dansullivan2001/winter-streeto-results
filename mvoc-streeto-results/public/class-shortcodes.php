@@ -248,8 +248,21 @@ class Shortcodes {
 			// Keyed on League_Cache's generation, which any write that could
 			// change standings bumps — a publish, but also a correction, a
 			// manual row, or a cancellation made after the fact.
+			//
+			// And on the plugin version, because the generation only tracks
+			// changes to the *data*, not to the shape of the model built from
+			// it. An update that adds a key to the model would otherwise go on
+			// serving entries cached by the previous version — which have no
+			// such key — for up to a day. That is exactly what happened when
+			// `counting_events` was added for the published footnote: the
+			// stale entries rendered "The best 0 results count." on the live
+			// site. Mixing the version in means any release invalidates every
+			// entry it could disagree with, at the cost of one recomputation.
 			$cap    = null === $through_event ? 'latest' : (string) $through_event;
-			$key    = self::CACHE_PREFIX . 'league_' . md5( $series['slug'] . '|' . $category . '|' . $cap . '|' . League_Cache::generation() );
+			$key    = self::CACHE_PREFIX . 'league_' . md5(
+				$series['slug'] . '|' . $category . '|' . $cap . '|'
+				. League_Cache::generation() . '|' . MVOC_STREETO_VERSION
+			);
 			$cached = get_transient( $key );
 
 			if ( is_array( $cached ) ) {

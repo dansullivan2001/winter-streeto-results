@@ -1005,11 +1005,20 @@ class Event_Review_Screen {
 				? trim( wp_unslash( $_POST['pasted_json'] ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 				: null;
 
+			// An empty box on the paste action is a mistake, not a request to
+			// fetch. It used to fall through to `?: null` and quietly perform a
+			// full HTTP fetch of every source instead — which reads as the
+			// paste having worked, and on a host that blocks MapRun's port
+			// returns errors for courses the co-ordinator never asked about.
+			if ( 'import_paste' === $action && '' === (string) $pasted ) {
+				return array( 'errors' => array( __( 'Paste the MapRun response into the box first.', 'mvoc-streeto' ) ) );
+			}
+
 			// Which course the paste is for. Only meaningful alongside $pasted;
 			// the fetch path imports every source and needs no choice.
 			$source_id = isset( $_POST['paste_source'] ) ? (int) $_POST['paste_source'] : 0; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
-			$result = $this->importer->import( $event_id, $pasted ?: null, $source_id );
+			$result = $this->importer->import( $event_id, $pasted, $source_id );
 
 			return array(
 				'notice'    => $this->summarise( $result['summary'] ),
