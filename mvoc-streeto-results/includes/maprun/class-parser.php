@@ -25,6 +25,8 @@
 
 namespace MVOC\StreetO\MapRun;
 
+use MVOC\StreetO\Domain\Punch_Scorer;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -62,6 +64,16 @@ class Parser {
 	public const CLASSIFIER_MANUAL = 'MANUAL';
 
 	/**
+	 * What `score_field` says when the score was rebuilt from the punches.
+	 *
+	 * Not a MapRun field at all, and named so that no screen can report it as
+	 * one: a figure the plugin worked out is a different kind of thing from a
+	 * figure MapRun sent, and every screen that shows a score should be able to
+	 * tell the co-ordinator which they are looking at.
+	 */
+	public const SCORE_FIELD_PUNCHES = 'punches';
+
+	/**
 	 * Hours to add to `TrackStartDateTimeUTC` to get back to UK local time.
 	 *
 	 * The field is not UTC, whatever it is called. Measured against the first
@@ -90,6 +102,18 @@ class Parser {
 	 * every time, including the one row that really was run on another day.
 	 */
 	public const TRACK_START_OFFSET_HOURS = 10;
+
+	/**
+	 * Rebuilds a score from punches where MapRun reported none.
+	 */
+	private Punch_Scorer $scorer;
+
+	/**
+	 * @param Punch_Scorer|null $scorer How to score a punch list; defaults to the club's rule.
+	 */
+	public function __construct( ?Punch_Scorer $scorer = null ) {
+		$this->scorer = $scorer ?? new Punch_Scorer();
+	}
 
 	/**
 	 * Pull the results array out of a decoded response envelope.
@@ -184,7 +208,8 @@ class Parser {
 		$first       = trim( (string) ( $row['Firstname'] ?? '' ) );
 		$surname_raw = trim( (string) ( $row['Surname'] ?? '' ) );
 		$revision    = self::split_revision( $surname_raw );
-		$scores      = $this->extract_scores( $row );
+		$punches     = $this->ordered_punches( $row );
+		$scores      = $this->extract_scores( $row, $punches );
 		$classifier  = trim( (string) ( $row['Classifier'] ?? '' ) );
 		$time_secs   = $this->extract_time_secs( $row );
 
@@ -215,7 +240,7 @@ class Parser {
 			// missing for a milestone, so the Explorer reported "no score field
 			// recognised" on every response it had just parsed correctly.
 			'score_field'     => $scores['field'],
-			'punches'         => $this->ordered_punches( $row ),
+			'punches'         => $punches,
 		);
 	}
 
@@ -256,14 +281,32 @@ class Parser {
 	 *
 	 * `field` names which MapRun field the score was actually read from, so the
 	 * Explorer can report that the contract held rather than asserting it. It
-	 * is empty only when neither field was usable.
+	 * is empty only when neither field was usable, and SCORE_FIELD_PUNCHES
+	 * where MapRun reported nothing and the score was rebuilt below.
 	 *
-	 * @param array<string,mixed> $row Raw MapRun row.
+	 * @param array<string,mixed>            $row     Raw MapRun row.
+	 * @param array<int,array<string,mixed>> $punches Punches, already ordered.
 	 * @return array{score:int|null,net:int|null,penalty:int,field:string}
 	 */
-	private function extract_scores( array $row ): array {
+	private function extract_scores( array $row, array $punches = array() ): array {
 		$gross = isset( $row['GrossScore'] ) && is_numeric( $row['GrossScore'] ) ? (int) $row['GrossScore'] : null;
 		$net   = isset( $row['NetScore'] ) && is_numeric( $row['NetScore'] ) ? (int) $row['NetScore'] : null;
+
+		$recovered = $this->recover_score( $gross, $net, $punches );
+
+		if ( null !== $recovered ) {
+			// No penalty travels with a recovered score. MapRun charged none —
+			// it never scored the run at all — and inventing one here would
+			// hide it from the co-ordinator behind a figure attributed to
+			// MapRun. The club's own late penalty is recomputed downstream from
+			// the elapsed time in every case, so nothing is lost.
+			return array(
+				'score'   => $recovered,
+				'net'     => $recovered,
+				'penalty' => 0,
+				'field'   => self::SCORE_FIELD_PUNCHES,
+			);
+		}
 
 		if ( null === $gross && null === $net ) {
 			return array(
@@ -289,6 +332,42 @@ class Parser {
 			'penalty' => max( 0, $gross - $net ),
 			'field'   => $field,
 		);
+	}
+
+	/**
+	 * A score rebuilt from the punches, where MapRun reported none.
+	 *
+	 * Only where none was reported. A row MapRun scored is left exactly as it
+	 * sent it, even where the plugin would have made the total something else:
+	 * MapRun is authoritative about its own events, and quietly replacing a
+	 * figure it published would be a far worse failure than the one this
+	 * repairs.
+	 *
+	 * So the bar is narrow and deliberately so. MapRun must have reported no
+	 * score at all, or a score of zero, *and* the row must carry punches. A
+	 * zero from MapRun is otherwise indistinguishable from a real zero, but a
+	 * run that punched anything cannot have scored nothing — the lowest control
+	 * on a StreetO map is worth ten — so a zero beside a punch list is a score
+	 * MapRun failed to work out rather than one it worked out as nil.
+	 *
+	 * Null means "leave MapRun's answer alone", which is not the same as zero:
+	 * a failed upload carries no punches and must keep the nothing it recorded.
+	 *
+	 * @param int|null                       $gross   GrossScore as MapRun sent it.
+	 * @param int|null                       $net     NetScore as MapRun sent it.
+	 * @param array<int,array<string,mixed>> $punches Punches, already ordered.
+	 */
+	private function recover_score( ?int $gross, ?int $net, array $punches ): ?int {
+		if ( ( null !== $gross && 0 !== $gross ) || ( null !== $net && 0 !== $net ) ) {
+			return null;
+		}
+
+		$recovered = $this->scorer->score( $punches );
+
+		// Null is no punches to score; zero is punches worth nothing between
+		// them, a start punch and no more. Neither is a repair, so MapRun's own
+		// answer stands rather than being restated as the plugin's.
+		return null !== $recovered && $recovered > 0 ? $recovered : null;
 	}
 
 	/**

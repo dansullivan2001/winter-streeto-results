@@ -66,7 +66,7 @@ class Importer {
 	 * @param int         $event_id  Event id.
 	 * @param string|null $pasted    Pasted JSON, used instead of fetching when given.
 	 * @param int         $source_id Which source the paste is for; required with $pasted.
-	 * @return array{summary:array<string,int>,warnings:string[],unmatched:array<int,array<string,mixed>>,errors:string[]}
+	 * @return array{summary:array<string,int>,warnings:string[],unmatched:array<int,array<string,mixed>>,errors:string[],recovered:array<string,int>}
 	 */
 	public function import( int $event_id, ?string $pasted = null, int $source_id = 0 ): array {
 		$sources = $this->events->sources( $event_id );
@@ -87,14 +87,16 @@ class Importer {
 					'warnings'  => array(),
 					'errors'    => array( __( 'Choose which course the pasted results are for.', 'mvoc-streeto' ) ),
 					'unmatched' => array(),
+					'recovered' => array(),
 				);
 			}
 		}
 
-		$summary  = array();
-		$warnings = array();
-		$errors   = array();
-		$parsed   = array();
+		$summary   = array();
+		$warnings  = array();
+		$errors    = array();
+		$parsed    = array();
+		$recovered = array();
 
 		// One option write per import rather than one per row: every action
 		// below bumps the league cache, and a 64-row event bumped it 64 times
@@ -123,6 +125,17 @@ class Importer {
 					( new Parser() )->parse( $result['rows'], (string) $source['course_label'] ),
 					$event_id
 				);
+
+				// Rows MapRun reported no score for, rebuilt from their punch
+				// records. Counted per course and reported, never assumed: a
+				// published score the plugin worked out is a different claim
+				// from one MapRun made, and the co-ordinator is the one who
+				// decides whether to stand behind it.
+				$rebuilt = self::count_recovered( $rows );
+
+				if ( $rebuilt > 0 ) {
+					$recovered[ (string) $source['course_label'] ] = $rebuilt;
+				}
 
 				$fetch_id = $this->events->record_fetch(
 					(int) $source['id'],
@@ -165,7 +178,22 @@ class Importer {
 			'warnings'  => $warnings,
 			'errors'    => $errors,
 			'unmatched' => $resolution['unmatched'],
+			'recovered' => $recovered,
 		);
+	}
+
+	/**
+	 * How many of these rows carry a score rebuilt from their punches.
+	 *
+	 * @param array<int,array<string,mixed>> $rows Parsed MapRun rows.
+	 */
+	public static function count_recovered( array $rows ): int {
+		$recovered = array_filter(
+			$rows,
+			static fn( array $row ): bool => Parser::SCORE_FIELD_PUNCHES === ( $row['score_field'] ?? '' )
+		);
+
+		return count( $recovered );
 	}
 
 	/**

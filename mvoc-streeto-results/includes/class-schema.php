@@ -75,8 +75,15 @@ class Schema {
 	 *    teaches someone to ignore the colour, and then the next real one goes
 	 *    unread. Defaults to 0, so nothing already imported is treated as
 	 *    checked.
+	 * 14: results.score_source — which field a row's score came from, or
+	 *    `punches` where MapRun reported none and the plugin rebuilt it from
+	 *    the control record. A rebuilt score is the plugin's arithmetic rather
+	 *    than MapRun's answer, and a co-ordinator publishing it should be able
+	 *    to see that on the row. Defaults to empty, which is the honest reading
+	 *    of every row imported before the column existed: unrecorded, not
+	 *    MapRun's.
 	 */
-	public const DB_VERSION = 13;
+	public const DB_VERSION = 14;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -557,6 +564,7 @@ class Schema {
 			classifier varchar(20) NOT NULL DEFAULT '',
 			course_label varchar(20) NOT NULL DEFAULT '',
 			raw_score int(11) NULL,
+			score_source varchar(20) NOT NULL DEFAULT '',
 			raw_penalty int(11) NOT NULL DEFAULT 0,
 			raw_time_secs int(10) unsigned NULL,
 			resolved_score int(11) NULL,

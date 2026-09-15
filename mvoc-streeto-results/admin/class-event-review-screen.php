@@ -499,6 +499,28 @@ class Event_Review_Screen {
 				. esc_html( $warning ) . '</p></div>';
 		}
 
+		foreach ( $feedback['recovered'] ?? array() as $course => $count ) {
+			// Deliberately its own notice rather than a line in the summary.
+			// These rows carry a score the plugin worked out, not one MapRun
+			// published, and that is the single thing about this import a
+			// co-ordinator most needs to know before pressing publish.
+			echo '<div class="notice notice-warning"><p>'
+				. esc_html(
+					sprintf(
+						/* translators: 1: number of rows, 2: course label, e.g. 60. */
+						_n(
+							'MapRun reported no score for %1$d run on the %2$s. Its score has been worked out from the controls it punched — check it before publishing.',
+							'MapRun reported no score for %1$d runs on the %2$s. Their scores have been worked out from the controls they punched — check them before publishing.',
+							(int) $count,
+							'mvoc-streeto'
+						),
+						(int) $count,
+						(string) $course
+					)
+				)
+				. '</p></div>';
+		}
+
 		if ( ! empty( $feedback['notice'] ) ) {
 			echo '<div class="notice notice-success"><p>' . esc_html( $feedback['notice'] ) . '</p></div>';
 		}
@@ -1111,6 +1133,11 @@ class Event_Review_Screen {
 							<input type="number" style="width:6em" step="10"
 								name="rows[<?php echo esc_attr( (string) $id ); ?>][score]"
 								value="<?php echo esc_attr( null === $row['score'] ? '' : (string) $row['score'] ); ?>" />
+							<?php if ( Parser::SCORE_FIELD_PUNCHES === ( $row['score_source'] ?? '' ) ) : ?>
+								<br /><span class="description">
+									<?php esc_html_e( 'from punches', 'mvoc-streeto' ); ?>
+								</span>
+							<?php endif; ?>
 						</td>
 						<td>
 							<input type="number" style="width:6em" step="1" min="0"
@@ -1249,6 +1276,7 @@ class Event_Review_Screen {
 				'warnings'  => $result['warnings'],
 				'errors'    => $result['errors'],
 				'unmatched' => $result['unmatched'],
+				'recovered' => $result['recovered'] ?? array(),
 			);
 		}
 

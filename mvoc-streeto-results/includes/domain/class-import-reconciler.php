@@ -208,6 +208,12 @@ class Import_Reconciler {
 			'classifier'          => (string) ( $row['classifier'] ?? '' ),
 			'course_label'        => (string) ( $row['course_label'] ?? '' ),
 			'raw_score'           => isset( $row['score'] ) ? (int) $row['score'] : null,
+			// Where that score came from: a MapRun field, or the punch record
+			// when MapRun reported none. Stored rather than re-derived because
+			// the payload it was derived from is a snapshot the co-ordinator
+			// can replace, and a published score should be able to say where it
+			// came from without one.
+			'score_source'        => (string) ( $row['score_field'] ?? '' ),
 			'raw_penalty'         => (int) ( $row['penalty'] ?? 0 ),
 			'raw_time_secs'       => isset( $row['time_secs'] ) ? (int) $row['time_secs'] : null,
 			// The only date MapRun sends. Kept raw, exactly as it arrived and

@@ -76,7 +76,7 @@ foreach ( Competitors_Repo::COLUMNS as $column ) {
 
 $results = \MVOC\StreetO\Schema::table( 'results' );
 $rcols   = $wpdb->get_col( "SHOW COLUMNS FROM `$results`" );
-foreach ( array( 'raw_is_over55', 'is_withdrawn', 'resolved_penalty' ) as $column ) {
+foreach ( array( 'raw_is_over55', 'is_withdrawn', 'resolved_penalty', 'score_source' ) as $column ) {
 	check( "results.$column exists", in_array( $column, $rcols, true ) );
 }
 

@@ -381,6 +381,13 @@ class Results_Repo {
 			'classifier'      => $row['classifier'],
 			'course_label'    => $course,
 			'score'           => $row['resolved_score'] ?? $row['raw_score'],
+			// Where the score being published came from. A correction is the
+			// co-ordinator's own figure, so it answers for itself and the
+			// import's provenance no longer describes what is on the row —
+			// which is why this is emptied rather than carried over.
+			'score_source'    => null === ( $row['resolved_score'] ?? null )
+				? (string) ( $row['score_source'] ?? '' )
+				: '',
 			// ?? not ?: - a penalty corrected to zero is a real correction, and
 			// must not fall through to the recomputed or raw value.
 			'penalty'         => $row['resolved_penalty'] ?? $recomputed ?? $maprun,

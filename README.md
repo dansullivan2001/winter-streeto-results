@@ -134,6 +134,27 @@ differ. A correction typed into the Penalty box still beats both. Where the elap
 the course's limit is unknown — a hand-added row, an unrecognised course label — MapRun's
 penalty stands, because a missing time is not evidence that nobody was late.
 
+**When MapRun reports no score, the punches are scored instead.** MapRun only scores an
+event it recognises as a score course, and whether it does comes down to the course name.
+Burpham, September 2026, was set up as `Score Q60` with a space in it: MapRun marked all 44
+finishers MP and returned `GrossScore: 0` for every one of them — while recording every
+punch, in order, with its split time. The names pulled through and the table published a
+field of nobodies on nil points.
+
+So where MapRun reports no score, or zero, **and** the row carries punches, the score is
+rebuilt from the control record: a control is worth its first digit times ten (13 scores 10,
+27 scores 20, 55 scores 50), each control counting once however many times it was punched.
+Nothing else is touched. A row MapRun scored keeps MapRun's figure even where the plugin
+would have made the total something else, and a failed upload — no punches — keeps its
+nothing rather than becoming a runner who scored nil.
+
+A rebuilt score is not passed off as MapRun's. The import says how many rows it rebuilt, the
+review screen marks each one *from punches* beside its score, and `results.score_source`
+records it on the row. The club's late penalty is recomputed from the elapsed time as it is
+for any other row; no penalty is attributed to MapRun, which charged none. Fixing the course
+name in MapRun is still worth doing — a re-import then simply takes MapRun's own figures
+again.
+
 ```
 Position = count(better totals) + 1 + count(equal total with a smaller penalty)
 ```

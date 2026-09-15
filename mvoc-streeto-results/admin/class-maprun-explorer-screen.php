@@ -250,6 +250,20 @@ class MapRun_Explorer_Screen {
 	private function render_score_hint( array $parsed ): void {
 		$fields = array_filter( array_column( $parsed, 'score_field' ) );
 
+		// `punches` is not a MapRun field and must never be reported as one:
+		// this screen exists to pin down what MapRun actually sends, and a
+		// response the plugin had to reconstruct scores from is the opposite of
+		// a confirmation. Named first, because a response where every row was
+		// rebuilt would otherwise be announced as a success.
+		if ( in_array( Parser::SCORE_FIELD_PUNCHES, $fields, true ) ) {
+			printf(
+				'<div class="notice notice-warning inline"><p>%s</p></div>',
+				esc_html__( 'MapRun reported no score on some or all of these rows, and the scores shown were worked out from the controls each run punched. That usually means the event was not set up as a score course in MapRun — worth fixing there as well.', 'mvoc-streeto' )
+			);
+
+			return;
+		}
+
 		if ( $fields ) {
 			$field = (string) reset( $fields );
 			printf(
