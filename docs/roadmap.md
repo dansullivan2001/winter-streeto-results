@@ -174,3 +174,30 @@ three were in code no database-free test can reach — two repository methods an
 the call above. `SchemaConsistencyTest` closes part of the gap by reading the
 DDL and comparing it against what the repos write, but it cannot catch a query
 that is syntactically fine and semantically wrong.
+
+---
+
+## Dead `data-label` attributes on the league table
+
+**Status:** harmless, but it is markup that describes a layout nobody renders.
+
+Every body cell in `public/templates/league-table.php` carries a `data-label`
+attribute — `Pos`, `Name`, `Events`, `Total` and the three category columns.
+They were there to feed a `content: attr(data-label) ": "` rule, which turned a
+row into a stack of labelled lines on a narrow screen. That rule only ever
+existed for the *event* table, and it was removed in 1.1.5 when narrow screens
+went back to dropping columns instead of unfolding rows. The league table's
+copies never had a rule to feed and now have no counterpart anywhere.
+
+Nothing reads them: not the stylesheet, not `public/js/league.js`, not a screen
+reader — a `data-` attribute is invisible to assistive technology, which takes
+the column association from the `<th scope="col">` headings.
+
+**Cost to build:** deleting seven attributes from one template, and checking no
+test asserts on them. The event table's equivalents went in the same release, so
+this is the other half of one change rather than new work.
+
+**Why it is deferred:** it was outside the change that made it dead, and it
+costs a plugin version bump and a release to ship a cosmetic edit on its own.
+Worth folding into the next release that touches the league template for a real
+reason.
