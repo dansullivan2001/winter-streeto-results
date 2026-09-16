@@ -11,6 +11,23 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <div class="mvoc-streeto mvoc-streeto-event">
+	<?php
+	// The table sits directly under the organiser's write-up on the event page,
+	// so it needs a heading and a rule above it — without them the prose runs
+	// straight into the header row. Numbered rather than titled: the page
+	// heading already carries the venue, and the number is what the report and
+	// the league tables below refer to.
+	?>
+	<h3 class="mvoc-streeto-event-heading">
+		<?php
+		printf(
+			/* translators: %d: event number within the series. */
+			esc_html__( 'Event %d results', 'mvoc-streeto' ),
+			(int) $event['event_number']
+		);
+		?>
+	</h3>
+
 	<?php if ( ! $event['is_published'] ) : ?>
 		<p class="mvoc-streeto-draft"><?php esc_html_e( 'Draft — visible only to you until published.', 'mvoc-streeto' ); ?></p>
 	<?php endif; ?>

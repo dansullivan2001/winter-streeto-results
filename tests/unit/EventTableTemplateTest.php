@@ -69,7 +69,7 @@ class EventTableTemplateTest extends TestCase {
 			$scored,
 			array( array( 'display_name' => 'The Organiser', 'club' => 'MVOC' ) )
 		);
-		$event = array( 'label' => 'Event 1 — Epsom Downs', 'is_published' => true );
+		$event = array( 'label' => 'Event 1 — Epsom Downs', 'event_number' => 1, 'is_published' => true );
 
 		ob_start();
 		require MVOC_STREETO_DIR . 'public/templates/event-table.php';
@@ -101,6 +101,18 @@ class EventTableTemplateTest extends TestCase {
 				sprintf( 'row %d does not line up with the headings', $index )
 			);
 		}
+	}
+
+	public function test_the_table_is_introduced_by_a_numbered_heading(): void {
+		// The shortcode lands under the organiser's report, so the block has to
+		// announce itself rather than starting at the header row.
+		$html = $this->render();
+
+		$this->assertStringContainsString(
+			'<h3 class="mvoc-streeto-event-heading">',
+			$html
+		);
+		$this->assertStringContainsString( 'Event 1 results', $html );
 	}
 
 	public function test_the_category_headings_are_the_shared_ones(): void {

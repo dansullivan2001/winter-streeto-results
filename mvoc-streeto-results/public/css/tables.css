@@ -7,6 +7,21 @@
  * StreetO results get read on a phone in a car park.
  */
 
+/* The event table is dropped straight under the organiser's report on the
+   event page, where the prose otherwise runs into the header row with nothing
+   between them. The rule and the heading are that break. Only the event block
+   carries it: the league table sits below the event table rather than below
+   body text, and already opens with its own heading. */
+.mvoc-streeto-event {
+	border-top: 1px solid rgba(0, 0, 0, 0.15);
+	margin-top: 2em;
+	padding-top: 1em;
+}
+
+.mvoc-streeto-event-heading {
+	margin-top: 0;
+}
+
 .mvoc-streeto-table {
 	border-collapse: collapse;
 	width: 100%;
