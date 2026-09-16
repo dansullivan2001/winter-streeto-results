@@ -27,30 +27,6 @@ defined( 'ABSPATH' ) || exit;
  */
 class League_Presenter {
 
-	/**
-	 * Category => the standings field carrying that category's position.
-	 *
-	 * @var array<string,string>
-	 */
-	private const CATEGORY_FIELDS = array(
-		'overall'   => 'position',
-		'ladies'    => 'ladies_position',
-		'o55_men'   => 'o55_men_position',
-		'o55_women' => 'o55_women_position',
-	);
-
-	/**
-	 * Human labels for each category.
-	 *
-	 * @var array<string,string>
-	 */
-	private const CATEGORY_LABELS = array(
-		'overall'   => 'Overall',
-		'ladies'    => 'Ladies',
-		'o55_men'   => 'Over 55 Men',
-		'o55_women' => 'Over 55 Women',
-	);
-
 	private Scoring_Config $config;
 
 	/**
@@ -66,7 +42,7 @@ class League_Presenter {
 	 * @param string $category Category key.
 	 */
 	public static function is_category( string $category ): bool {
-		return isset( self::CATEGORY_FIELDS[ $category ] );
+		return Categories::exists( $category );
 	}
 
 	/**
@@ -75,7 +51,7 @@ class League_Presenter {
 	 * @return string[]
 	 */
 	public static function categories(): array {
-		return array_keys( self::CATEGORY_FIELDS );
+		return Categories::keys();
 	}
 
 	/**
@@ -91,7 +67,7 @@ class League_Presenter {
 			$category = 'overall';
 		}
 
-		$field = self::CATEGORY_FIELDS[ $category ];
+		$field = Categories::fields()[ $category ];
 		$rows  = array();
 
 		foreach ( $standings as $row ) {
@@ -116,7 +92,7 @@ class League_Presenter {
 				'event_points'     => self::event_detail( $row, $events ),
 				// Every ranking on every row, so one table can show them all
 				// side by side the way the club's spreadsheet did.
-				'positions'        => self::all_positions( $row ),
+				'positions'        => Categories::positions_of( $row ),
 				'overall_position' => $row['position'] ?? null,
 			);
 		}
@@ -125,7 +101,7 @@ class League_Presenter {
 
 		return array(
 			'category'        => $category,
-			'label'           => self::CATEGORY_LABELS[ $category ],
+			'label'           => Categories::labels()[ $category ],
 			'events'          => $events,
 			'rows'            => $rows,
 			// Carried so the published footnote states this series' rule rather
@@ -136,37 +112,12 @@ class League_Presenter {
 	}
 
 	/**
-	 * Every category ranking for one competitor, keyed by category.
-	 *
-	 * Null where they are not in that category, which is what lets the table
-	 * leave a cell blank rather than implying a position they do not hold.
-	 *
-	 * @param array<string,mixed> $row Standings row.
-	 * @return array<string,int|null>
-	 */
-	private static function all_positions( array $row ): array {
-		$positions = array();
-
-		foreach ( self::CATEGORY_FIELDS as $category => $field ) {
-			$value = $row[ $field ] ?? null;
-
-			$positions[ $category ] = null === $value ? null : (int) $value;
-		}
-
-		return $positions;
-	}
-
-	/**
 	 * Column headings for the category rankings, in display order.
 	 *
 	 * @return array<string,string>
 	 */
 	public static function category_columns(): array {
-		return array(
-			'ladies'    => 'Ladies',
-			'o55_men'   => 'M55',
-			'o55_women' => 'W55',
-		);
+		return Categories::columns();
 	}
 
 	/**

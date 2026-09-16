@@ -33,6 +33,16 @@ defined( 'ABSPATH' ) || exit;
 						<td data-label="<?php esc_attr_e( 'Pos', 'mvoc-streeto' ); ?>">
 							<?php echo esc_html( $row['position_label'] ?: '—' ); ?>
 						</td>
+						<?php foreach ( \MVOC\StreetO\Domain\Categories::columns() as $key => $label ) : ?>
+							<?php
+							// Blank rather than a dash where they are not in the
+							// category: a dash reads as "no position yet". Written
+							// on one line so the cell is genuinely empty, which is
+							// what lets the stacked phone layout drop it instead of
+							// printing a label with nothing after it.
+							?>
+							<td class="mvoc-streeto-category-col" data-label="<?php echo esc_attr( $label ); ?>"><?php echo isset( $row['positions'][ $key ] ) && null !== $row['positions'][ $key ] ? esc_html( (string) $row['positions'][ $key ] ) : ''; ?></td>
+						<?php endforeach; ?>
 						<th scope="row" data-label="<?php esc_attr_e( 'Name', 'mvoc-streeto' ); ?>">
 							<?php echo esc_html( $row['name'] ); ?>
 							<?php if ( ! empty( $row['is_organiser'] ) ) : ?>

@@ -1,0 +1,126 @@
+<?php
+/**
+ * Tests that the published event table has as many cells as it has headings.
+ *
+ * The headings come from Event_Presenter::columns(); the body cells are written
+ * out in the template. Adding a column to one and not the other does not fail
+ * anywhere — it publishes a table where every figure sits under the wrong
+ * heading, which reads as plausible and is wrong. That is the whole risk of
+ * having added three columns, so it is asserted here by rendering the template
+ * rather than by reading it.
+ *
+ * The template's WordPress helpers are stubbed to their plain-PHP equivalents.
+ * That is enough to render it: escaping is WordPress's business and is tested
+ * by WordPress, whereas the shape of the table is this plugin's.
+ *
+ * @package MVOC_StreetO
+ */
+
+use MVOC\StreetO\Domain\Categories;
+use MVOC\StreetO\Domain\Event_Presenter;
+use MVOC\StreetO\Domain\Scoring_Engine;
+use PHPUnit\Framework\TestCase;
+
+if ( ! function_exists( 'esc_html' ) ) {
+	function esc_html( $text ) {
+		return htmlspecialchars( (string) $text, ENT_QUOTES );
+	}
+
+	function esc_attr( $text ) {
+		return htmlspecialchars( (string) $text, ENT_QUOTES );
+	}
+
+	function esc_html_e( $text, $domain = '' ) {
+		echo esc_html( $text ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
+	function esc_attr_e( $text, $domain = '' ) {
+		echo esc_attr( $text ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
+	function esc_html__( $text, $domain = '' ) {
+		return esc_html( $text );
+	}
+}
+
+/**
+ * @coversNothing
+ */
+class EventTableTemplateTest extends TestCase {
+
+	/**
+	 * Render the published template for a field covering every case.
+	 *
+	 * @return string
+	 */
+	private function render(): string {
+		$scored = ( new Scoring_Engine() )->score_event(
+			array(
+				array( 'display_name' => 'Overall Winner', 'club' => 'MVOC', 'course_label' => '60', 'score' => 1180, 'penalty' => 0 ),
+				array( 'display_name' => 'Leading Lady', 'club' => '', 'course_label' => '60', 'score' => 960, 'penalty' => 0, 'is_female' => true ),
+				// Short course, so the scaling footnote renders too.
+				array( 'display_name' => 'Vet Lady', 'club' => 'MVOC', 'course_label' => '40', 'score' => 600, 'penalty' => 0, 'is_female' => true, 'is_over55' => true ),
+				array( 'display_name' => 'Vet Man', 'club' => '', 'course_label' => '60', 'score' => 780, 'penalty' => 30, 'is_over55' => true ),
+				array( 'display_name' => 'Unconfirmed', 'club' => '', 'course_label' => '60', 'score' => 500, 'penalty' => 0 ),
+			)
+		);
+
+		$model = ( new Event_Presenter() )->present(
+			$scored,
+			array( array( 'display_name' => 'The Organiser', 'club' => 'MVOC' ) )
+		);
+		$event = array( 'label' => 'Event 1 — Epsom Downs', 'is_published' => true );
+
+		ob_start();
+		require MVOC_STREETO_DIR . 'public/templates/event-table.php';
+
+		return (string) ob_get_clean();
+	}
+
+	public function test_every_row_has_a_cell_for_every_heading(): void {
+		$html = $this->render();
+
+		$this->assertSame( 1, preg_match( '#<thead>(.*?)</thead>#s', $html, $head ) );
+		$headings = substr_count( $head[1], '<th ' );
+
+		$this->assertSame(
+			count( ( new Event_Presenter() )->columns() ),
+			$headings,
+			'the template renders its headings from the presenter, so these cannot differ'
+		);
+
+		$this->assertSame( 1, preg_match( '#<tbody>(.*?)</tbody>#s', $html, $body ) );
+
+		// Five runners and the organiser.
+		$this->assertSame( 6, preg_match_all( '#<tr[^>]*>.*?</tr>#s', $body[1], $rows ) );
+
+		foreach ( $rows[0] as $index => $row ) {
+			$this->assertSame(
+				$headings,
+				substr_count( $row, '<td' ) + substr_count( $row, '<th ' ),
+				sprintf( 'row %d does not line up with the headings', $index )
+			);
+		}
+	}
+
+	public function test_the_category_headings_are_the_shared_ones(): void {
+		$html = $this->render();
+
+		foreach ( Categories::columns() as $label ) {
+			$this->assertStringContainsString(
+				'<th scope="col">' . $label . '</th>',
+				$html
+			);
+		}
+	}
+
+	public function test_a_category_a_runner_is_not_in_leaves_a_genuinely_empty_cell(): void {
+		// Not a dash, which reads as "no position yet" — and truly empty, with
+		// no stray whitespace, because the stacked phone layout hides an empty
+		// cell rather than printing its label with nothing after it.
+		$html = $this->render();
+
+		$this->assertStringContainsString( 'data-label="W55"></td>', $html );
+		$this->assertStringContainsString( 'data-label="W55">1</td>', $html );
+	}
+}

@@ -354,6 +354,9 @@ class Help_Screen {
 		<p class="description">
 			<?php esc_html_e( 'Two shortcodes: one event\'s results, and the league standings. Put the event\'s own shortcode on its page, followed by the league as it stood at that point in the season.', 'mvoc-streeto' ); ?>
 		</p>
+		<p class="description">
+			<?php esc_html_e( 'Both tables carry the Ladies, M55 and W55 rankings beside the overall position — on the night for an event, over the season for the league — blank where someone is not in that category. A result with no name confirmed against it holds no category at all, because the categories are read from the competitor record: it still ranks overall, but its three category cells stay blank. League table warns about those rows before you publish.', 'mvoc-streeto' ); ?>
+		</p>
 		<p>
 			<code>[mvoc_streeto_event series="2026-27" number="1"]</code><br />
 			<code>[mvoc_streeto_league series="2026-27" through_event="1"]</code><br />

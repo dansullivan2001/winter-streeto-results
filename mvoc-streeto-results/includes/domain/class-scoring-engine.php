@@ -40,11 +40,19 @@ class Scoring_Engine {
 	 *   course_label  string     a label from Scoring_Config::course_labels(), defaults to '60'
 	 *   is_organiser  bool       organiser: listed, but not ranked
 	 *   is_excluded   bool       test run, course setter, duplicate
+	 *   is_female     bool       for the Ladies and W55 rankings
+	 *   is_over55     bool       for the M55 and W55 rankings
 	 *
 	 * Returned rows keep every input key and gain `total`, `position`,
 	 * `position_label` and `league_points`. Rows that are not ranked get null
 	 * for all four rather than being dropped: the co-ordinator still needs to
 	 * see them, and the organiser still appears on the published table.
+	 *
+	 * Each row also gains `ladies_position`, `o55_men_position` and
+	 * `o55_women_position`, ranked among the rows carrying the matching
+	 * `is_female` / `is_over55` flags and null for everyone else. A caller that
+	 * does not supply those flags gets nulls throughout, which is what the
+	 * league does — it ranks the categories itself, over the season.
 	 *
 	 * @param array<int,array<string,mixed>> $rows Result rows.
 	 * @return array<int,array<string,mixed>> Scored rows, ranked first.
@@ -137,6 +145,31 @@ class Scoring_Engine {
 	/**
 	 * Assign positions and league points in place.
 	 *
+	 * @param array<int,array<string,mixed>> $rows Scored rows, modified in place.
+	 */
+	private function assign_positions( array &$rows ): void {
+		$ranked = array();
+		foreach ( $rows as $index => $row ) {
+			if ( null !== $row['total'] ) {
+				$ranked[ $index ] = array(
+					'total'   => $row['total'],
+					'penalty' => $this->tiebreak_penalty( $row ),
+				);
+			}
+		}
+
+		foreach ( $this->rank( $ranked ) as $index => $position ) {
+			$rows[ $index ]['position']       = $position;
+			$rows[ $index ]['position_label'] = self::ordinal( $position );
+			$rows[ $index ]['league_points']  = $this->config->points_for_position( $position );
+		}
+
+		$this->assign_category_positions( $rows, $ranked );
+	}
+
+	/**
+	 * Rank a set of comparable rows against each other.
+	 *
 	 * This is the club's own formula, kept in its original shape:
 	 *
 	 *   position = count(total > mine)
@@ -152,18 +185,11 @@ class Scoring_Engine {
 	 * irrelevant, and being able to read it against the spreadsheet formula is
 	 * worth more here than an asymptotically better version.
 	 *
-	 * @param array<int,array<string,mixed>> $rows Scored rows, modified in place.
+	 * @param array<int,array{total:int,penalty:float}> $ranked Comparable rows, keyed however the caller keyed them.
+	 * @return array<int,int> The same keys, each mapped to its position.
 	 */
-	private function assign_positions( array &$rows ): void {
-		$ranked = array();
-		foreach ( $rows as $index => $row ) {
-			if ( null !== $row['total'] ) {
-				$ranked[ $index ] = array(
-					'total'   => $row['total'],
-					'penalty' => $this->tiebreak_penalty( $row ),
-				);
-			}
-		}
+	private function rank( array $ranked ): array {
+		$positions = array();
 
 		foreach ( $ranked as $index => $mine ) {
 			$better = 0;
@@ -177,11 +203,43 @@ class Scoring_Engine {
 				}
 			}
 
-			$position = $better + 1 + $ahead;
+			$positions[ $index ] = $better + 1 + $ahead;
+		}
 
-			$rows[ $index ]['position']       = $position;
-			$rows[ $index ]['position_label'] = self::ordinal( $position );
-			$rows[ $index ]['league_points']  = $this->config->points_for_position( $position );
+		return $positions;
+	}
+
+	/**
+	 * Rank each category within the event, in place.
+	 *
+	 * The same formula over a subset, exactly as the league ranks its own
+	 * categories over the season — so a category winner on the night is
+	 * decided by the rule that decides the event, not a second one.
+	 *
+	 * Null for a row outside the category, and for every unranked row, which is
+	 * what lets the published table leave the cell blank. A result nobody is
+	 * confirmed against carries no flags, so it ranks overall and in no
+	 * category — the same treatment it gets in the league, where an
+	 * unconfirmed name is absent from the standings altogether.
+	 *
+	 * @param array<int,array<string,mixed>>            $rows   Scored rows, modified in place.
+	 * @param array<int,array{total:int,penalty:float}> $ranked The rows taking part in the ranking.
+	 */
+	private function assign_category_positions( array &$rows, array $ranked ): void {
+		$fields = Categories::fields();
+
+		foreach ( Categories::predicates() as $category => $qualifies ) {
+			if ( Categories::OVERALL === $category ) {
+				continue;
+			}
+
+			$positions = $this->rank(
+				array_intersect_key( $ranked, array_filter( $rows, $qualifies ) )
+			);
+
+			foreach ( array_keys( $rows ) as $index ) {
+				$rows[ $index ][ $fields[ $category ] ] = $positions[ $index ] ?? null;
+			}
 		}
 	}
 

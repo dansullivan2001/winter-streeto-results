@@ -11,6 +11,7 @@
 
 namespace MVOC\StreetO\Admin;
 
+use MVOC\StreetO\Domain\Categories;
 use MVOC\StreetO\Domain\Duplicate_Detector;
 use MVOC\StreetO\Domain\Event_Presenter;
 use MVOC\StreetO\Domain\Manual_Entry_Parser;
@@ -85,10 +86,20 @@ class Event_Review_Screen {
 		$feedback = $this->handle_post( $event );
 		$event    = $this->events->find_event_by_id( $event_id ) ?? $event;
 
-		$rows               = $this->results->for_event( $event_id );
-		$config             = $this->events->scoring_config( $this->series_for( $event ) );
-		$effective          = Results_Repo::effective_rows( $rows, $config );
-		$scored             = ( new Scoring_Engine( $config ) )->score_event( $effective );
+		$rows      = $this->results->for_event( $event_id );
+		$series    = $this->series_for( $event );
+		$config    = $this->events->scoring_config( $series );
+		$effective = Results_Repo::effective_rows( $rows, $config );
+
+		// The category flags come from the competitor and their season, so the
+		// preview below ranks Ladies, M55 and W55 from exactly what the published
+		// table will — including leaving a row blank where no name is confirmed
+		// against it yet, which is worth seeing before publishing rather than
+		// after.
+		$scored = ( new Scoring_Engine( $config ) )->score_event(
+			Categories::apply( $effective, $this->competitors->category_flags( (int) ( $series['id'] ?? 0 ) ) )
+		);
+
 		$competitors        = $this->competitors->all();
 		$competitor_names   = array_column( $competitors, 'display_name', 'id' );
 		$current_organisers = $this->events->organisers( $event_id );
@@ -1354,6 +1365,10 @@ class Event_Review_Screen {
 		foreach ( $model['rows'] as $row ) {
 			echo '<tr>';
 			echo '<td>' . esc_html( $row['position_label'] ?: '—' ) . '</td>';
+			foreach ( array_keys( Categories::columns() ) as $key ) {
+				$place = $row['positions'][ $key ] ?? null;
+				echo '<td>' . esc_html( null === $place ? '' : (string) $place ) . '</td>';
+			}
 			echo '<td>' . esc_html( $row['name'] ) . '</td>';
 			echo '<td>' . esc_html( $row['club'] ) . '</td>';
 			echo '<td>' . esc_html( $row['course'] ) . '</td>';

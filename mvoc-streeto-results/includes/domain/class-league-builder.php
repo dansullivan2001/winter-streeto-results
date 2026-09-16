@@ -30,23 +30,25 @@ class League_Builder {
 	public const ORGANISER_SLOT = 'organiser';
 
 	/**
-	 * The categories the league is ranked in.
+	 * The categories the league is ranked in, as position field => predicate.
 	 *
 	 * Every one is the same competition ranking over a different subset, so
-	 * they are declared as predicates and the ranking is written once. The
-	 * Over-55 titles are awarded separately to a man and a woman, which is why
-	 * the filter has to be a predicate rather than a single flag name — and
-	 * why adding a fifth category later costs one line.
+	 * the ranking below is written once and run against each. The definitions
+	 * come from Categories, which the event table ranks by too — the two
+	 * tables disagreeing about who is a W55 would be a bad way to find out
+	 * that the list had been copied.
 	 *
 	 * @return array<string,callable(array<string,mixed>):bool>
 	 */
 	private static function categories(): array {
-		return array(
-			'position'            => static fn( array $c ): bool => true,
-			'ladies_position'     => static fn( array $c ): bool => ! empty( $c['is_female'] ),
-			'o55_men_position'    => static fn( array $c ): bool => ! empty( $c['is_over55'] ) && empty( $c['is_female'] ),
-			'o55_women_position'  => static fn( array $c ): bool => ! empty( $c['is_over55'] ) && ! empty( $c['is_female'] ),
-		);
+		$fields     = Categories::fields();
+		$predicates = array();
+
+		foreach ( Categories::predicates() as $category => $qualifies ) {
+			$predicates[ $fields[ $category ] ] = $qualifies;
+		}
+
+		return $predicates;
 	}
 
 	private Scoring_Config $config;

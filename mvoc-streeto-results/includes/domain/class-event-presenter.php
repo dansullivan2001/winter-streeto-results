@@ -3,7 +3,10 @@
  * Turns scored event rows into the table the club publishes.
  *
  * Columns were chosen with the club: Position, Name, Club, Course, Score, Time
- * Penalty, Total, League points.
+ * Penalty, Total, League points — with the Ladies, M55 and W55 rankings beside
+ * the overall position, in the same place and the same order as the league
+ * table, so the four competitions read the same way on the night as they do
+ * over the season.
  *
  * Elapsed time is deliberately absent. The league's tie-break ignores it — two
  * equal totals with equal penalties finish equal however fast either runner was
@@ -41,7 +44,11 @@ class Event_Presenter {
 	 * @return string[]
 	 */
 	public function columns(): array {
-		return array( 'Pos', 'Name', 'Club', 'Course', 'Score', 'Penalty', 'Total', 'League pts' );
+		return array_merge(
+			array( 'Pos' ),
+			array_values( Categories::columns() ),
+			array( 'Name', 'Club', 'Course', 'Score', 'Penalty', 'Total', 'League pts' )
+		);
 	}
 
 	/**
@@ -88,6 +95,9 @@ class Event_Presenter {
 				'total'          => $row['total'],
 				'league_points'  => $row['league_points'],
 				'is_scaled'      => 1.0 !== $factor,
+				// Every ranking this row holds, the way the league table carries
+				// them, so the template renders one set of columns either side.
+				'positions'      => Categories::positions_of( $row ),
 			);
 		}
 
@@ -107,6 +117,9 @@ class Event_Presenter {
 				'league_points'  => null,
 				'is_organiser'   => true,
 				'is_scaled'      => false,
+				// Unranked, so no ranking anywhere — not even in a category they
+				// belong to. Their reward for the night is the league bonus.
+				'positions'      => Categories::positions_of( array() ),
 			);
 		}
 

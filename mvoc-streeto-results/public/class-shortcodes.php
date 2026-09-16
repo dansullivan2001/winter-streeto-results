@@ -18,6 +18,7 @@
 
 namespace MVOC\StreetO\Front;
 
+use MVOC\StreetO\Domain\Categories;
 use MVOC\StreetO\Domain\Event_Presenter;
 use MVOC\StreetO\Domain\Scoring_Engine;
 use MVOC\StreetO\League_Cache;
@@ -117,8 +118,15 @@ class Shortcodes {
 		$series = $this->resolve_series( (string) $atts['series'] );
 		$config = $this->events->scoring_config( $series ?? array() );
 
+		// Ladies, M55 and W55 are facts about the competitor and their season,
+		// not about the result row, so they are merged on before scoring — which
+		// is what lets the engine rank the categories alongside the overall
+		// position, from the same figures and by the same rule.
 		$scored = ( new Scoring_Engine( $config ) )->score_event(
-			Results_Repo::effective_rows( $this->results->for_event( $event['id'] ), $config )
+			Categories::apply(
+				Results_Repo::effective_rows( $this->results->for_event( $event['id'] ), $config ),
+				$this->competitors->category_flags( (int) ( $series['id'] ?? 0 ) )
+			)
 		);
 
 		$organiser_ids = $this->events->organisers( (int) $event['id'] );

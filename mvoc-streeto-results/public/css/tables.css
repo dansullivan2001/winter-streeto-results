@@ -27,19 +27,24 @@
 	border-bottom-width: 2px;
 }
 
-/* Numeric columns read better right-aligned and hard to confuse when they
-   line up: everything except position and name. */
-.mvoc-streeto-table td:nth-child(n + 5),
-.mvoc-streeto-table thead th:nth-child(n + 5) {
+/* Numeric columns read better right-aligned and hard to confuse when they line
+   up. Both tables open the same way — Pos, then the Ladies, M55 and W55
+   rankings, then Name — but what follows differs, so each says where its own
+   figures start rather than sharing a rule that can only suit one of them. */
+.mvoc-streeto-league-table td:nth-child(n + 5),
+.mvoc-streeto-league-table thead th:nth-child(n + 5),
+.mvoc-streeto-event .mvoc-streeto-table td:nth-child(n + 8),
+.mvoc-streeto-event .mvoc-streeto-table thead th:nth-child(n + 8) {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
 
-/* In the league table specifically, column 5 is Name (Pos + the three
-   category columns come first). Its body cell is a <th>, so the rule above
-   never touched it, but its header cell is a <th> like the rest of the
-   header row and was caught by it — left it here rather than excluded. */
-.mvoc-streeto-table.mvoc-streeto-league-table thead th:nth-child(5) {
+/* In the league table, column 5 is Name. Its body cell is a <th>, so the rule
+   above never touched it, but its header cell is a <th> like the rest of the
+   header row and was caught by it — left it here rather than excluded. The
+   event table's Name sits at 5 too, ahead of Club and Course, so its own rule
+   starts past all three and needs no such exception. */
+.mvoc-streeto-league-table thead th:nth-child(5) {
 	text-align: left;
 }
 
@@ -139,6 +144,10 @@
  * The league's category columns are the first thing to drop on a small screen:
  * they are the least-read part of the table, and the same rankings are
  * available in full through the per-category shortcodes.
+ *
+ * The event table's are kept, because below it stops being a grid at all: its
+ * rankings become two or three more labelled lines in a stack that scrolls
+ * down rather than sideways, and a blank one is dropped by the :empty rule.
  */
 @media (max-width: 560px) {
 	.mvoc-streeto-league .mvoc-streeto-category-col {

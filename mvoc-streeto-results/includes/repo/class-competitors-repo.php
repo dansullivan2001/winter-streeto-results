@@ -222,6 +222,30 @@ class Competitors_Repo {
 	}
 
 	/**
+	 * Each competitor's category flags for one season, keyed by competitor id.
+	 *
+	 * What the event table needs to rank its Ladies, M55 and W55 columns, in
+	 * the shape Categories::apply() merges onto result rows. Ladies belongs to
+	 * the person and Over-55 to the season, exactly as the league reads them,
+	 * so neither table can classify anyone differently from the other.
+	 *
+	 * @param int $series_id Series id.
+	 * @return array<int,array{is_female:bool,is_over55:bool}>
+	 */
+	public function category_flags( int $series_id ): array {
+		$flags = array();
+
+		foreach ( $this->all_for_series( $series_id ) as $competitor ) {
+			$flags[ (int) $competitor['id'] ] = array(
+				'is_female' => (bool) $competitor['is_female'],
+				'is_over55' => (bool) $competitor['is_over55'],
+			);
+		}
+
+		return $flags;
+	}
+
+	/**
 	 * Record a confirmed name spelling against a competitor.
 	 *
 	 * Aliases are unique on the normalised name, so re-confirming the same

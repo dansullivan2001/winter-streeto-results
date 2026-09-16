@@ -71,11 +71,23 @@ Then put the shortcodes on the event page:
 [mvoc_streeto_league series="2026-27" through_event="1" category="ladies"]
 ```
 
-The league table shows every ranking side by side — Pos, Ladies, M55 and W55 — the way the
-club's spreadsheet did, with a cell left blank where someone is not in that category. The
-`category` attribute filters which *rows* appear rather than which columns, so a ladies table
-still shows where each of them sits overall. Categories are `overall`, `ladies`, `o55_men`
-and `o55_women`.
+Both tables show every ranking side by side — Pos, Ladies, M55 and W55 — the way the club's
+spreadsheet did, with a cell left blank where someone is not in that category. On the event
+table those are the rankings *on the night*, decided by the same rule as the overall
+position and renumbered from one, so the leading lady reads 1st in the Ladies column
+whatever she is overall. On the league table they are the season's standings. The organiser
+is unranked in all four, on the night as before — their reward is the league bonus.
+
+A runner's Ladies and Over-55 status comes from their competitor record, which is also
+where the league reads it, so the two tables on one page can never classify anyone
+differently. The corollary is that a result with **no name confirmed against it** holds no
+category at all: it ranks overall and leaves the three category cells blank. **StreetO
+Results → League table** warns about exactly those rows before you publish.
+
+The `category` attribute filters which *rows* appear rather than which columns, so a ladies
+league table still shows where each of them sits overall. Categories are `overall`,
+`ladies`, `o55_men` and `o55_women`. It applies to the league shortcode only — an event
+table always lists the whole field.
 
 `through_event` caps the standings at that event number, so event 1's page keeps recording
 the league as it stood after event 1 even once later events publish. It's still computed
@@ -115,7 +127,12 @@ The rules were reverse-engineered from the club's own spreadsheet and are verifi
 its cached results — a whole event and a whole season are committed as fixtures and
 reproduced exactly.
 
-**Event table.** `Total = round((Score − Penalty) × factor)`, where the factor brings a
+**Event table.** Position, Ladies, M55, W55, Name, Club, Course, Score, Penalty, Total,
+League points. Elapsed time is deliberately absent: the tie-break ignores it, so a time
+column would only invite "why am I below someone slower?" when the rule simply does not
+look at time.
+
+`Total = round((Score − Penalty) × factor)`, where the factor brings a
 40-minute result onto the 60-minute scale. The club's event information states that rule
 directly: the *net* score is multiplied by 150%, which is exactly 60/40 — and "net" is what
 settles that the penalty comes off before the scaling.

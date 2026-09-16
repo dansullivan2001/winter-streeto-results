@@ -258,6 +258,95 @@ class ScoringEngineTest extends TestCase {
 		$this->assertSame( 100, $revived->points_for_position( 1 ) );
 	}
 
+	public function test_each_category_is_ranked_within_the_event(): void {
+		// The same field, ranked four ways. Each category renumbers from one,
+		// so the leading lady is 1st among the ladies whatever she is overall.
+		$scored = ( new Scoring_Engine() )->score_event(
+			array(
+				array( 'display_name' => 'Man', 'score' => 1000, 'penalty' => 0 ),
+				array( 'display_name' => 'Lady', 'score' => 900, 'penalty' => 0, 'is_female' => true ),
+				array( 'display_name' => 'M55', 'score' => 800, 'penalty' => 0, 'is_over55' => true ),
+				array( 'display_name' => 'W55', 'score' => 700, 'penalty' => 0, 'is_female' => true, 'is_over55' => true ),
+			)
+		);
+
+		$by_name = array_column( $scored, null, 'display_name' );
+
+		$this->assertSame( 1, $by_name['Lady']['ladies_position'] );
+		$this->assertSame( 2, $by_name['W55']['ladies_position'] );
+		$this->assertSame( 1, $by_name['W55']['o55_women_position'] );
+		$this->assertSame( 1, $by_name['M55']['o55_men_position'] );
+
+		// And nobody is ranked in a category they are not in.
+		$this->assertNull( $by_name['Man']['ladies_position'] );
+		$this->assertNull( $by_name['Lady']['o55_women_position'] );
+		$this->assertNull( $by_name['W55']['o55_men_position'] );
+	}
+
+	public function test_a_category_is_ranked_by_the_same_rule_as_the_event(): void {
+		// Equal totals finish equal and are separated only by penalty. That is
+		// the event's rule, so it has to be the category's rule too - a W55
+		// cannot win the night on a tie-break the overall table would not honour.
+		$scored = ( new Scoring_Engine() )->score_event(
+			array(
+				array( 'display_name' => 'Clean', 'score' => 900, 'penalty' => 0, 'is_female' => true ),
+				array( 'display_name' => 'Late', 'score' => 930, 'penalty' => 30, 'is_female' => true ),
+				array( 'display_name' => 'Tied', 'score' => 900, 'penalty' => 0, 'is_female' => true ),
+			)
+		);
+
+		$by_name = array_column( $scored, null, 'display_name' );
+
+		// 930 less 30 is 900 for all three, so the clean runs share first and
+		// the penalised one is demoted to third - in the ladies table exactly
+		// as in the overall one.
+		$this->assertSame( 1, $by_name['Clean']['ladies_position'] );
+		$this->assertSame( 1, $by_name['Tied']['ladies_position'] );
+		$this->assertSame( 3, $by_name['Late']['ladies_position'] );
+		$this->assertSame(
+			array_column( $scored, 'position' ),
+			array_column( $scored, 'ladies_position' )
+		);
+	}
+
+	public function test_a_row_that_does_not_rank_holds_no_category_place(): void {
+		// The organiser, an excluded test run and a phone that never scored are
+		// all unranked overall, and must not appear in a category either.
+		$scored = ( new Scoring_Engine() )->score_event(
+			array(
+				array( 'display_name' => 'Runner', 'score' => 900, 'penalty' => 0, 'is_female' => true ),
+				array( 'display_name' => 'Organiser', 'score' => 950, 'is_organiser' => true, 'is_female' => true ),
+				array( 'display_name' => 'Test Run', 'score' => 9990, 'is_excluded' => true, 'is_female' => true ),
+				array( 'display_name' => 'No Score', 'score' => null, 'is_female' => true ),
+			)
+		);
+
+		$by_name = array_column( $scored, null, 'display_name' );
+
+		$this->assertSame( 1, $by_name['Runner']['ladies_position'] );
+
+		foreach ( array( 'Organiser', 'Test Run', 'No Score' ) as $name ) {
+			$this->assertNull( $by_name[ $name ]['position'] );
+			$this->assertNull( $by_name[ $name ]['ladies_position'] );
+		}
+	}
+
+	public function test_an_event_with_no_category_flags_ranks_only_overall(): void {
+		// Which is how the league scores its events: it ranks the categories
+		// itself, over the season, from the competitor records.
+		$scored = ( new Scoring_Engine() )->score_event(
+			array(
+				array( 'display_name' => 'One', 'score' => 900, 'penalty' => 0 ),
+				array( 'display_name' => 'Two', 'score' => 800, 'penalty' => 0 ),
+			)
+		);
+
+		$this->assertSame( array( 1, 2 ), array_column( $scored, 'position' ) );
+		$this->assertSame( array( null, null ), array_column( $scored, 'ladies_position' ) );
+		$this->assertSame( array( null, null ), array_column( $scored, 'o55_men_position' ) );
+		$this->assertSame( array( null, null ), array_column( $scored, 'o55_women_position' ) );
+	}
+
 	/**
 	 * @dataProvider ordinal_provider
 	 */

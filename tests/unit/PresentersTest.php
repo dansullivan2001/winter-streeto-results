@@ -32,9 +32,88 @@ class PresentersTest extends TestCase {
 	}
 
 	public function test_event_columns_match_what_the_club_asked_for(): void {
+		// The three category rankings sit between Pos and Name, which is where
+		// the league table puts them.
 		$this->assertSame(
-			array( 'Pos', 'Name', 'Club', 'Course', 'Score', 'Penalty', 'Total', 'League pts' ),
+			array( 'Pos', 'Ladies', 'M55', 'W55', 'Name', 'Club', 'Course', 'Score', 'Penalty', 'Total', 'League pts' ),
 			( new Event_Presenter() )->columns()
+		);
+	}
+
+	public function test_both_tables_head_their_category_columns_the_same(): void {
+		// A reader moving from the event table to the league below it should
+		// not have to work out that "M55" and "Over 55 Men" are the same thing.
+		$event = ( new Event_Presenter() )->columns();
+
+		$this->assertSame(
+			array_values( League_Presenter::category_columns() ),
+			array_slice( $event, 1, 3 )
+		);
+	}
+
+	/**
+	 * The same field, with everyone's category flags on the rows.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function scored_with_categories(): array {
+		return ( new Scoring_Engine() )->score_event(
+			array(
+				array( 'display_name' => 'Rowan Orpington', 'course_label' => '60', 'score' => 1180, 'penalty' => 0 ),
+				array( 'display_name' => 'Nadia Dalrymple', 'course_label' => '60', 'score' => 960, 'penalty' => 0, 'is_female' => true ),
+				array( 'display_name' => 'Wilma Betchworth', 'course_label' => '60', 'score' => 900, 'penalty' => 0, 'is_female' => true, 'is_over55' => true ),
+				array( 'display_name' => 'Leonard Quilter', 'course_label' => '60', 'score' => 780, 'penalty' => 30, 'is_over55' => true ),
+			)
+		);
+	}
+
+	public function test_every_event_row_carries_its_category_rankings(): void {
+		$model   = ( new Event_Presenter() )->present( $this->scored_with_categories() );
+		$by_name = array_column( $model['rows'], null, 'name' );
+
+		// Second overall, first lady, and in neither Over-55 table.
+		$this->assertSame( 2, $by_name['Nadia Dalrymple']['positions']['overall'] );
+		$this->assertSame( 1, $by_name['Nadia Dalrymple']['positions']['ladies'] );
+		$this->assertNull( $by_name['Nadia Dalrymple']['positions']['o55_women'] );
+
+		// Third overall, second lady, and the W55 winner on her own.
+		$this->assertSame( 2, $by_name['Wilma Betchworth']['positions']['ladies'] );
+		$this->assertSame( 1, $by_name['Wilma Betchworth']['positions']['o55_women'] );
+		$this->assertNull( $by_name['Wilma Betchworth']['positions']['o55_men'] );
+
+		$this->assertSame( 1, $by_name['Leonard Quilter']['positions']['o55_men'] );
+		$this->assertNull( $by_name['Leonard Quilter']['positions']['ladies'] );
+
+		// The overall winner is in no category at all: every cell blank.
+		$this->assertNull( $by_name['Rowan Orpington']['positions']['ladies'] );
+		$this->assertNull( $by_name['Rowan Orpington']['positions']['o55_men'] );
+		$this->assertNull( $by_name['Rowan Orpington']['positions']['o55_women'] );
+	}
+
+	public function test_a_result_with_no_competitor_confirmed_holds_no_category(): void {
+		// Categories come from the competitor record, so a row nobody is linked
+		// to is ranked overall and nowhere else - the same treatment it already
+		// gets in the league, where it is absent from the standings entirely.
+		$model   = ( new Event_Presenter() )->present( $this->scored() );
+		$by_name = array_column( $model['rows'], null, 'name' );
+
+		$this->assertSame( 2, $by_name['Nadia Dalrymple']['positions']['overall'] );
+		$this->assertNull( $by_name['Nadia Dalrymple']['positions']['ladies'] );
+	}
+
+	public function test_the_organiser_holds_no_category_ranking_either(): void {
+		// Unranked on the night, in every table, category or not.
+		$model = ( new Event_Presenter() )->present(
+			$this->scored_with_categories(),
+			array( array( 'display_name' => 'Greta Yalding', 'is_female' => true ) )
+		);
+
+		$last = end( $model['rows'] );
+
+		$this->assertSame( 'Greta Yalding', $last['name'] );
+		$this->assertSame(
+			array( null, null, null, null ),
+			array_values( $last['positions'] )
 		);
 	}
 
