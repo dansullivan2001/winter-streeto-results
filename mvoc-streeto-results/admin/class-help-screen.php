@@ -294,9 +294,10 @@ class Help_Screen {
 		</ul>
 
 		<h3><?php esc_html_e( 'Competitors', 'mvoc-streeto' ); ?></h3>
-		<p><?php esc_html_e( 'The master list of everyone who has ever run, for correcting categories and merging duplicate records.', 'mvoc-streeto' ); ?></p>
+		<p><?php esc_html_e( 'The master list of everyone who has ever run, for correcting names, club and categories, and merging duplicate records.', 'mvoc-streeto' ); ?></p>
 		<ul style="list-style:disc;margin:0 0 1.5em 1.5em;max-width:55em;">
 			<li><?php esc_html_e( 'Both categories come from MapRun, which is self-declared and sometimes wrong or missing. An edit here sticks and is never overwritten by a later import — except by the rebuild tool described below, which you control.', 'mvoc-streeto' ); ?></li>
+			<li><?php esc_html_e( 'Club is editable too. MapRun takes it as free text, so one club arrives spelt several ways — which is why it is no longer published on the event table. It still earns its place here, telling two runners of the same name apart, so spelling it consistently helps the name matching; clearing it where it was never a real club is fine.', 'mvoc-streeto' ); ?></li>
 			<li><?php esc_html_e( 'Ladies belongs to the person, so it is edited once and applies to every season. Over-55 belongs to one season, because everyone\'s age changes every year — a runner who turns 55 does not retroactively move into an already-published season\'s Over-55 table.', 'mvoc-streeto' ); ?></li>
 			<li>
 				<?php

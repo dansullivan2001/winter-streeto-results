@@ -1,6 +1,7 @@
 <?php
 /**
- * Competitor registry screen: edit category flags, and merge duplicates.
+ * Competitor registry screen: edit names, club and category flags, and merge
+ * duplicates.
  *
  * @package MVOC_StreetO
  */
@@ -57,6 +58,9 @@ class Competitors_Screen {
 			<h1><?php esc_html_e( 'Competitors', 'mvoc-streeto' ); ?></h1>
 			<p class="description">
 				<?php esc_html_e( 'Both categories come from MapRun, which is self-declared and sometimes wrong or missing. Correct anything here — an edit sticks and is never overwritten by a later import.', 'mvoc-streeto' ); ?>
+			</p>
+			<p class="description">
+				<?php esc_html_e( 'Club is free text at MapRun\'s end, so one club arrives spelt several ways. It is no longer published, and is kept here for telling two runners of the same name apart — so spelling it consistently is worth doing, and blanking it is fine where it was never a real club.', 'mvoc-streeto' ); ?>
 			</p>
 			<p class="description">
 				<?php esc_html_e( 'Ladies belongs to the person. Over-55 belongs to the season, because everybody\'s age changes every year — so it is shown and edited for one season at a time, and correcting it never disturbs a season already published.', 'mvoc-streeto' ); ?>
@@ -166,7 +170,13 @@ class Competitors_Screen {
 										placeholder="<?php esc_attr_e( 'Surname', 'mvoc-streeto' ); ?>"
 										style="width:10em;display:inline-block;" />
 								</td>
-								<td><?php echo esc_html( $competitor['club'] ); ?></td>
+								<td>
+									<input type="text" name="club[<?php echo esc_attr( (string) $id ); ?>]"
+										value="<?php echo esc_attr( $competitor['club'] ); ?>"
+										maxlength="100"
+										placeholder="<?php esc_attr_e( 'Club', 'mvoc-streeto' ); ?>"
+										style="width:12em;" />
+								</td>
 								<td>
 									<input type="checkbox" name="is_female[<?php echo esc_attr( (string) $id ); ?>]"
 										value="1" <?php checked( $competitor['is_female'] ); ?> />
@@ -260,6 +270,7 @@ class Competitors_Screen {
 		$merges      = $this->merge_map();
 		$first_names = $this->text_map( 'first_name' );
 		$surnames    = $this->text_map( 'surname' );
+		$clubs       = $this->text_map( 'club' );
 
 		// Merges run first: flags submitted for a competitor about to be
 		// absorbed would otherwise be written to a row that is then deleted.
@@ -273,13 +284,19 @@ class Competitors_Screen {
 			$first_name = $first_names[ $id ] ?? $competitor['first_name'];
 			$surname    = $surnames[ $id ] ?? $competitor['surname'];
 
+			// Absent rather than empty means the row was never on the form — a
+			// competitor created between rendering and saving, or a merge target
+			// that has just absorbed another. Falling back to the stored value
+			// keeps those untouched, while an empty box genuinely clears a club.
+			$club = $clubs[ $id ] ?? $competitor['club'];
+
 			$this->repo->update(
 				$id,
 				array(
 					'first_name'   => $first_name,
 					'surname'      => $surname,
 					'display_name' => trim( $first_name . ' ' . $surname ),
-					'club'         => $competitor['club'],
+					'club'         => $club,
 					'is_female'    => in_array( $id, $female, true ),
 				)
 			);

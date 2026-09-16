@@ -33,8 +33,8 @@
    figures start rather than sharing a rule that can only suit one of them. */
 .mvoc-streeto-league-table td:nth-child(n + 5),
 .mvoc-streeto-league-table thead th:nth-child(n + 5),
-.mvoc-streeto-event .mvoc-streeto-table td:nth-child(n + 8),
-.mvoc-streeto-event .mvoc-streeto-table thead th:nth-child(n + 8) {
+.mvoc-streeto-event .mvoc-streeto-table td:nth-child(n + 7),
+.mvoc-streeto-event .mvoc-streeto-table thead th:nth-child(n + 7) {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
@@ -42,8 +42,8 @@
 /* In the league table, column 5 is Name. Its body cell is a <th>, so the rule
    above never touched it, but its header cell is a <th> like the rest of the
    header row and was caught by it — left it here rather than excluded. The
-   event table's Name sits at 5 too, ahead of Club and Course, so its own rule
-   starts past all three and needs no such exception. */
+   event table's Name sits at 5 too, ahead of Course, so its own rule starts
+   past both and needs no such exception. */
 .mvoc-streeto-league-table thead th:nth-child(5) {
 	text-align: left;
 }

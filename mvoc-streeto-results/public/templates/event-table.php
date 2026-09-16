@@ -49,7 +49,6 @@ defined( 'ABSPATH' ) || exit;
 								<span class="mvoc-streeto-tag"><?php esc_html_e( 'Organiser', 'mvoc-streeto' ); ?></span>
 							<?php endif; ?>
 						</th>
-						<td data-label="<?php esc_attr_e( 'Club', 'mvoc-streeto' ); ?>"><?php echo esc_html( $row['club'] ); ?></td>
 						<td data-label="<?php esc_attr_e( 'Course', 'mvoc-streeto' ); ?>">
 							<?php echo $row['course'] ? esc_html( $row['course'] . ' min' ) : '—'; ?>
 						</td>

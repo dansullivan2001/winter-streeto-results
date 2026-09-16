@@ -33,11 +33,28 @@ class PresentersTest extends TestCase {
 
 	public function test_event_columns_match_what_the_club_asked_for(): void {
 		// The three category rankings sit between Pos and Name, which is where
-		// the league table puts them.
+		// the league table puts them. Club is not among them: MapRun takes it as
+		// free text, so one club arrives spelt several ways and publishing it
+		// prints that rather than resolving it.
 		$this->assertSame(
-			array( 'Pos', 'Ladies', 'M55', 'W55', 'Name', 'Club', 'Course', 'Score', 'Penalty', 'Total', 'League pts' ),
+			array( 'Pos', 'Ladies', 'M55', 'W55', 'Name', 'Course', 'Score', 'Penalty', 'Total', 'League pts' ),
 			( new Event_Presenter() )->columns()
 		);
+	}
+
+	public function test_the_published_table_never_carries_a_club(): void {
+		// Asserted on the rows as well as the headings, because a row still
+		// carrying it is a column waiting to be put back by accident.
+		$model = ( new Event_Presenter() )->present(
+			$this->scored(),
+			array( array( 'display_name' => 'Greta Yalding', 'club' => 'MVOC' ) )
+		);
+
+		$this->assertNotContains( 'Club', $model['columns'] );
+
+		foreach ( $model['rows'] as $row ) {
+			$this->assertArrayNotHasKey( 'club', $row );
+		}
 	}
 
 	public function test_both_tables_head_their_category_columns_the_same(): void {

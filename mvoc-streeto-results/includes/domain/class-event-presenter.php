@@ -2,7 +2,7 @@
 /**
  * Turns scored event rows into the table the club publishes.
  *
- * Columns were chosen with the club: Position, Name, Club, Course, Score, Time
+ * Columns were chosen with the club: Position, Name, Course, Score, Time
  * Penalty, Total, League points — with the Ladies, M55 and W55 rankings beside
  * the overall position, in the same place and the same order as the league
  * table, so the four competitions read the same way on the night as they do
@@ -12,6 +12,13 @@
  * equal totals with equal penalties finish equal however fast either runner was
  * — so publishing a time column would invite "why am I below someone slower?"
  * when the answer is simply that the rule does not look at time.
+ *
+ * Club is deliberately absent too, and was once published. It is free text at
+ * MapRun's end, so one club arrives spelt four different ways and a published
+ * column prints the inconsistency rather than resolving it. Nothing is thrown
+ * away: the imported club stays on the result row and on the competitor, where
+ * it earns its place telling two same-named runners apart, and the admin
+ * screens that do that work still show it.
  *
  * Deliberately free of WordPress dependencies: this builds the table model and
  * the template renders it, so the output shape is unit-testable and escaping
@@ -47,7 +54,7 @@ class Event_Presenter {
 		return array_merge(
 			array( 'Pos' ),
 			array_values( Categories::columns() ),
-			array( 'Name', 'Club', 'Course', 'Score', 'Penalty', 'Total', 'League pts' )
+			array( 'Name', 'Course', 'Score', 'Penalty', 'Total', 'League pts' )
 		);
 	}
 
@@ -88,7 +95,6 @@ class Event_Presenter {
 				'position'       => $row['position'],
 				'position_label' => $row['position_label'],
 				'name'           => (string) ( $row['display_name'] ?? $row['name'] ?? '' ),
-				'club'           => (string) ( $row['club'] ?? '' ),
 				'course'         => $course,
 				'score'          => $row['score'] ?? null,
 				'penalty'        => (int) ( $row['penalty'] ?? 0 ),
@@ -109,7 +115,6 @@ class Event_Presenter {
 				'position'       => null,
 				'position_label' => '',
 				'name'           => (string) ( $organiser['display_name'] ?? '' ),
-				'club'           => (string) ( $organiser['club'] ?? '' ),
 				'course'         => '',
 				'score'          => null,
 				'penalty'        => 0,

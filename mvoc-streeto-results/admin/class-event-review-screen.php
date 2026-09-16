@@ -1370,7 +1370,6 @@ class Event_Review_Screen {
 				echo '<td>' . esc_html( null === $place ? '' : (string) $place ) . '</td>';
 			}
 			echo '<td>' . esc_html( $row['name'] ) . '</td>';
-			echo '<td>' . esc_html( $row['club'] ) . '</td>';
 			echo '<td>' . esc_html( $row['course'] ) . '</td>';
 			echo '<td>' . esc_html( null === $row['score'] ? '—' : (string) $row['score'] ) . '</td>';
 			echo '<td>' . esc_html( (string) $row['penalty'] ) . '</td>';

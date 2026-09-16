@@ -114,6 +114,17 @@ class EventTableTemplateTest extends TestCase {
 		}
 	}
 
+	public function test_no_club_reaches_the_published_table(): void {
+		// Every runner in the fixture above has a club or an empty one, so if a
+		// Club cell came back the value would be in the HTML. It is not
+		// published at all: MapRun takes it as free text and it arrives spelt
+		// several ways for the same club.
+		$html = $this->render();
+
+		$this->assertStringNotContainsString( 'MVOC', $html );
+		$this->assertStringNotContainsString( 'Club', $html );
+	}
+
 	public function test_a_category_a_runner_is_not_in_leaves_a_genuinely_empty_cell(): void {
 		// Not a dash, which reads as "no position yet" — and truly empty, with
 		// no stray whitespace, because the stacked phone layout hides an empty

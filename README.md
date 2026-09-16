@@ -54,8 +54,8 @@ See [docs/deploying.md](docs/deploying.md) for where to test and what to check f
 4. **Confirm names** for anyone new. Ladies and Over-55 are pre-filled from MapRun's own
    data, so this is confirming rather than classifying. If a suggested match's stored name
    differs from the one just synced, there's an option to update it to the synced spelling.
-   Names, Ladies and Over-55 are all correctable afterwards on the **Competitors** screen —
-   Ladies against the person, Over-55 against the season.
+   Names, club, Ladies and Over-55 are all correctable afterwards on the **Competitors**
+   screen — Ladies against the person, Over-55 against the season.
 5. Resolve any duplicates, correct rows, add anyone by hand, name the organiser.
 6. **League table** to check the standings the event produces. It counts unpublished
    events, so this is the league exactly as publishing would leave it — and it warns
@@ -127,10 +127,13 @@ The rules were reverse-engineered from the club's own spreadsheet and are verifi
 its cached results — a whole event and a whole season are committed as fixtures and
 reproduced exactly.
 
-**Event table.** Position, Ladies, M55, W55, Name, Club, Course, Score, Penalty, Total,
+**Event table.** Position, Ladies, M55, W55, Name, Course, Score, Penalty, Total,
 League points. Elapsed time is deliberately absent: the tie-break ignores it, so a time
 column would only invite "why am I below someone slower?" when the rule simply does not
-look at time.
+look at time. Club is absent too: MapRun takes it as free text, so one club arrives spelt
+several ways and a published column prints the inconsistency rather than resolving it. It
+is still imported and still kept — it tells two runners of the same name apart — and it is
+editable on the **Competitors** screen.
 
 `Total = round((Score − Penalty) × factor)`, where the factor brings a
 40-minute result onto the 60-minute scale. The club's event information states that rule
@@ -235,9 +238,11 @@ order of decreasing certainty: a confirmed alias resolves silently, and anything
 ranked suggestions scored on surname, first name, year of birth and club.
 
 Club is a mild confirmation, never a refutation, because runners change clubs and often
-leave the field blank. Year of birth was once the decisive signal here, but it is no longer
-stored, so genuine namesakes now both surface as candidates and the co-ordinator picks —
-acceptable precisely because nothing is ever merged automatically.
+leave the field blank. It arrives as free text from MapRun, so the same club turns up spelt
+several ways; a short alias list collapses the ones that matter, and the Competitors screen
+lets the rest be tidied by hand. Year of birth was once the decisive signal here, but it is
+no longer stored, so genuine namesakes now both surface as candidates and the co-ordinator
+picks — acceptable precisely because nothing is ever merged automatically.
 
 Diminutives are handled, but only where the short form is unambiguous. "Sam" is deliberately
 absent, because it maps to both Samuel and Samantha, and guessing across genders is exactly
