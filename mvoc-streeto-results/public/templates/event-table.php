@@ -39,49 +39,53 @@ defined( 'ABSPATH' ) || exit;
 			</caption>
 			<thead>
 				<tr>
+					<?php
+					// The headings stay the presenter's to decide — but the three
+					// category ones have to carry the same class as their cells, or
+					// a narrow screen hides the cells and leaves the headings
+					// behind, and every figure in the row sits under the wrong one.
+					$category_labels = \MVOC\StreetO\Domain\Categories::columns();
+					?>
 					<?php foreach ( $model['columns'] as $column ) : ?>
-						<th scope="col"><?php echo esc_html( $column ); ?></th>
+						<th scope="col"<?php echo in_array( $column, $category_labels, true ) ? ' class="mvoc-streeto-category-col"' : ''; ?>><?php echo esc_html( $column ); ?></th>
 					<?php endforeach; ?>
 				</tr>
 			</thead>
 			<tbody>
 				<?php foreach ( $model['rows'] as $row ) : ?>
 					<tr<?php echo ! empty( $row['is_organiser'] ) ? ' class="mvoc-streeto-organiser"' : ''; ?>>
-						<td data-label="<?php esc_attr_e( 'Pos', 'mvoc-streeto' ); ?>">
+						<td>
 							<?php echo esc_html( $row['position_label'] ?: '—' ); ?>
 						</td>
-						<?php foreach ( \MVOC\StreetO\Domain\Categories::columns() as $key => $label ) : ?>
+						<?php foreach ( array_keys( \MVOC\StreetO\Domain\Categories::columns() ) as $key ) : ?>
 							<?php
 							// Blank rather than a dash where they are not in the
-							// category: a dash reads as "no position yet". Written
-							// on one line so the cell is genuinely empty, which is
-							// what lets the stacked phone layout drop it instead of
-							// printing a label with nothing after it.
+							// category: a dash reads as "no position yet".
 							?>
-							<td class="mvoc-streeto-category-col" data-label="<?php echo esc_attr( $label ); ?>"><?php echo isset( $row['positions'][ $key ] ) && null !== $row['positions'][ $key ] ? esc_html( (string) $row['positions'][ $key ] ) : ''; ?></td>
+							<td class="mvoc-streeto-category-col"><?php echo isset( $row['positions'][ $key ] ) && null !== $row['positions'][ $key ] ? esc_html( (string) $row['positions'][ $key ] ) : ''; ?></td>
 						<?php endforeach; ?>
-						<th scope="row" data-label="<?php esc_attr_e( 'Name', 'mvoc-streeto' ); ?>">
+						<th scope="row">
 							<?php echo esc_html( $row['name'] ); ?>
 							<?php if ( ! empty( $row['is_organiser'] ) ) : ?>
 								<span class="mvoc-streeto-tag"><?php esc_html_e( 'Organiser', 'mvoc-streeto' ); ?></span>
 							<?php endif; ?>
 						</th>
-						<td data-label="<?php esc_attr_e( 'Course', 'mvoc-streeto' ); ?>">
+						<td>
 							<?php echo $row['course'] ? esc_html( $row['course'] . ' min' ) : '—'; ?>
 						</td>
-						<td data-label="<?php esc_attr_e( 'Score', 'mvoc-streeto' ); ?>">
+						<td>
 							<?php echo null === $row['score'] ? '—' : esc_html( (string) $row['score'] ); ?>
 						</td>
-						<td data-label="<?php esc_attr_e( 'Penalty', 'mvoc-streeto' ); ?>">
+						<td>
 							<?php echo $row['penalty'] ? esc_html( (string) $row['penalty'] ) : '—'; ?>
 						</td>
-						<td data-label="<?php esc_attr_e( 'Total', 'mvoc-streeto' ); ?>">
+						<td>
 							<?php echo null === $row['total'] ? '—' : esc_html( (string) $row['total'] ); ?>
 							<?php if ( ! empty( $row['is_scaled'] ) ) : ?>
 								<abbr class="mvoc-streeto-scaled" title="<?php esc_attr_e( 'Adjusted onto the long-course scale', 'mvoc-streeto' ); ?>">*</abbr>
 							<?php endif; ?>
 						</td>
-						<td data-label="<?php esc_attr_e( 'League pts', 'mvoc-streeto' ); ?>">
+						<td>
 							<?php echo null === $row['league_points'] ? '—' : esc_html( (string) $row['league_points'] ); ?>
 						</td>
 					</tr>
@@ -89,6 +93,15 @@ defined( 'ABSPATH' ) || exit;
 			</tbody>
 		</table>
 	</div>
+
+	<?php
+	// Course, score and penalty are hidden on a narrow screen — see the
+	// stylesheet. Said here rather than left to be noticed, because a runner
+	// who took a penalty would otherwise see a total they cannot account for.
+	?>
+	<p class="mvoc-streeto-footnote mvoc-streeto-narrow-note">
+		<?php esc_html_e( 'Course, score and penalty show on a wider screen — turn your phone sideways.', 'mvoc-streeto' ); ?>
+	</p>
 
 	<?php if ( ! empty( $model['scaled_courses'] ) ) : ?>
 		<p class="mvoc-streeto-footnote">

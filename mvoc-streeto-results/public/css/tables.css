@@ -75,9 +75,22 @@
 	margin-left: 0.4em;
 }
 
+/* The scaled-course asterisk belongs to the total it qualifies, not to a line
+   of its own underneath it — the Total column is narrow enough to break there
+   at any width. */
+.mvoc-streeto-event .mvoc-streeto-table td:nth-child(9) {
+	white-space: nowrap;
+}
+
 .mvoc-streeto-scaled {
 	text-decoration: none;
 	cursor: help;
+}
+
+/* Shown only by the narrow-screen rule below, where the columns it explains
+   are actually missing. */
+.mvoc-streeto-narrow-note {
+	display: none;
 }
 
 .mvoc-streeto-footnote {
@@ -156,68 +169,59 @@
 }
 
 /*
- * The league's category columns are the first thing to drop on a small screen:
- * they are the least-read part of the table, and the same rankings are
- * available in full through the per-category shortcodes.
+ * Narrow screens keep the grid and drop columns, rather than unfolding each
+ * runner into a stack of labelled lines. The stack was honest but unreadable:
+ * seven lines a runner, so a sixty-strong field ran to twenty-odd screens and
+ * nobody could scan for a name or a position. A table that has shed its least-
+ * read columns still reads as a table.
  *
- * The event table's are kept, because below it stops being a grid at all: its
- * rankings become two or three more labelled lines in a stack that scrolls
- * down rather than sideways, and a blank one is dropped by the :empty rule.
+ * Both tables now behave the same way on a phone, which they did not before.
+ * Anything that still overflows scrolls inside .mvoc-streeto-scroll rather
+ * than dragging the page sideways.
  */
+
+/* First to go, on both tables: the category rankings. They are the least-read
+   part of either table, and the same rankings are available in full through
+   the per-category league shortcodes. */
 @media (max-width: 560px) {
-	.mvoc-streeto-league .mvoc-streeto-category-col {
+	.mvoc-streeto .mvoc-streeto-category-col {
 		display: none;
 	}
 }
 
 /*
- * On a narrow screen the event table stops being a grid and becomes a stack of
- * labelled rows. Every cell carries its own heading via data-label, so a runner
- * scrolling on a phone can still tell a score from a penalty.
+ * Then, at portrait-phone width, the event table's working: Course (6), Score
+ * (7) and Penalty (8). What is left is Pos, Name, Total and League pts — which
+ * is what someone standing in a car park is looking for. The three are one
+ * rotation away, and the footnote says so.
+ *
+ * Counted by nth-child, which goes by position in the markup, so hiding the
+ * category columns above does not renumber these.
  */
-@media (max-width: 640px) {
-	.mvoc-streeto-event .mvoc-streeto-table thead {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		white-space: nowrap;
+@media (max-width: 480px) {
+	.mvoc-streeto-event .mvoc-streeto-table td:nth-child(6),
+	.mvoc-streeto-event .mvoc-streeto-table thead th:nth-child(6),
+	.mvoc-streeto-event .mvoc-streeto-table td:nth-child(7),
+	.mvoc-streeto-event .mvoc-streeto-table thead th:nth-child(7),
+	.mvoc-streeto-event .mvoc-streeto-table td:nth-child(8),
+	.mvoc-streeto-event .mvoc-streeto-table thead th:nth-child(8) {
+		display: none;
 	}
 
-	.mvoc-streeto-event .mvoc-streeto-table,
-	.mvoc-streeto-event .mvoc-streeto-table tbody,
-	.mvoc-streeto-event .mvoc-streeto-table tr,
+	/* Headings may wrap here — "League pts" over two short lines costs less
+	   than a table that scrolls sideways — and the cells give back the padding
+	   they can spare. Between them these are what keep the four columns inside
+	   a portrait screen rather than just outside one. */
+	.mvoc-streeto-event .mvoc-streeto-table thead th {
+		white-space: normal;
+	}
+
 	.mvoc-streeto-event .mvoc-streeto-table th,
 	.mvoc-streeto-event .mvoc-streeto-table td {
+		padding: 0.4em 0.3em;
+	}
+
+	.mvoc-streeto-narrow-note {
 		display: block;
-		width: auto;
-	}
-
-	.mvoc-streeto-event .mvoc-streeto-table tr {
-		padding: 0.5em 0;
-		border-bottom: 2px solid rgba(0, 0, 0, 0.15);
-	}
-
-	.mvoc-streeto-event .mvoc-streeto-table td,
-	.mvoc-streeto-event .mvoc-streeto-table tbody th {
-		border: 0;
-		padding: 0.1em 0;
-		text-align: left !important;
-	}
-
-	.mvoc-streeto-event .mvoc-streeto-table td::before {
-		content: attr(data-label) ": ";
-		font-weight: 600;
-		opacity: 0.7;
-	}
-
-	.mvoc-streeto-event .mvoc-streeto-table tbody th {
-		font-size: 1.05em;
-	}
-
-	/* An empty cell adds nothing but a stray label on a stacked layout. */
-	.mvoc-streeto-event .mvoc-streeto-table td:empty {
-		display: none;
 	}
 }

@@ -119,11 +119,29 @@ class EventTableTemplateTest extends TestCase {
 		$html = $this->render();
 
 		foreach ( Categories::columns() as $label ) {
+			// Classed like the cells beneath them: the narrow-screen rule hides
+			// heading and cell together, so a row cannot slide under the wrong
+			// headings.
 			$this->assertStringContainsString(
-				'<th scope="col">' . $label . '</th>',
+				'<th scope="col" class="mvoc-streeto-category-col">' . $label . '</th>',
 				$html
 			);
 		}
+	}
+
+	public function test_every_category_heading_has_a_matching_cell_class(): void {
+		// The count that matters is per row: as many classed headings as classed
+		// cells, or hiding the class at one breakpoint misaligns the table.
+		$html = $this->render();
+
+		$this->assertSame( 1, preg_match( '#<thead>(.*?)</thead>#s', $html, $head ) );
+		$this->assertSame( 1, preg_match( '#<tbody>.*?<tr[^>]*>(.*?)</tr>#s', $html, $row ) );
+
+		$this->assertSame(
+			substr_count( $head[1], 'mvoc-streeto-category-col' ),
+			substr_count( $row[1], 'mvoc-streeto-category-col' ),
+			'heading and cell counts for the category columns have drifted apart'
+		);
 	}
 
 	public function test_no_club_reaches_the_published_table(): void {
@@ -137,13 +155,26 @@ class EventTableTemplateTest extends TestCase {
 		$this->assertStringNotContainsString( 'Club', $html );
 	}
 
-	public function test_a_category_a_runner_is_not_in_leaves_a_genuinely_empty_cell(): void {
-		// Not a dash, which reads as "no position yet" — and truly empty, with
-		// no stray whitespace, because the stacked phone layout hides an empty
-		// cell rather than printing its label with nothing after it.
+	public function test_a_category_a_runner_is_not_in_leaves_an_empty_cell(): void {
+		// Not a dash, which reads as "no position yet".
 		$html = $this->render();
 
-		$this->assertStringContainsString( 'data-label="W55"></td>', $html );
-		$this->assertStringContainsString( 'data-label="W55">1</td>', $html );
+		$this->assertStringContainsString( '<td class="mvoc-streeto-category-col"></td>', $html );
+		$this->assertStringContainsString( '<td class="mvoc-streeto-category-col">1</td>', $html );
+	}
+
+	public function test_the_category_cells_are_keyed_by_category_not_by_label(): void {
+		// The template iterates the category keys to look each runner's
+		// position up. Iterating the labels instead still renders three cells,
+		// every one of them blank — a table that looks right and says nobody
+		// placed in any category.
+		$html = $this->render();
+
+		// Two women, so Ladies ranks 1 and 2; one M55 and one W55, each 1st.
+		$this->assertSame(
+			4,
+			preg_match_all( '#<td class="mvoc-streeto-category-col">[1-9]#', $html ),
+			'a category ranking went missing'
+		);
 	}
 }
