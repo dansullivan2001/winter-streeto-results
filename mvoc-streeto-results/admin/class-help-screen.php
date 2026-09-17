@@ -436,7 +436,7 @@ class Help_Screen {
 				<?php
 				printf(
 					/* translators: %s: the late penalty rate. */
-					esc_html__( 'Time penalty: %s, worked out from the finishing time rather than taken from MapRun. MapRun charges 30 points for every minute you start, so 47 seconds over the hour costs a full 30 there and 24 here. Correct the Penalty box on the results screen and your figure wins over both.', 'mvoc-streeto' ),
+					esc_html__( 'Time penalty: %s, worked out from the finishing time rather than taken from MapRun. MapRun charges 30 points for every minute you start, so 47 seconds over the hour costs a full 30 there and 24 here. Correct the Penalty box on the results screen and your figure wins over both; empty the box and the row goes back to the worked-out figure.', 'mvoc-streeto' ),
 					'<code>1 point per 2 seconds late</code>'
 				);
 				?>
@@ -461,6 +461,9 @@ class Help_Screen {
 
 		<h3><?php esc_html_e( 'I re-imported an event. Did I just lose my corrections?', 'mvoc-streeto' ); ?></h3>
 		<p><?php esc_html_e( 'No. Rows are matched on MapRun\'s own id, never on a name, and an import only ever writes the raw MapRun columns — never a corrected score, an exclusion, or a competitor link. Re-importing refreshes what MapRun is authoritative about and leaves every correction exactly where you left it. That is the plugin\'s central promise, and it is worth rehearsing once: import, correct a row, re-import, and check the correction is still there.', 'mvoc-streeto' ); ?></p>
+
+		<h3><?php esc_html_e( 'I corrected a score or a penalty and want MapRun\'s own figure back — how?', 'mvoc-streeto' ); ?></h3>
+		<p><?php esc_html_e( 'Empty the box and save. A blank Score or Penalty means "no correction", so the row goes back to what MapRun sent and, for the penalty, to the figure the club\'s rule works out from the finishing time. That is worth doing rather than typing the old number back in: a typed figure is pinned to the row, and a penalty pinned that way would go on standing even after a re-import changed the finishing time it was about. Emptying a box you never corrected does nothing at all, so there is no harm in clearing one to check.', 'mvoc-streeto' ); ?></p>
 
 		<h3><?php esc_html_e( 'A row is flagged "not in the latest import" — what does that mean, and what should I do?', 'mvoc-streeto' ); ?></h3>
 		<p><?php esc_html_e( 'The row was in an earlier import but MapRun\'s latest response no longer includes it. It is marked withdrawn rather than deleted, because MapRun dropping a result is more often a glitch than a fact, and deleting it would take any correction with it. If the run reappears in a later import, it is restored with its original id and corrections intact. If the event itself was replaced in MapRun (see the next question), this is expected for every runner who has not yet appeared under the new event name.', 'mvoc-streeto' ); ?></p>

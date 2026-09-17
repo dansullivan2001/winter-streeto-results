@@ -46,8 +46,39 @@ class Client {
 			throw new \RuntimeException( 'No MapRun event name given.' );
 		}
 
-		$url = self::url_for( $event_name );
+		$url      = self::url_for( $event_name );
+		$response = $this->request( $url );
 
+		if ( $response['code'] < 200 || $response['code'] >= 300 ) {
+			throw new \RuntimeException(
+				sprintf(
+					/* translators: %d: HTTP status code. */
+					__( 'MapRun returned HTTP %d.', 'mvoc-streeto' ),
+					$response['code']
+				)
+			);
+		}
+
+		// The one line that makes the two paths one path: whatever the HTTP
+		// call returned is handed to the same ingest() a paste goes through, so
+		// nothing downstream — the parser, the punch recovery, the reconciler —
+		// can behave differently depending on how the JSON arrived.
+		return $this->ingest( $response['body'] );
+	}
+
+	/**
+	 * One GET, reduced to the two things fetch() needs from it.
+	 *
+	 * Separated out as the seam where WordPress's HTTP API is: overriding this
+	 * is how a test drives fetch() from a stored response without a WordPress
+	 * install, which is what keeps the equality claimed above proven rather
+	 * than asserted in a comment.
+	 *
+	 * @param string $url Fully built request URL.
+	 * @return array{code:int,body:string}
+	 * @throws \RuntimeException If the request could not be made at all.
+	 */
+	protected function request( string $url ): array {
 		$response = wp_remote_get(
 			$url,
 			array(
@@ -67,18 +98,10 @@ class Client {
 			);
 		}
 
-		$code = (int) wp_remote_retrieve_response_code( $response );
-		if ( $code < 200 || $code >= 300 ) {
-			throw new \RuntimeException(
-				sprintf(
-					/* translators: %d: HTTP status code. */
-					__( 'MapRun returned HTTP %d.', 'mvoc-streeto' ),
-					$code
-				)
-			);
-		}
-
-		return $this->ingest( (string) wp_remote_retrieve_body( $response ) );
+		return array(
+			'code' => (int) wp_remote_retrieve_response_code( $response ),
+			'body' => (string) wp_remote_retrieve_body( $response ),
+		);
 	}
 
 	/**

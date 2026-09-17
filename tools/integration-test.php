@@ -159,6 +159,15 @@ $results_repo->override( $result_id, 'penalty', 0, 'penalty removed' );
 $zeroed = Results_Repo::effective( $results_repo->for_event( $event_id )[0] );
 check( 'penalty corrected to zero sticks', 0 === $zeroed['penalty'], var_export( $zeroed['penalty'], true ) );
 
+// And a correction taken back off must fall back again. An empty Penalty box on
+// the review screen writes this null, and nothing without a database can prove
+// it arrives as one: a null written as an empty string or a zero would read back
+// as a correction to nothing, which is the opposite of what was asked for.
+$results_repo->override( $result_id, 'penalty', null, 'correction withdrawn' );
+$cleared = Results_Repo::effective( $results_repo->for_event( $event_id )[0] );
+check( 'a cleared penalty falls back again', 20 === $cleared['penalty'], var_export( $cleared['penalty'], true ) );
+check( 'and clearing is itself recorded', 3 === count( $results_repo->overrides_for_event( $event_id ) ) );
+
 echo "\nDeleting events\n";
 check( 'delete refused while results exist', false === $events_repo->delete_event( $event_id ) );
 check( 'result count seen', 1 === $events_repo->result_count( $event_id ) );

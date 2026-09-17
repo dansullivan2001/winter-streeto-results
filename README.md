@@ -150,7 +150,9 @@ same shape as MapRun's own rule.
 Because the elapsed time is stored raw alongside everything else, this applies to events
 already imported without re-fetching them. `raw_penalty` still holds what MapRun charged,
 unedited, and the review screen shows it next to the recomputed figure wherever the two
-differ. A correction typed into the Penalty box still beats both. Where the elapsed time or
+differ. A correction typed into the Penalty box still beats both, and **emptying the box
+takes it back off**, handing the row back to the rule — which matters because the rule is
+worked from the elapsed time, and a re-fetch can change that time. Where the elapsed time or
 the course's limit is unknown — a hand-added row, an unrecognised course label — MapRun's
 penalty stands, because a missing time is not evidence that nobody was late.
 
@@ -226,6 +228,11 @@ appears. That has to be safe:
 - Hand-added rows carry no MapRun id, which is what makes them untouchable by an import.
 - An import writes only the raw columns — never a resolved value, an exclusion, or a
   competitor link.
+- A correction is not a one-way door. Emptying the Score or Penalty box removes it, and the
+  row goes back to what MapRun says and what the club's rule works out — so a figure
+  corrected in October is not still standing against a time a re-fetch has since changed.
+  An empty box on a row that was never corrected records nothing: there is no override to
+  take off, and writing one would put a correction nobody made into the audit trail.
 
 `Import_Reconciler` holds those decisions in plain PHP, so they are proven by unit tests
 without a database.
@@ -259,6 +266,14 @@ GET https://p.fne.com.au:8886/resultsGetPublicForEventv2?eventName=<full event n
 
 Unauthenticated. The envelope is
 `{ errorFlag, statusMessage, warningFlag, warningMessage, results: [...] }`.
+
+**Fetching and pasting are the same path.** `Client::fetch()` does the GET and hands the
+body to the same `ingest()` a paste goes through, so the parser, the punch recovery and the
+reconciler cannot behave differently depending on how the JSON arrived. That equality is
+asserted rather than assumed: the HTTP call is a seam a test overrides, so `fetch()` runs
+for real against a stored response and its output is compared with a paste of the same
+bytes. It matters because a host that blocks port 8886 has only the paste, and a fix applied
+to one path alone would leave the other publishing the wrong thing.
 
 `GrossScore` is the points collected and `NetScore` the figure after the time penalty, so
 their difference is the penalty *MapRun* charged — kept on record, but replaced by the

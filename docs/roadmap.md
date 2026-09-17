@@ -201,3 +201,36 @@ this is the other half of one change rather than new work.
 costs a plugin version bump and a release to ship a cosmetic edit on its own.
 Worth folding into the next release that touches the league template for a real
 reason.
+
+---
+
+## A course correction cannot be taken back off
+
+**Status:** the Score and Penalty boxes can now be emptied to remove a
+correction; the Course dropdown cannot.
+
+`Results_Repo::effective()` reads `resolved_course_label` where it is non-empty
+and falls back to `course_label`, the label the row's MapRun source feeds. The
+review screen's Course cell is a `<select>` built from `Scoring_Config::course_labels()`
+with no blank option, so every save submits a label and there is no way to say
+"no correction". Picking the source's own label back is close enough today —
+the resolved column stays set, but set to the same value — and stops being so
+if a source's course label is ever edited afterwards, since the pinned copy
+would not follow it.
+
+The same shape, one field along: clearing a row's competitor to "— none —"
+holds only until the next import, because `Importer::link_competitors()` fills
+any empty `competitor_id` from the confirmed alias list on every run. That is
+the right behaviour for a row nobody has ruled on and the wrong one for a link
+deliberately removed, and the row carries nothing that tells the two apart.
+
+**Cost to build:** a blank first option on the Course select and the same
+`is_uncorrected()` guard the two figures use, which is small; the competitor
+half needs a way to record "deliberately unlinked" — a nullable flag, or
+treating an override row with a null `competitor` as the answer — and is
+therefore the larger of the two.
+
+**Why it is deferred:** neither has bitten. A course is corrected when MapRun
+scored a row against the wrong course, which does not then get re-corrected,
+and an unlinked competitor is usually unlinked on the way to linking the right
+one.

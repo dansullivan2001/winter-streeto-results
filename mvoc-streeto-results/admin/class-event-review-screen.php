@@ -1050,6 +1050,18 @@ class Event_Review_Screen {
 					$limit     = $config->time_limit_for_course( (string) ( $row['course_label'] ?? '' ) );
 					$over      = ( null !== $time_secs && null !== $limit ) ? $time_secs - $limit : null;
 
+					// Whether the Penalty box holds a correction, and what
+					// emptying it would hand the row back to: the club's rule
+					// where it can be applied, MapRun's own figure where it
+					// cannot. Said on the row because a corrected penalty looks
+					// exactly like a computed one, and the difference is that
+					// the corrected one no longer follows the time.
+					$corrected = null !== ( $flag['resolved_penalty'] ?? null );
+					$automatic = $config->late_penalty(
+						null === $time_secs ? null : (int) $time_secs,
+						(string) ( $row['course_label'] ?? '' )
+					) ?? (int) ( $row['maprun_penalty'] ?? 0 );
+
 					// Exactly the two rows the notices above name, and for the
 					// same reason: each scores in the league on a figure nobody
 					// has yet stood behind. A row that has been answered drops
@@ -1173,6 +1185,21 @@ class Event_Review_Screen {
 										(int) $row['maprun_penalty']
 									);
 									?>
+								</span>
+							<?php endif; ?>
+							<?php if ( $corrected ) : ?>
+								<br /><span class="description">
+									<?php if ( $automatic === (int) ( $row['penalty'] ?? 0 ) ) : ?>
+										<?php esc_html_e( 'corrected — empty the box to work it out again', 'mvoc-streeto' ); ?>
+									<?php else : ?>
+										<?php
+										printf(
+											/* translators: %d: the penalty the club's rule works out. */
+											esc_html__( 'corrected — empty the box for %d', 'mvoc-streeto' ),
+											(int) $automatic
+										);
+										?>
+									<?php endif; ?>
 								</span>
 							<?php endif; ?>
 						</td>
@@ -1687,11 +1714,15 @@ class Event_Review_Screen {
 			return 0;
 		}
 
+		$held    = $this->results->for_event( $this->event_id() );
 		$current = array_column(
-			Results_Repo::effective_rows( $this->results->for_event( $this->event_id() ), $this->config() ),
+			Results_Repo::effective_rows( $held, $this->config() ),
 			null,
 			'result_id'
 		);
+		// The rows as they are held, keyed by id: what decides whether an empty
+		// box is taking a correction off or was empty all along.
+		$stored  = array_column( $held, null, 'id' );
 
 		foreach ( wp_unslash( $_POST['rows'] ) as $raw_id => $fields ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$id = (int) $raw_id;
@@ -1706,7 +1737,13 @@ class Event_Review_Screen {
 
 			$updates  = array(
 				'score'      => '' === ( $fields['score'] ?? '' ) ? null : (int) $fields['score'],
-				'penalty'    => (int) ( $fields['penalty'] ?? 0 ),
+				// Blank means "no correction", the same as it does for the
+				// score: it is how a penalty override is taken back off, after
+				// which the club's rule is recomputed from the elapsed time
+				// again. A pinned figure survived every later re-fetch, so a
+				// penalty corrected once could never go back to being worked
+				// out — including after the time it was wrong about changed.
+				'penalty'    => '' === ( $fields['penalty'] ?? '' ) ? null : (int) $fields['penalty'],
 				'course'     => preg_replace( '/[^0-9]/', '', (string) ( $fields['course'] ?? '' ) ),
 				'competitor' => ( (int) ( $fields['competitor'] ?? 0 ) ) ?: null,
 				'excluded'   => $excluded ? 1 : 0,
@@ -1731,6 +1768,16 @@ class Event_Review_Screen {
 			}
 
 			foreach ( $updates as $field => $value ) {
+				// An empty box on a row that was never corrected is not a
+				// correction to nothing — there is no override to take off. The
+				// figure it is being compared against is MapRun's own or the
+				// club rule's, so recording the difference would put a
+				// correction nobody made into the audit trail, on every row
+				// whose score MapRun never sent.
+				if ( null === $value && self::is_uncorrected( $field, $stored[ $id ] ?? array() ) ) {
+					continue;
+				}
+
 				if ( $before[ $field ] !== $value ) {
 					$this->results->override( $id, $field, $value, $reason );
 					++$saved;
@@ -1739,6 +1786,30 @@ class Event_Review_Screen {
 		}
 
 		return $saved;
+	}
+
+	/**
+	 * Whether this row carries no correction to the field a blank box clears.
+	 *
+	 * Only the two figures that can be emptied have an answer here. Both are
+	 * stored as a resolved column that is null where MapRun's own value stands,
+	 * so null is the whole test: nothing to take off, and therefore nothing for
+	 * an empty box to record.
+	 *
+	 * @param string              $field  One of the Results_Repo::OVERRIDABLE keys.
+	 * @param array<string,mixed> $stored The row as it is held now.
+	 */
+	public static function is_uncorrected( string $field, array $stored ): bool {
+		$resolved = array(
+			'score'   => 'resolved_score',
+			'penalty' => 'resolved_penalty',
+		);
+
+		if ( ! isset( $resolved[ $field ] ) ) {
+			return false;
+		}
+
+		return null === ( $stored[ $resolved[ $field ] ] ?? null );
 	}
 
 	/**
