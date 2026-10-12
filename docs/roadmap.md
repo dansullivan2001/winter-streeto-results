@@ -50,7 +50,8 @@ of automatic merge the plugin refuses to do elsewhere.
 An event can be attached to a scoring definition (JSON, or a `control,points[,order]`
 list), and is then rescored on read from each runner's stored punches. Schemes are one
 class each in `includes/domain/class-scheme-*.php`, listed in
-`Scoring_Scheme_Registry`. Three exist: `any_order`, `sequence`, `consecutive_groups`.
+`Scoring_Scheme_Registry`. Four exist: `any_order`, `sequence`, `consecutive_groups`,
+`unlock_rules`.
 
 What is deliberately not there yet:
 
@@ -60,8 +61,6 @@ What is deliberately not there yet:
   `Scoring_Config` to be editable first (next entry).
 - **A footnote on the event table** describing the scoring used. The definition
   carries a `description` field; nothing renders it.
-- **Staged unlocks** (controls that only score after a set of others). Not needed yet;
-  it is one more scheme class.
 - **Integration coverage** of the new table, columns and the punch backfill:
   `tools/integration-test.php` has not been extended, and the unit tests cannot reach
   SQL.

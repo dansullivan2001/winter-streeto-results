@@ -27,6 +27,7 @@ class Scoring_Scheme_Registry {
 		Scheme_Any_Order::class,
 		Scheme_Sequence::class,
 		Scheme_Consecutive_Groups::class,
+		Scheme_Unlock_Rules::class,
 	);
 
 	/**

@@ -18,10 +18,11 @@ imported event (MapRun's score is shown beside the new one, with a punch-by-punc
 breakdown), **Save**, and attach it to the event. The event is then rescored from each
 runner's punches; a correction on the review screen still wins.
 
-Three schemes are built in: `any_order` (any control values), `sequence` (controls in a
-set order; stray punches are ignored and scoring carries on) and `consecutive_groups`
+Four schemes are built in: `any_order` (any control values), `sequence` (controls in a
+set order; stray punches are ignored and scoring carries on), `consecutive_groups`
 (a bonus for completing a group of controls in one unbroken run, optionally rising with
-each group). The screen includes a prompt to give an AI assistant, which writes the JSON
+each group) and `unlock_rules` (a control scores only once enough other controls have,
+for tournament-style events — see [docs/examples/world-cup.json](docs/examples/world-cup.json)). The screen includes a prompt to give an AI assistant, which writes the JSON
 from a description of the event. To add a scheme, write one class implementing
 `Scoring_Scheme` in `includes/domain/class-scheme-<name>.php` and add it to
 `Scoring_Scheme_Registry`; the validator, the screen and the prompt pick it up.
