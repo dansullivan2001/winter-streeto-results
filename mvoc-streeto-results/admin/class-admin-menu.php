@@ -63,6 +63,15 @@ class Admin_Menu {
 			array( $review, 'render' )
 		);
 
+		add_submenu_page(
+			self::SLUG,
+			__( 'Custom scoring', 'mvoc-streeto' ),
+			__( 'Custom scoring', 'mvoc-streeto' ),
+			Plugin::CAPABILITY,
+			self::SLUG . '-scoring',
+			array( new Scoring_Screen(), 'render' )
+		);
+
 		$unmatched = new Unmatched_Screen();
 
 		add_submenu_page(

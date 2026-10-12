@@ -124,7 +124,11 @@ class Shortcodes {
 		// position, from the same figures and by the same rule.
 		$scored = ( new Scoring_Engine( $config ) )->score_event(
 			Categories::apply(
-				Results_Repo::effective_rows( $this->results->for_event( $event['id'] ), $config ),
+				Results_Repo::effective_rows(
+					$this->results->for_event( $event['id'] ),
+					$config,
+					$this->events->rule_set_for_event( $event )
+				),
 				$this->competitors->category_flags( (int) ( $series['id'] ?? 0 ) )
 			)
 		);

@@ -8,6 +8,7 @@
 namespace MVOC\StreetO\Repo;
 
 use MVOC\StreetO\Domain\Scoring_Config;
+use MVOC\StreetO\Domain\Scoring_Rule_Set;
 use MVOC\StreetO\League_Cache;
 use MVOC\StreetO\Schema;
 
@@ -334,6 +335,7 @@ class Events_Repo {
 	 * @param int $event_id Event id.
 	 */
 	public function publish( int $event_id ): void {
+		$this->snapshot_rule_set( $event_id );
 		$this->set_status( $event_id, self::STATUS_PUBLISHED, current_time( 'mysql' ) );
 	}
 
@@ -343,7 +345,97 @@ class Events_Repo {
 	 * @param int $event_id Event id.
 	 */
 	public function unpublish( int $event_id ): void {
+		$this->clear_rule_set_snapshot( $event_id );
 		$this->set_status( $event_id, self::STATUS_DRAFT, null );
+	}
+
+	/**
+	 * Attach a saved scoring definition to an event, or take it off.
+	 *
+	 * @param int      $event_id    Event id.
+	 * @param int|null $rule_set_id Rule set id, or null for standard scoring.
+	 */
+	public function set_rule_set( int $event_id, ?int $rule_set_id ): void {
+		global $wpdb;
+
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			Schema::table( 'events' ),
+			array(
+				'scoring_rule_set_id'   => $rule_set_id,
+				'scoring_rule_snapshot' => null,
+			),
+			array( 'id' => $event_id ),
+			array( '%d', '%s' ),
+			array( '%d' )
+		);
+
+		// Changing what a published event is scored by is a deliberate act, so
+		// the copy that protects it from later library edits is retaken here.
+		$event = $this->find_event_by_id( $event_id );
+
+		if ( $event && ! empty( $event['is_published'] ) ) {
+			$this->snapshot_rule_set( $event_id );
+		}
+
+		League_Cache::bump();
+	}
+
+	/**
+	 * The scoring definition an event is scored under, or null for standard scoring.
+	 *
+	 * A published event reads the copy taken when it was published, so editing
+	 * a shared definition afterwards cannot change a result that is out. A
+	 * draft reads the library, so edits show at once. A definition that no
+	 * longer parses is treated as absent rather than fatal.
+	 *
+	 * @param array<string,mixed> $event Event row, as find_event() returns it.
+	 */
+	public function rule_set_for_event( array $event ): ?Scoring_Rule_Set {
+		$json = (string) ( $event['scoring_rule_snapshot'] ?? '' );
+
+		if ( '' === $json && ! empty( $event['scoring_rule_set_id'] ) ) {
+			$row  = ( new Rule_Sets_Repo() )->find( (int) $event['scoring_rule_set_id'] );
+			$json = $row ? $row['definition'] : '';
+		}
+
+		return '' === $json ? null : Scoring_Rule_Set::parse( $json )['rules'];
+	}
+
+	/**
+	 * Keep a copy of the event's definition for as long as it is published.
+	 *
+	 * @param int $event_id Event id.
+	 */
+	private function snapshot_rule_set( int $event_id ): void {
+		global $wpdb;
+
+		$event = $this->find_event_by_id( $event_id );
+		$rules = $event ? $this->rule_set_for_event( array_merge( $event, array( 'scoring_rule_snapshot' => '' ) ) ) : null;
+
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			Schema::table( 'events' ),
+			array( 'scoring_rule_snapshot' => $rules ? $rules->to_json() : null ),
+			array( 'id' => $event_id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Drop the published copy, so a draft follows the library again.
+	 *
+	 * @param int $event_id Event id.
+	 */
+	private function clear_rule_set_snapshot( int $event_id ): void {
+		global $wpdb;
+
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			Schema::table( 'events' ),
+			array( 'scoring_rule_snapshot' => null ),
+			array( 'id' => $event_id ),
+			array( '%s' ),
+			array( '%d' )
+		);
 	}
 
 	/**

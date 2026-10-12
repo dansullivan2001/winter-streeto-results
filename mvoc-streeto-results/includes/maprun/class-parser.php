@@ -623,6 +623,38 @@ class Parser {
 	}
 
 	/**
+	 * Each run's punches, keyed by MapRun id, read back out of a stored response.
+	 *
+	 * Punches were parsed on every import but not kept on the row, and a custom
+	 * scoring scheme needs them. Like identities(), this reads the snapshot the
+	 * import kept, so an already-imported season can be given its punches
+	 * without being fetched again. A payload that no longer parses yields
+	 * nothing rather than throwing.
+	 *
+	 * @param string $payload Stored MapRun response.
+	 * @return array<string,array<int,array<string,mixed>>>
+	 */
+	public static function punch_lists( string $payload ): array {
+		try {
+			$rows = self::unwrap( json_decode( $payload, true ) );
+		} catch ( \RuntimeException $e ) {
+			return array();
+		}
+
+		$lists = array();
+
+		foreach ( ( new self() )->parse( $rows ) as $row ) {
+			$id = (string) $row['maprun_id'];
+
+			if ( '' !== $id ) {
+				$lists[ $id ] = $row['punches'];
+			}
+		}
+
+		return $lists;
+	}
+
+	/**
 	 * Render seconds back as MapRun writes them: "mm:ss", or "h:mm:ss" past the hour.
 	 *
 	 * The inverse of parse_hhmmss(), and kept beside it so the two cannot drift.

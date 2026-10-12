@@ -83,7 +83,7 @@ class Schema {
 	 *    of every row imported before the column existed: unrecorded, not
 	 *    MapRun's.
 	 */
-	public const DB_VERSION = 14;
+	public const DB_VERSION = 15;
 
 	public const OPTION_DB_VERSION = 'mvoc_streeto_db_version';
 
@@ -102,6 +102,7 @@ class Schema {
 		'results',
 		'result_competitors',
 		'overrides',
+		'scoring_rule_sets',
 	);
 
 	/**
@@ -133,6 +134,7 @@ class Schema {
 		self::migrate_organisers();
 		self::drop_retired_columns();
 		self::backfill_run_identity();
+		self::backfill_punches();
 		self::migrate_points_ladder();
 
 		update_option( self::OPTION_DB_VERSION, self::DB_VERSION );
@@ -261,6 +263,54 @@ class Schema {
 						'maprun_id' => (string) $maprun_id,
 					),
 					array( '%s', '%s', '%s', '%d' ),
+					array( '%d', '%s' )
+				);
+			}
+		}
+	}
+
+	/**
+	 * Give already-imported rows their punch record.
+	 *
+	 * Punches were parsed on every import but not kept, and a custom scoring
+	 * scheme needs them. They are read back out of the snapshot each row's
+	 * import kept, so an existing season is repaired without being fetched
+	 * again. Only rows still without punches are touched, so a later upgrade
+	 * costs one query; a row whose response carried none stays NULL.
+	 */
+	private static function backfill_punches(): void {
+		global $wpdb;
+
+		$results = self::table( 'results' );
+		$fetches = self::table( 'fetches' );
+
+		$fetch_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"SELECT DISTINCT fetch_id FROM `{$results}`
+			 WHERE fetch_id > 0 AND maprun_id <> '' AND raw_punches IS NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		foreach ( $fetch_ids ?: array() as $fetch_id ) {
+			$payload = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$wpdb->prepare( "SELECT payload FROM `{$fetches}` WHERE id = %d", (int) $fetch_id ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			);
+
+			if ( ! is_string( $payload ) ) {
+				continue;
+			}
+
+			foreach ( MapRun\Parser::punch_lists( $payload ) as $maprun_id => $punches ) {
+				if ( ! $punches ) {
+					continue;
+				}
+
+				$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+					$results,
+					array( 'raw_punches' => wp_json_encode( $punches ) ),
+					array(
+						'fetch_id'  => (int) $fetch_id,
+						'maprun_id' => (string) $maprun_id,
+					),
+					array( '%s' ),
 					array( '%d', '%s' )
 				);
 			}
@@ -451,6 +501,8 @@ class Schema {
 			published_at datetime NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			page_id bigint(20) unsigned NULL,
+			scoring_rule_set_id bigint(20) unsigned NULL,
+			scoring_rule_snapshot longtext NULL,
 			PRIMARY KEY  (id),
 			KEY series_id (series_id),
 			UNIQUE KEY series_event (series_id,event_number)
@@ -561,6 +613,7 @@ class Schema {
 			raw_start_local varchar(32) NOT NULL DEFAULT '',
 			raw_finish_local varchar(32) NOT NULL DEFAULT '',
 			raw_course_revision smallint(5) unsigned NULL,
+			raw_punches longtext NULL,
 			classifier varchar(20) NOT NULL DEFAULT '',
 			course_label varchar(20) NOT NULL DEFAULT '',
 			raw_score int(11) NULL,
@@ -604,6 +657,19 @@ class Schema {
 			KEY result_id (result_id),
 			KEY competitor_id (competitor_id),
 			UNIQUE KEY result_competitor (result_id,competitor_id)
+		) {$charset};";
+
+		// Reusable custom scoring definitions (JSON). An event points at one by
+		// id; on publish it also keeps a copy, so editing a shared definition
+		// later cannot change a result that is already out.
+		$table = self::table( 'scoring_rule_sets' );
+		$sql[] = "CREATE TABLE {$table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			name varchar(255) NOT NULL,
+			definition longtext NOT NULL,
+			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id)
 		) {$charset};";
 
 		// An audit trail of corrections. Kept separate from `results` so that a

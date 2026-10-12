@@ -10,6 +10,22 @@ The series is eight monthly events from September to April, each offering a 60-m
 40-minute score course. Four competitions run off the same results: Overall, Ladies,
 Over-55 Men and Over-55 Women.
 
+## Custom scoring
+
+By default an event is scored from MapRun's own totals. For a different format, open
+**StreetO Results → Custom scoring**, paste a definition, **Check** it against an
+imported event (MapRun's score is shown beside the new one, with a punch-by-punch
+breakdown), **Save**, and attach it to the event. The event is then rescored from each
+runner's punches; a correction on the review screen still wins.
+
+Three schemes are built in: `any_order` (any control values), `sequence` (controls in a
+set order; stray punches are ignored and scoring carries on) and `consecutive_groups`
+(a bonus for completing a group of controls in one unbroken run, optionally rising with
+each group). The screen includes a prompt to give an AI assistant, which writes the JSON
+from a description of the event. To add a scheme, write one class implementing
+`Scoring_Scheme` in `includes/domain/class-scheme-<name>.php` and add it to
+`Scoring_Scheme_Registry`; the validator, the screen and the prompt pick it up.
+
 ## Why
 
 The job used to run like this: read the results out of MapRun, key them into a spreadsheet,

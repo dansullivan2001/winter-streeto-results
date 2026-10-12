@@ -43,28 +43,34 @@ of automatic merge the plugin refuses to do elsewhere.
 
 ---
 
-## Control values are the club's, not the series'
+## Custom scoring: what is built, and what is not
 
-**Status:** the rule works and is unit-tested, but it is fixed in code.
+**Status:** built in 1.2.0 — see **StreetO Results → Custom scoring** and the README.
 
-`Punch_Scorer` rebuilds a score MapRun never reported by reading each control's value off
-its number — first digit times ten. That is how StreetO controls are numbered and it held
-for all fifty at Burpham, but it is a convention rather than a fact, and nothing stores what
-a control was worth at a given event.
+An event can be attached to a scoring definition (JSON, or a `control,points[,order]`
+list), and is then rescored on read from each runner's stored punches. Schemes are one
+class each in `includes/domain/class-scheme-*.php`, listed in
+`Scoring_Scheme_Registry`. Three exist: `any_order`, `sequence`, `consecutive_groups`.
 
-`Parser` already takes a `Punch_Scorer` in its constructor, so a differently-numbered event
-is one object away. What is missing is anywhere to say so: the scorer takes no per-series
-configuration, and `Scoring_Config` — which is where every other rule lives — has no field
-for control values.
+What is deliberately not there yet:
 
-**Today's workaround:** correct the scores on the review screen, or hand-enter the event.
-Both already work, and an event numbered another way would be visibly wrong on the review
-screen rather than quietly wrong, because every rebuilt row is marked *from punches*.
+- **Per-event courses, time limits and pro-rata.** Definitions do not override
+  `Scoring_Config`'s `course_factors` and `course_time_limits`; the late penalty and
+  the 150% factor still come from the series. An event with other courses needs
+  `Scoring_Config` to be editable first (next entry).
+- **A footnote on the event table** describing the scoring used. The definition
+  carries a `description` field; nothing renders it.
+- **Staged unlocks** (controls that only score after a set of others). Not needed yet;
+  it is one more scheme class.
+- **Integration coverage** of the new table, columns and the punch backfill:
+  `tools/integration-test.php` has not been extended, and the unit tests cannot reach
+  SQL.
 
-**Cost to build:** a control-values field on `Scoring_Config`, plumbed from the series row
-through `Importer` into the `Punch_Scorer` the `Parser` is given. Blocked behind the entry
-below in practice: there is no way to edit a series' scoring rules at all yet, so a field
-added here would be as uneditable as the rest.
+The consecutive-group scheme settles four questions its definition did not, and the
+choices are the narrowest reading of "consecutive": repeating a control already in the
+run does not break it; a broken run can be completed later; a group earns its bonus
+once; and an escalating bonus follows the order groups were completed in. They are
+documented on `Scheme_Consecutive_Groups` and pinned by `ScoringSchemesTest`.
 
 ---
 

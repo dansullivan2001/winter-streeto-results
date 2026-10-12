@@ -125,7 +125,11 @@ class League_Service {
 
 		foreach ( $events as $index => $event ) {
 			$scored = $engine->score_event(
-				Results_Repo::effective_rows( $this->results->for_event( $event['id'] ), $config )
+				Results_Repo::effective_rows(
+					$this->results->for_event( $event['id'] ),
+					$config,
+					$this->events->rule_set_for_event( $event )
+				)
 			);
 
 			foreach ( $scored as $row ) {

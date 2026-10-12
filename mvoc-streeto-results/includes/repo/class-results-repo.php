@@ -14,6 +14,7 @@ namespace MVOC\StreetO\Repo;
 
 use MVOC\StreetO\Domain\Import_Reconciler;
 use MVOC\StreetO\Domain\Scoring_Config;
+use MVOC\StreetO\Domain\Scoring_Rule_Set;
 use MVOC\StreetO\League_Cache;
 use MVOC\StreetO\MapRun\Parser;
 use MVOC\StreetO\Schema;
@@ -347,9 +348,10 @@ class Results_Repo {
 	 *
 	 * @param array<string,mixed>      $row    Result row.
 	 * @param Scoring_Config|null      $config Series scoring rules; MapRun's penalty stands without them.
+	 * @param Scoring_Rule_Set|null    $rules  The event's custom scoring, which replaces MapRun's score where the row has punches.
 	 * @return array<string,mixed>
 	 */
-	public static function effective( array $row, ?Scoring_Config $config = null ): array {
+	public static function effective( array $row, ?Scoring_Config $config = null, ?Scoring_Rule_Set $rules = null ): array {
 		$course = '' !== ( $row['resolved_course_label'] ?? '' )
 			? $row['resolved_course_label']
 			: $row['course_label'];
@@ -363,6 +365,13 @@ class Results_Repo {
 		$recomputed = $config
 			? $config->late_penalty( null === $time_secs ? null : (int) $time_secs, (string) $course )
 			: null;
+
+		// A custom scheme rescores from the punches, replacing what MapRun
+		// reported; a correction still wins over it, as over everything else.
+		// Null means nothing to score from - no rule set, a hand-entered row,
+		// or a failed upload - and the raw score then stands, which is why
+		// MapRun's figure is kept alongside as maprun_score.
+		$custom = self::custom_score( $row, $rules );
 
 		$first_name = (string) ( $row['raw_first_name'] ?? '' );
 		$surname    = (string) ( $row['raw_surname'] ?? '' );
@@ -380,13 +389,15 @@ class Results_Repo {
 			'club'            => $row['raw_club'] ?? '',
 			'classifier'      => $row['classifier'],
 			'course_label'    => $course,
-			'score'           => $row['resolved_score'] ?? $row['raw_score'],
+			'score'           => $row['resolved_score'] ?? $custom['score'] ?? $row['raw_score'],
+			'maprun_score'    => $row['raw_score'],
+			'score_breakdown' => $custom['breakdown'],
 			// Where the score being published came from. A correction is the
 			// co-ordinator's own figure, so it answers for itself and the
 			// import's provenance no longer describes what is on the row —
 			// which is why this is emptied rather than carried over.
 			'score_source'    => null === ( $row['resolved_score'] ?? null )
-				? (string) ( $row['score_source'] ?? '' )
+				? ( null !== $custom['score'] ? 'custom' : (string) ( $row['score_source'] ?? '' ) )
 				: '',
 			// ?? not ?: - a penalty corrected to zero is a real correction, and
 			// must not fall through to the recomputed or raw value.
@@ -444,12 +455,50 @@ class Results_Repo {
 	 *
 	 * @param array<int,array<string,mixed>> $rows   Result rows.
 	 * @param Scoring_Config|null            $config Series scoring rules.
+	 * @param Scoring_Rule_Set|null          $rules  The event's custom scoring, if any.
 	 * @return array<int,array<string,mixed>>
 	 */
-	public static function effective_rows( array $rows, ?Scoring_Config $config = null ): array {
+	public static function effective_rows( array $rows, ?Scoring_Config $config = null, ?Scoring_Rule_Set $rules = null ): array {
 		return array_map(
-			static fn( array $row ): array => self::effective( $row, $config ),
+			static fn( array $row ): array => self::effective( $row, $config, $rules ),
 			$rows
+		);
+	}
+
+	/**
+	 * A row's score under a custom scheme, or nulls when there is none to give.
+	 *
+	 * Computed on read rather than stored, like the late penalty: editing a
+	 * definition then rescores at once with no re-fetch, and an event already
+	 * imported needs nothing more than its punches.
+	 *
+	 * @param array<string,mixed>   $row   Result row.
+	 * @param Scoring_Rule_Set|null $rules The event's custom scoring.
+	 * @return array{score:int|null,breakdown:array<int,array<string,mixed>>}
+	 */
+	private static function custom_score( array $row, ?Scoring_Rule_Set $rules ): array {
+		$none = array(
+			'score'     => null,
+			'breakdown' => array(),
+		);
+
+		$json = (string) ( $row['raw_punches'] ?? '' );
+
+		if ( null === $rules || '' === $json ) {
+			return $none;
+		}
+
+		$punches = json_decode( $json, true );
+
+		if ( ! is_array( $punches ) ) {
+			return $none;
+		}
+
+		$result = $rules->score( $punches );
+
+		return array(
+			'score'     => $result->score,
+			'breakdown' => $result->breakdown,
 		);
 	}
 }

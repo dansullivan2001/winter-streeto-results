@@ -17,6 +17,7 @@ use MVOC\StreetO\Domain\Event_Presenter;
 use MVOC\StreetO\Domain\Manual_Entry_Parser;
 use MVOC\StreetO\Domain\Repeat_Entry_Detector;
 use MVOC\StreetO\Domain\Scoring_Config;
+use MVOC\StreetO\Domain\Scoring_Rule_Set;
 use MVOC\StreetO\Domain\Scoring_Engine;
 use MVOC\StreetO\Importer;
 use MVOC\StreetO\MapRun\Parser;
@@ -89,7 +90,7 @@ class Event_Review_Screen {
 		$rows      = $this->results->for_event( $event_id );
 		$series    = $this->series_for( $event );
 		$config    = $this->events->scoring_config( $series );
-		$effective = Results_Repo::effective_rows( $rows, $config );
+		$effective = Results_Repo::effective_rows( $rows, $config, $this->events->rule_set_for_event( $event ) );
 
 		// The category flags come from the competitor and their season, so the
 		// preview below ranks Ladies, M55 and W55 from exactly what the published
@@ -492,6 +493,15 @@ class Event_Review_Screen {
 		$event = $this->events->find_event_by_id( $this->event_id() );
 
 		return $this->events->scoring_config( $event ? $this->series_for( $event ) : array() );
+	}
+
+	/**
+	 * The custom scoring the event under review is scored with, if any.
+	 */
+	private function rules(): ?Scoring_Rule_Set {
+		$event = $this->events->find_event_by_id( $this->event_id() );
+
+		return $event ? $this->events->rule_set_for_event( $event ) : null;
 	}
 
 	/**
@@ -1163,9 +1173,42 @@ class Event_Review_Screen {
 							<?php endif; ?>
 						</td>
 						<td>
-							<input type="number" style="width:6em" step="10"
+							<input type="number" style="width:6em" step="<?php echo 'custom' === ( $row['score_source'] ?? '' ) ? '1' : '10'; ?>"
 								name="rows[<?php echo esc_attr( (string) $id ); ?>][score]"
 								value="<?php echo esc_attr( null === $row['score'] ? '' : (string) $row['score'] ); ?>" />
+							<?php if ( 'custom' === ( $row['score_source'] ?? '' ) ) : ?>
+								<br /><span class="description">
+									<?php
+									printf(
+										/* translators: %s: the score MapRun reported. */
+										esc_html__( 'custom scoring (MapRun: %s)', 'mvoc-streeto' ),
+										esc_html( null === $row['maprun_score'] ? '—' : (string) $row['maprun_score'] )
+									);
+									?>
+								</span>
+								<details>
+									<summary><?php esc_html_e( 'How scored', 'mvoc-streeto' ); ?></summary>
+									<ul style="margin:0">
+										<?php foreach ( $row['score_breakdown'] as $step ) : ?>
+											<li>
+												<?php
+												echo esc_html(
+													trim(
+														sprintf(
+															'%s %s: %+d %s',
+															$step['outcome'],
+															$step['control'],
+															$step['points'],
+															$step['note']
+														)
+													)
+												);
+												?>
+											</li>
+										<?php endforeach; ?>
+									</ul>
+								</details>
+							<?php endif; ?>
 							<?php if ( Parser::SCORE_FIELD_PUNCHES === ( $row['score_source'] ?? '' ) ) : ?>
 								<br /><span class="description">
 									<?php esc_html_e( 'from punches', 'mvoc-streeto' ); ?>
@@ -1716,7 +1759,7 @@ class Event_Review_Screen {
 
 		$held    = $this->results->for_event( $this->event_id() );
 		$current = array_column(
-			Results_Repo::effective_rows( $held, $this->config() ),
+			Results_Repo::effective_rows( $held, $this->config(), $this->rules() ),
 			null,
 			'result_id'
 		);
@@ -1833,7 +1876,7 @@ class Event_Review_Screen {
 			);
 		}
 
-		$effective = Results_Repo::effective_rows( $this->results->for_event( $this->event_id() ), $this->config() );
+		$effective = Results_Repo::effective_rows( $this->results->for_event( $this->event_id() ), $this->config(), $this->rules() );
 
 		return Duplicate_Detector::resolve(
 			( new Duplicate_Detector() )->find( $effective ),

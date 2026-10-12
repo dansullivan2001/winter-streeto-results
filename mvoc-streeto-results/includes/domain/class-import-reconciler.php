@@ -232,6 +232,11 @@ class Import_Reconciler {
 			'raw_course_revision' => isset( $row['course_revision'] ) && null !== $row['course_revision']
 				? (int) $row['course_revision']
 				: null,
+			// The punch record, kept so an event with a custom scoring scheme
+			// can be rescored on read without fetching it again. Null where the
+			// row carries none, so a failed upload is not mistaken for a run
+			// that punched nothing.
+			'raw_punches'         => ! empty( $row['punches'] ) ? json_encode( $row['punches'] ) : null, // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 		);
 	}
 }
