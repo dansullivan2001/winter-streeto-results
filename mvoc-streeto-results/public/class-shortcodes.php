@@ -91,6 +91,14 @@ class Shortcodes {
 			MVOC_STREETO_VERSION,
 			true
 		);
+
+		wp_register_script(
+			'mvoc-streeto-event-table',
+			MVOC_STREETO_URL . 'public/js/event-table.js',
+			array(),
+			MVOC_STREETO_VERSION,
+			true
+		);
 	}
 
 	/**
@@ -114,6 +122,7 @@ class Shortcodes {
 		}
 
 		wp_enqueue_style( 'mvoc-streeto' );
+		wp_enqueue_script( 'mvoc-streeto-event-table' );
 
 		$series = $this->resolve_series( (string) $atts['series'] );
 		$config = $this->events->scoring_config( $series ?? array() );

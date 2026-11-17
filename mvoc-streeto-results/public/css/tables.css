@@ -225,3 +225,31 @@
 		display: block;
 	}
 }
+
+/* Sortable event table headings. The script wraps each heading's text in a
+   button; it should look like the heading it replaced, with an arrow only on
+   the column currently sorted. */
+.mvoc-streeto-sort {
+	all: unset;
+	cursor: pointer;
+	box-sizing: border-box;
+}
+
+.mvoc-streeto-sort:hover {
+	text-decoration: underline;
+}
+
+.mvoc-streeto-sort:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.mvoc-streeto-table th[aria-sort="ascending"] .mvoc-streeto-sort::after {
+	content: " \25B2";
+	font-size: 0.7em;
+}
+
+.mvoc-streeto-table th[aria-sort="descending"] .mvoc-streeto-sort::after {
+	content: " \25BC";
+	font-size: 0.7em;
+}
