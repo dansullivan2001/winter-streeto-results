@@ -922,6 +922,29 @@ class Event_Review_Screen {
 			#mvoc-review-sort[hidden] {
 				display: none;
 			}
+
+			/* Headings become sort buttons once the script runs; they should look
+			   like the headings they replaced, with an arrow on the sorted one. */
+			.mvoc-review-sort-heading {
+				all: unset;
+				cursor: pointer;
+				font-weight: 600;
+			}
+			.mvoc-review-sort-heading:hover {
+				text-decoration: underline;
+			}
+			.mvoc-review-sort-heading:focus-visible {
+				outline: 2px solid #2271b1;
+				outline-offset: 2px;
+			}
+			th[aria-sort="ascending"] .mvoc-review-sort-heading::after {
+				content: " \25B2";
+				font-size: 0.7em;
+			}
+			th[aria-sort="descending"] .mvoc-review-sort-heading::after {
+				content: " \25BC";
+				font-size: 0.7em;
+			}
 		</style>
 		<?php
 	}
@@ -959,15 +982,15 @@ class Event_Review_Screen {
 		<table class="widefat striped">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Pos', 'mvoc-streeto' ); ?></th>
-					<th><?php esc_html_e( 'Name', 'mvoc-streeto' ); ?></th>
-					<th><?php esc_html_e( 'Competitor', 'mvoc-streeto' ); ?></th>
-					<th><?php esc_html_e( 'Course', 'mvoc-streeto' ); ?></th>
-					<th><?php esc_html_e( 'Time', 'mvoc-streeto' ); ?></th>
-					<th><?php esc_html_e( 'Score', 'mvoc-streeto' ); ?></th>
-					<th><?php esc_html_e( 'Penalty', 'mvoc-streeto' ); ?></th>
-					<th><?php esc_html_e( 'Total', 'mvoc-streeto' ); ?></th>
-					<th><?php esc_html_e( 'Exclude', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="position"><?php esc_html_e( 'Pos', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="name"><?php esc_html_e( 'Name', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="select"><?php esc_html_e( 'Competitor', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="select"><?php esc_html_e( 'Course', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="data"><?php esc_html_e( 'Time', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="input"><?php esc_html_e( 'Score', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="input"><?php esc_html_e( 'Penalty', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="text"><?php esc_html_e( 'Total', 'mvoc-streeto' ); ?></th>
+					<th data-mvoc-col="check"><?php esc_html_e( 'Exclude', 'mvoc-streeto' ); ?></th>
 				</tr>
 			</thead>
 			<tbody id="mvoc-review-rows">
@@ -1158,7 +1181,7 @@ class Event_Review_Screen {
 								<?php endforeach; ?>
 							</select>
 						</td>
-						<td>
+						<td data-sort="<?php echo esc_attr( null === $time_secs ? '' : (string) $time_secs ); ?>">
 							<?php echo esc_html( Parser::format_hhmmss( $time_secs ) ?: '—' ); ?>
 							<?php if ( null !== $over && $over > 0 ) : ?>
 								<br /><span class="description">
@@ -1364,41 +1387,132 @@ class Event_Review_Screen {
 
 			var buttons = Array.prototype.slice.call( controls.querySelectorAll( '[data-mvoc-sort]' ) );
 			var rows    = Array.prototype.slice.call( body.rows );
+			var table   = body.closest( 'table' );
+			var heads   = Array.prototype.slice.call( table.tHead.rows[ 0 ].cells );
 
 			function order( row ) {
 				return parseInt( row.dataset.sortPosition, 10 );
 			}
 
-			function sort( mode ) {
-				rows.slice().sort( function ( a, b ) {
-					if ( 'name' === mode ) {
-						var compared = a.dataset.sortName.trim().localeCompare(
-							b.dataset.sortName.trim(),
-							undefined,
-							{ sensitivity: 'base', numeric: true }
-						);
+			/*
+			 * What one row holds in one column, read live: Score and Penalty are
+			 * inputs, Competitor and Course are selects, and a half-finished
+			 * correction should sort by what is in the box now, not by what was
+			 * there when the page loaded. Blank ("none", empty, a dash) is
+			 * reported as null so it can be kept at the bottom.
+			 */
+			function keyOf( row, index, type ) {
+				var cell = row.cells[ index ];
+				var field, text;
 
-						if ( compared ) {
-							return compared;
-						}
+				if ( 'position' === type ) {
+					return order( row );
+				}
+				if ( 'name' === type ) {
+					return row.dataset.sortName.trim() || null;
+				}
+				if ( ! cell ) {
+					return null;
+				}
+				if ( 'select' === type ) {
+					field = cell.querySelector( 'select' );
+					if ( ! field || ! field.value || '0' === field.value ) {
+						return null;
 					}
+					text = field.options[ field.selectedIndex ].text.trim();
+				} else if ( 'input' === type ) {
+					field = cell.querySelector( 'input[type="number"]' );
+					text  = field ? field.value.trim() : '';
+				} else if ( 'check' === type ) {
+					field = cell.querySelector( 'input[type="checkbox"]' );
+					return field && field.checked ? 1 : 0;
+				} else if ( 'data' === type ) {
+					text = ( cell.dataset.sort || '' ).trim();
+				} else {
+					text = cell.textContent.replace( /\s+/g, ' ' ).trim();
+				}
 
-					return order( a ) - order( b );
-				} ).forEach( function ( row ) {
-					body.appendChild( row );
+				return /^[\s\u2014\u2013-]*$/.test( text ) ? null : text;
+			}
+
+			function toNumber( value ) {
+				var match = String( value ).replace( /,/g, '' ).match( /-?\d+(?:\.\d+)?/ );
+				return match ? parseFloat( match[ 0 ] ) : NaN;
+			}
+
+			function sortRows( index, direction ) {
+				var type    = heads[ index ].dataset.mvocCol;
+				var keyed   = rows.map( function ( row ) {
+					return { row: row, key: keyOf( row, index, type ) };
+				} );
+				var numeric = keyed.every( function ( item ) {
+					return null === item.key || ! isNaN( toNumber( item.key ) );
 				} );
 
+				keyed.sort( function ( a, b ) {
+					var result = 0;
+
+					// Blanks last whichever way round, so a column that is
+					// mostly empty does not bury the rows that have a value.
+					if ( ( null === a.key ) !== ( null === b.key ) ) {
+						return null === a.key ? 1 : -1;
+					}
+
+					if ( null !== a.key ) {
+						result = numeric
+							? toNumber( a.key ) - toNumber( b.key )
+							: String( a.key ).localeCompare( String( b.key ), undefined, { sensitivity: 'base', numeric: true } );
+					}
+
+					// Ties keep the finishing order the table was built in.
+					return result ? direction * result : order( a.row ) - order( b.row );
+				} ).forEach( function ( item ) {
+					body.appendChild( item.row );
+				} );
+
+				heads.forEach( function ( th, i ) {
+					th.setAttribute( 'aria-sort', i === index ? ( 1 === direction ? 'ascending' : 'descending' ) : 'none' );
+				} );
+
+				// The two named buttons mirror the Pos and Name headings when
+				// those are sorted ascending, and are off for anything else.
 				buttons.forEach( function ( button ) {
-					var active = button.dataset.mvocSort === mode;
+					var active = 1 === direction && heads[ index ].dataset.mvocCol === button.dataset.mvocSort;
 
 					button.setAttribute( 'aria-pressed', active ? 'true' : 'false' );
 					button.classList.toggle( 'button-primary', active );
 				} );
 			}
 
+			heads.forEach( function ( th, index ) {
+				var button = document.createElement( 'button' );
+
+				button.type      = 'button';
+				button.className = 'mvoc-review-sort-heading';
+				button.title     = 'name' === th.dataset.mvocCol
+					? <?php echo wp_json_encode( __( 'Sort by surname — the order of the start sheet', 'mvoc-streeto' ) ); ?>
+					: <?php echo wp_json_encode( __( 'Click to sort; click again to reverse', 'mvoc-streeto' ) ); ?>;
+
+				while ( th.firstChild ) {
+					button.appendChild( th.firstChild );
+				}
+				th.appendChild( button );
+				th.setAttribute( 'aria-sort', 'none' );
+
+				button.addEventListener( 'click', function () {
+					sortRows( index, 'ascending' === th.getAttribute( 'aria-sort' ) ? -1 : 1 );
+				} );
+			} );
+
 			buttons.forEach( function ( button ) {
 				button.addEventListener( 'click', function () {
-					sort( button.dataset.mvocSort );
+					var wanted = button.dataset.mvocSort;
+
+					heads.forEach( function ( th, index ) {
+						if ( th.dataset.mvocCol === wanted ) {
+							sortRows( index, 1 );
+						}
+					} );
 				} );
 			} );
 
